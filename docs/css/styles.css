@@ -342,7 +342,7 @@ h1, h2, h3, h4 {
   min-height: 100vh;
   display: flex;
   align-items: center;
-  background: linear-gradient(135deg, var(--green-900) 0%, var(--green-800) 40%, var(--green-700) 100%);
+  background: linear-gradient(160deg, #0d1f0d 0%, var(--green-900) 30%, var(--green-800) 70%, #1a3a1a 100%);
   overflow: hidden;
 }
 
@@ -351,21 +351,29 @@ h1, h2, h3, h4 {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at 20% 80%, rgba(255, 143, 0, 0.12) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(76, 175, 80, 0.15) 0%, transparent 50%);
+    radial-gradient(ellipse at 0% 100%, rgba(255, 143, 0, 0.06) 0%, transparent 40%),
+    radial-gradient(ellipse at 100% 0%, rgba(0, 0, 0, 0.3) 0%, transparent 50%);
 }
 
 .hero-pattern {
   position: absolute;
   inset: 0;
-  opacity: 0.04;
+  opacity: 0.03;
   background-image:
-    linear-gradient(30deg, var(--white) 12%, transparent 12.5%, transparent 87%, var(--white) 87.5%, var(--white)),
-    linear-gradient(150deg, var(--white) 12%, transparent 12.5%, transparent 87%, var(--white) 87.5%, var(--white)),
-    linear-gradient(30deg, var(--white) 12%, transparent 12.5%, transparent 87%, var(--white) 87.5%, var(--white)),
-    linear-gradient(150deg, var(--white) 12%, transparent 12.5%, transparent 87%, var(--white) 87.5%, var(--white));
-  background-size: 80px 140px;
-  background-position: 0 0, 0 0, 40px 70px, 40px 70px;
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 60px,
+      rgba(255,255,255,0.5) 60px,
+      rgba(255,255,255,0.5) 61px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 60px,
+      rgba(255,255,255,0.5) 60px,
+      rgba(255,255,255,0.5) 61px
+    );
 }
 
 .hero .container {
@@ -479,20 +487,6 @@ h1, h2, h3, h4 {
 .hero-icon-card:hover {
   background: rgba(255,255,255,0.1);
   transform: translateY(-4px);
-}
-
-.hero-icon-card:nth-child(2) {
-  transform: translateY(30px);
-}
-.hero-icon-card:nth-child(2):hover {
-  transform: translateY(26px);
-}
-
-.hero-icon-card:nth-child(3) {
-  transform: translateY(-10px);
-}
-.hero-icon-card:nth-child(3):hover {
-  transform: translateY(-14px);
 }
 
 .hero-icon-card svg {
