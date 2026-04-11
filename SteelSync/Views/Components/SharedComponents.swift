@@ -156,9 +156,9 @@ struct FilterPill: View {
                         .fontWeight(.bold)
                 }
             }
-            .font(.callout)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .font(.caption)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
             .background(isSelected ? AppTheme.primaryOrange : Color.clear)
             .foregroundColor(isSelected ? .white : AppTheme.secondaryText)
             .clipShape(Capsule())

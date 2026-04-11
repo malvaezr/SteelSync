@@ -1,5 +1,6 @@
 import SwiftUI
 import CloudKit
+import UniformTypeIdentifiers
 
 struct BidDetailView: View {
     let bidID: CKRecord.ID
@@ -14,6 +15,7 @@ struct BidDetailView: View {
     @State private var isUploading = false
     @State private var uploadMessage = ""
     @State private var showUploadAlert = false
+    @State private var showFileImporter = false
 
     var statusColor: Color {
         switch bid.status {
@@ -288,21 +290,32 @@ struct BidDetailView: View {
         } message: {
             Text(uploadMessage)
         }
+        .fileImporter(
+            isPresented: $showFileImporter,
+            allowedContentTypes: [.pdf, .png, .jpeg, .tiff, .data],
+            allowsMultipleSelection: true
+        ) { result in
+            switch result {
+            case .success(let urls):
+                importFiles(urls)
+            case .failure(let error):
+                uploadMessage = error.localizedDescription
+                showUploadAlert = true
+            }
+        }
     }
 
     private func uploadFiles() {
         #if os(macOS)
         let urls = FileStorageService.presentFilePicker()
         guard !urls.isEmpty else { return }
+        importFiles(urls)
         #else
-        // On iPad, file picking is handled via UIDocumentPickerViewController
-        // For now, show a placeholder message
-        uploadMessage = "Use the Files app to import documents on iPad."
-        showUploadAlert = true
-        return
-        let urls: [URL] = []
+        showFileImporter = true
         #endif
+    }
 
+    private func importFiles(_ urls: [URL]) {
         isUploading = true
         var successes = 0
         var errors: [String] = []

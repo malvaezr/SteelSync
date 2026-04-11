@@ -7,6 +7,8 @@ struct GanttChartView: View {
     @State private var showAddTask = false
     @State private var editingTask: GanttTask?
     @State private var selectedProjectFilter: String? = nil
+    @State private var currentDate = Date()
+    @State private var isVisible = false
 
     // Distinct colors for each project
     private let projectPalette: [Color] = [
@@ -111,7 +113,7 @@ struct GanttChartView: View {
                             }
 
                             // Layer 3: Today marker
-                            GanttTodayMarkerView(vm: vm, tasks: filteredTasks, height: contentTimelineHeight)
+                            GanttTodayMarkerView(vm: vm, tasks: filteredTasks, height: contentTimelineHeight, now: currentDate)
                         }
                     }
                     .frame(height: availHeight)
@@ -147,6 +149,11 @@ struct GanttChartView: View {
             }
         }
         .navigationTitle("Schedule")
+        .onAppear { isVisible = true; currentDate = Date() }
+        .onDisappear { isVisible = false }
+        .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
+            if isVisible { currentDate = Date() }
+        }
     }
 
     // MARK: - Toolbar

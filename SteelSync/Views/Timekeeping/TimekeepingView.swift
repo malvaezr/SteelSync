@@ -88,20 +88,20 @@ struct TimekeepingView: View {
                 .searchable(text: $searchText, prompt: "Search employees...")
             }
             #if os(macOS)
-            .frame(minWidth: 450)
+            .frame(minWidth: 220, idealWidth: 450)
             #endif
 
             if let employee = selectedEmployee {
                 EmployeeDetailPanel(employee: employee)
                     #if os(macOS)
-                    .frame(minWidth: 350)
+                    .frame(minWidth: 220, idealWidth: 350)
                     #endif
             } else {
                 EmptyStateView(icon: "person.crop.circle", title: "No Employee Selected",
                                message: "Select an employee to view details.",
                                buttonTitle: "Add Employee") { showAddEmployee = true }
                 #if os(macOS)
-                .frame(minWidth: 350)
+                .frame(minWidth: 220, idealWidth: 350)
                 #endif
             }
         }
@@ -109,11 +109,7 @@ struct TimekeepingView: View {
 
     // MARK: - Crew Management
     private var crewManagement: some View {
-        VStack(spacing: AppTheme.Spacing.lg) {
-            EmptyStateView(icon: "person.3.fill", title: "Crew Assignments",
-                           message: "Create weekly assignments to manage crew deployment across projects. Crew members can clock in/out using a shared token code.")
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        CrewManagementView()
     }
 }
 
@@ -259,7 +255,13 @@ struct AddEmployeeView: View {
                     Picker("Type", selection: $employeeType) {
                         ForEach(EmployeeType.allCases, id: \.self) { Text($0.displayName).tag($0) }
                     }
-                    HStack { Text("$"); TextField("Hourly Rate", text: $hourlyRate) }
+                    HStack {
+                        Text("$")
+                        TextField("Hourly Rate", text: $hourlyRate)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
+                    }
                 }
                 Section("Notes") {
                     TextEditor(text: $notes).frame(height: 60)
@@ -335,7 +337,13 @@ struct EditEmployeeView: View {
                     Picker("Type", selection: $employeeType) {
                         ForEach(EmployeeType.allCases, id: \.self) { Text($0.displayName).tag($0) }
                     }
-                    HStack { Text("$"); TextField("Hourly Rate", text: $hourlyRate) }
+                    HStack {
+                        Text("$")
+                        TextField("Hourly Rate", text: $hourlyRate)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
+                    }
                     Picker("Status", selection: $status) {
                         ForEach(EmployeeStatus.allCases, id: \.self) { Text($0.displayName).tag($0) }
                     }

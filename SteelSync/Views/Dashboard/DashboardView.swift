@@ -45,23 +45,25 @@ struct DashboardView: View {
                 .frame(height: 120)
 
                 // Filters
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    ForEach(filters, id: \.self) { filter in
-                        FilterPill(filter, isSelected: selectedFilter == filter,
-                                   count: countFor(filter: filter)) {
-                            selectedFilter = filter
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        ForEach(filters, id: \.self) { filter in
+                            FilterPill(filter, isSelected: selectedFilter == filter,
+                                       count: countFor(filter: filter)) {
+                                selectedFilter = filter
+                            }
                         }
                     }
-                    Spacer()
                 }
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.bottom, AppTheme.Spacing.sm)
 
                 // Project list
+                let ganttProjectIDs = Set(dataStore.ganttTasks.map(\.projectID))
                 List(selection: $selectedProject) {
                     ForEach(filteredProjects) { project in
                         ProjectRow(project: project, clientName: dataStore.clientName(for: project),
-                                   hasGanttTasks: dataStore.ganttTasks.contains { $0.projectID == project.id.recordName })
+                                   hasGanttTasks: ganttProjectIDs.contains(project.id.recordName))
                             .tag(project)
                             .contextMenu {
                                 Button("Edit") { selectedProject = project }
@@ -91,7 +93,7 @@ struct DashboardView: View {
                 .searchable(text: $searchText, prompt: "Search projects...")
             }
             #if os(macOS)
-            .frame(minWidth: 400, idealWidth: 500)
+            .frame(minWidth: 250, idealWidth: 500)
             #endif
             .toolbar {
                 ToolbarItem(placement: .automatic) {
@@ -105,14 +107,14 @@ struct DashboardView: View {
             if let project = selectedProject {
                 ProjectDetailView(project: project)
                     #if os(macOS)
-                    .frame(minWidth: 350)
+                    .frame(minWidth: 250, idealWidth: 400)
                     #endif
             } else {
                 EmptyStateView(icon: "building.2", title: "No Project Selected",
                                message: "Select a project from the list to view details.",
                                buttonTitle: "Add Project") { showAddProject = true }
                 #if os(macOS)
-                .frame(minWidth: 350)
+                .frame(minWidth: 250, idealWidth: 400)
                 #endif
             }
         }
@@ -185,27 +187,21 @@ struct ProjectRow: View {
                     .fontWeight(.semibold)
             }
 
-            HStack(spacing: AppTheme.Spacing.md) {
-                VStack(alignment: .leading) {
-                    Text("Revenue")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    Text(project.totalRevenue.currencyFormatted)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                }
-                VStack(alignment: .leading) {
-                    Text("Profit")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    Text(project.profit.currencyFormatted)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(project.profit >= 0 ? .green : .red)
-                }
+            HStack(spacing: AppTheme.Spacing.sm) {
+                Text(project.totalRevenue.currencyFormatted)
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                    .fixedSize()
+                Text(project.profit.currencyFormatted)
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .foregroundColor(project.profit >= 0 ? .green : .red)
+                    .lineLimit(1)
+                    .fixedSize()
                 Spacer()
                 ProgressBar(value: project.progress, color: statusColor)
-                    .frame(width: 80)
+                    .frame(width: 60)
                 Text("\(Int(project.progress * 100))%")
                     .font(.caption2)
                     .foregroundColor(.secondary)

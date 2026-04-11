@@ -7,14 +7,16 @@ struct ProjectDetailView: View {
     @State private var selectedTab = "Overview"
     @State private var showEditProject = false
     @State private var showAddChangeOrder = false
+    @State private var editingChangeOrder: ChangeOrder?
     @State private var showAddPayment = false
     @State private var showAddPayroll = false
     @State private var showAddCost = false
     @State private var showAddRental = false
     @State private var rentalToClose: EquipmentRental? = nil
     @State private var showEditProgress = false
+    @State private var showQuickEntry = false
 
-    private let tabs = ["Overview", "Change Orders", "Payments", "Payroll", "Equipment", "Costs"]
+    private let tabs = ["Overview", "Change Orders", "Payments", "Payroll", "Equipment", "Costs", "Pay Apps"]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -48,8 +50,6 @@ struct ProjectDetailView: View {
             Divider()
 
             // Tab content
-            // Overview uses ScrollView; tabs with Table use direct layout
-            // to avoid ScrollView/Table layout recursion on macOS
             Group {
                 switch selectedTab {
                 case "Overview":
@@ -58,31 +58,39 @@ struct ProjectDetailView: View {
                             .padding(AppTheme.Spacing.lg)
                     }
                 default:
-                    VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                        switch selectedTab {
-                        case "Change Orders":
-                            changeOrdersTab
-                        case "Payments":
-                            paymentsTab
-                        case "Payroll":
-                            payrollTab
-                        case "Equipment":
-                            equipmentTab
-                        case "Costs":
-                            costsTab
-                        default:
-                            EmptyView()
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                            switch selectedTab {
+                            case "Change Orders":
+                                changeOrdersTab
+                            case "Payments":
+                                paymentsTab
+                            case "Payroll":
+                                payrollTab
+                            case "Equipment":
+                                equipmentTab
+                            case "Costs":
+                                costsTab
+                            case "Pay Apps":
+                                PayAppsTab(project: project)
+                            default:
+                                EmptyView()
+                            }
                         }
+                        .padding(AppTheme.Spacing.lg)
                     }
-                    .padding(AppTheme.Spacing.lg)
                 }
             }
+            .frame(maxHeight: .infinity)
         }
         .sheet(isPresented: $showEditProject) {
             EditProjectView(project: project)
         }
         .sheet(isPresented: $showAddChangeOrder) {
             AddChangeOrderView(projectID: project.id, nextNumber: (dataStore.changeOrders(for: project.id).count) + 1)
+        }
+        .sheet(item: $editingChangeOrder) { co in
+            EditChangeOrderSheet(changeOrder: co, projectID: project.id)
         }
         .sheet(isPresented: $showAddPayment) {
             AddPaymentView(projectID: project.id)
@@ -98,6 +106,9 @@ struct ProjectDetailView: View {
         }
         .sheet(item: $rentalToClose) { rental in
             CloseEquipmentRentalView(projectID: project.id, rental: rental)
+        }
+        .sheet(isPresented: $showQuickEntry) {
+            QuickEntrySheet(project: project)
         }
     }
 
@@ -132,6 +143,12 @@ struct ProjectDetailView: View {
                 }
                 Spacer()
                 StatusBadge(text: project.computedStatus, color: statusColor)
+                Button { showQuickEntry = true } label: {
+                    Label("Quick Entry", systemImage: "bolt.fill")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .tint(.yellow)
                 Button("Edit") { showEditProject = true }
                     .buttonStyle(.bordered)
             }
@@ -267,34 +284,58 @@ struct ProjectDetailView: View {
                                buttonTitle: "Add Change Order") { showAddChangeOrder = true }
                 .frame(height: 200)
             } else {
-                Table(cos) {
-                    TableColumn("CO #") { co in Text("#\(co.number)").fontWeight(.medium) }
-                        .width(min: 50, max: 60)
-                    TableColumn("Description") { co in Text(co.description) }
-                    TableColumn("Amount") { co in
-                        Text(co.amount.currencyFormatted)
-                            .foregroundColor(co.amount >= 0 ? .green : .red)
-                    }.width(min: 80, max: 120)
-                    TableColumn("Date") { co in Text(co.submittedDate.shortDate) }
-                        .width(min: 90, max: 120)
-                    TableColumn("Status") { co in
-                        StatusBadge(text: co.isSigned ? "Signed" : "Pending",
-                                    color: co.isSigned ? .green : .orange)
-                    }.width(min: 80, max: 100)
-                    TableColumn("PDF") { co in
-                        Button {
-                            PDFExportService.exportWorkOrderInvoice(
-                                changeOrder: co,
-                                project: project,
-                                client: dataStore.client(for: project.clientRef)
-                            )
-                        } label: {
-                            Image(systemName: "arrow.down.doc.fill")
-                                .foregroundColor(AppTheme.primaryOrange)
+                let grouped = Dictionary(grouping: cos, by: \.billedTo)
+                let sortedKeys = COBilledTo.allCases.filter { grouped[$0] != nil }
+                List {
+                    ForEach(sortedKeys, id: \.self) { billedTo in
+                        Section(header: Text("Billed to: \(billedTo.displayName)")) {
+                            let sectionTotal = (grouped[billedTo] ?? []).reduce(0) { $0 + $1.amount }
+                            ForEach(grouped[billedTo] ?? []) { co in
+                        HStack {
+                            Text("#\(co.number)")
+                                .fontWeight(.medium)
+                                .frame(width: 40)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(co.description.isEmpty ? "Change Order #\(co.number)" : co.description)
+                                    .font(.callout)
+                                    .lineLimit(1)
+                                Text(co.submittedDate.shortDate)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Text(co.amount.currencyFormatted)
+                                .fontWeight(.semibold)
+                                .foregroundColor(co.amount >= 0 ? .green : .red)
+                            StatusBadge(text: co.isSigned ? "Signed" : "Pending",
+                                        color: co.isSigned ? .green : .orange)
+                            Button {
+                                PDFExportService.exportWorkOrderInvoice(
+                                    changeOrder: co, project: project,
+                                    client: dataStore.client(for: project.clientRef))
+                            } label: {
+                                Image(systemName: "arrow.down.doc.fill")
+                                    .foregroundColor(AppTheme.primaryOrange)
+                            }
+                            .buttonStyle(.borderless)
                         }
-                        .buttonStyle(.borderless)
-                    }.width(min: 36, max: 40)
+                        .contextMenu {
+                            Button("Edit") { editingChangeOrder = co }
+                            Divider()
+                            Button("Delete", role: .destructive) {
+                                dataStore.deleteChangeOrder(co, from: project.id)
+                            }
+                        }
+                    }
+                            HStack {
+                                Spacer()
+                                Text("Section Total: \(sectionTotal.currencyFormatted)")
+                                    .font(.caption).fontWeight(.bold).foregroundColor(.green)
+                            }
+                        }
+                    }
                 }
+                .listStyle(.inset)
                 .frame(minHeight: 200)
 
                 HStack {
@@ -339,14 +380,71 @@ struct ProjectDetailView: View {
     // MARK: - Payroll Tab
     private var payrollTab: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionHeaderView(title: "Payroll Entries", action: { showAddPayroll = true })
+            // Timesheet entries from Crew Management (auto-linked by project)
+            let timesheetRows = dataStore.timesheetEntries.filter { $0.projectRef == project.id.recordName }
+            if !timesheetRows.isEmpty {
+                // Group by week
+                let byWeek = Dictionary(grouping: timesheetRows, by: { $0.weekLabel })
+                let sortedWeeks = byWeek.keys.sorted()
+
+                SectionHeaderView(title: "Timesheet (from Crew Management)")
+
+                List {
+                    ForEach(sortedWeeks, id: \.self) { week in
+                        Section(header: Text(week)) {
+                            let weekEntries = byWeek[week] ?? []
+                            ForEach(weekEntries) { entry in
+                                HStack {
+                                    Text(entry.displayName)
+                                        .font(.callout)
+                                    Spacer()
+                                    Text("\(entry.totalHours.formatted()) hrs")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(entry.totalPay.currencyFormatted)
+                                        .font(.callout)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.green)
+                                }
+                            }
+                            HStack {
+                                Spacer()
+                                let weekHours = weekEntries.reduce(Decimal.zero) { $0 + $1.totalHours }
+                                let weekPay = weekEntries.reduce(Decimal.zero) { $0 + $1.totalPay }
+                                Text("Week Total: \(weekHours.formatted()) hrs — \(weekPay.currencyFormatted)")
+                                    .font(.caption).fontWeight(.bold).foregroundColor(AppTheme.primaryOrange)
+                            }
+                        }
+                    }
+                }
+                .listStyle(.inset)
+                .frame(minHeight: 150)
+
+                let tsHours = timesheetRows.reduce(Decimal.zero) { $0 + $1.totalHours }
+                let tsPay = timesheetRows.reduce(Decimal.zero) { $0 + $1.totalPay }
+                HStack {
+                    Text("Timesheet Total: \(tsHours.formatted()) hrs")
+                        .font(.callout)
+                    Spacer()
+                    Text(tsPay.currencyFormatted)
+                        .font(.headline).foregroundColor(.green)
+                }
+            }
+
+            // Manual payroll entries (legacy/additional)
+            SectionHeaderView(title: "Manual Payroll Entries", action: { showAddPayroll = true })
 
             let entries = dataStore.payrollEntries(for: project.id)
-            if entries.isEmpty {
-                EmptyStateView(icon: "person.2.fill", title: "No Payroll Entries",
-                               message: "Track labor costs by adding payroll entries.",
+            if entries.isEmpty && timesheetRows.isEmpty {
+                EmptyStateView(icon: "person.2.fill", title: "No Payroll Data",
+                               message: "Add workers in Crew Management or create manual payroll entries.",
                                buttonTitle: "Add Payroll") { showAddPayroll = true }
                 .frame(height: 200)
+            } else if entries.isEmpty {
+                Text("No manual payroll entries. Timesheet data is shown above.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.vertical, AppTheme.Spacing.sm)
             } else {
                 Table(entries) {
                     TableColumn("Week") { e in Text(e.weekDateRange) }
@@ -358,13 +456,13 @@ struct ProjectDetailView: View {
                         .width(min: 60, max: 80)
                     TableColumn("Notes") { e in Text(e.notes).foregroundColor(.secondary) }
                 }
-                .frame(minHeight: 200)
+                .frame(minHeight: 150)
 
                 HStack {
-                    Text("Total Hours: \(entries.reduce(0) { $0 + $1.totalHours }.decimalFormatted)")
+                    Text("Manual Total: \(entries.reduce(0) { $0 + $1.totalHours }.decimalFormatted) hrs")
                         .font(.callout)
                     Spacer()
-                    Text("Total Labor: \(entries.reduce(0) { $0 + $1.totalAmount }.currencyFormatted)")
+                    Text(entries.reduce(0) { $0 + $1.totalAmount }.currencyFormatted)
                         .font(.headline)
                 }
             }

@@ -45,14 +45,15 @@ struct ClientsView: View {
                 .frame(height: 120)
 
                 // Filters
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    ForEach(filters, id: \.self) { filter in
-                        FilterPill(filter, isSelected: selectedFilter == filter,
-                                   count: countFor(filter: filter)) {
-                            selectedFilter = filter
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        ForEach(filters, id: \.self) { filter in
+                            FilterPill(filter, isSelected: selectedFilter == filter,
+                                       count: countFor(filter: filter)) {
+                                selectedFilter = filter
+                            }
                         }
                     }
-                    Spacer()
                 }
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.bottom, AppTheme.Spacing.sm)
@@ -73,7 +74,7 @@ struct ClientsView: View {
                 .searchable(text: $searchText, prompt: "Search clients...")
             }
             #if os(macOS)
-            .frame(minWidth: 450)
+            .frame(minWidth: 220, idealWidth: 450)
             #endif
             .toolbar {
                 ToolbarItem(placement: .automatic) {
@@ -87,14 +88,14 @@ struct ClientsView: View {
             if let client = selectedClient {
                 ClientDetailView(client: client)
                     #if os(macOS)
-                    .frame(minWidth: 450)
+                    .frame(minWidth: 220, idealWidth: 450)
                     #endif
             } else {
                 EmptyStateView(icon: "person.2", title: "No Client Selected",
                                message: "Select a client from the list to view details.",
                                buttonTitle: "Add Client") { showAddClient = true }
                 #if os(macOS)
-                .frame(minWidth: 450)
+                .frame(minWidth: 220, idealWidth: 450)
                 #endif
             }
         }

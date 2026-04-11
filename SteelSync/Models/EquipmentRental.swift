@@ -129,10 +129,15 @@ struct EquipmentRental: Identifiable, Codable, Hashable {
         return max(days + 1, 1)
     }
 
+    /// Days of active rental. Returns 0 if the start date is in the future (scheduled but not yet on rent).
     var daysSinceStart: Int {
         let days = Calendar.current.dateComponents([.day], from: startDate.startOfDay, to: Date().startOfDay).day ?? 0
-        return max(days + 1, 1)
+        guard days >= 0 else { return 0 }  // Future start date — not on rent yet
+        return days + 1
     }
+
+    /// True if the rental has not started yet (future start date)
+    var isScheduled: Bool { startDate.startOfDay > Date().startOfDay }
 
     var totalDeliveryCharges: Decimal {
         (includeDelivery ? deliveryChargePerTrip : 0) + (includePickup ? deliveryChargePerTrip : 0)
@@ -170,13 +175,20 @@ struct EquipmentRental: Identifiable, Codable, Hashable {
     }
 
     var estimatedActiveCost: Decimal {
-        allInCost(forDays: daysSinceStart)
+        guard daysSinceStart > 0 else { return 0 }  // Not on rent yet
+        return allInCost(forDays: daysSinceStart)
     }
 
     // MARK: - Billing Cutoff Analysis
 
-    var nextWeekCutoffDay: Int { ((daysSinceStart - 1) / 7 + 1) * 7 }
-    var nextMonthCutoffDay: Int { ((daysSinceStart - 1) / 28 + 1) * 28 }
+    var nextWeekCutoffDay: Int {
+        guard daysSinceStart > 0 else { return 7 }
+        return ((daysSinceStart - 1) / 7 + 1) * 7
+    }
+    var nextMonthCutoffDay: Int {
+        guard daysSinceStart > 0 else { return 28 }
+        return ((daysSinceStart - 1) / 28 + 1) * 28
+    }
     var daysUntilWeekCutoff: Int { nextWeekCutoffDay - daysSinceStart }
     var daysUntilMonthCutoff: Int { nextMonthCutoffDay - daysSinceStart }
 

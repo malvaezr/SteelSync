@@ -72,14 +72,25 @@ struct EquipmentOverviewView: View {
                             Label(projectName, systemImage: "building.2")
                                 .font(.callout)
                                 .foregroundColor(.secondary)
-                            Text("Day \(rental.daysSinceStart)")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(AppTheme.primaryOrange.opacity(0.15))
-                                .foregroundColor(AppTheme.primaryOrange)
-                                .clipShape(Capsule())
+                            if rental.isScheduled {
+                                Text("Scheduled \(rental.startDate.shortDate)")
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(Color.blue.opacity(0.15))
+                                    .foregroundColor(.blue)
+                                    .clipShape(Capsule())
+                            } else {
+                                Text("Day \(rental.daysSinceStart)")
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(AppTheme.primaryOrange.opacity(0.15))
+                                    .foregroundColor(AppTheme.primaryOrange)
+                                    .clipShape(Capsule())
+                            }
                         }
                     }
                     Spacer()
@@ -184,8 +195,8 @@ struct EquipmentOverviewView: View {
 
                     HStack(spacing: 0) {
                         costColumn(
-                            label: "Close Today",
-                            sublabel: "Day \(rental.daysSinceStart)",
+                            label: rental.isScheduled ? "Not Started" : "Close Today",
+                            sublabel: rental.isScheduled ? "Starts \(rental.startDate.shortDate)" : "Day \(rental.daysSinceStart)",
                             cost: rental.costIfCloseToday,
                             delta: nil,
                             highlight: true

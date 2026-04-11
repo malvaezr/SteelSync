@@ -22,8 +22,18 @@ struct SidebarView: View {
 
                 Section("TRACKING") {
                     sidebarRow(.todo, badge: dataStore.overdueTodos.count)
+                    #if os(iOS)
+                    if UIDevice.current.userInterfaceIdiom == .pad {
+                        sidebarRow(.planningPad)
+                    }
+                    #endif
                     sidebarRow(.reports)
                     sidebarRow(.activity)
+                }
+
+                Section("TOOLS") {
+                    sidebarRow(.assistant)
+                    sidebarRow(.settings)
                 }
             }
             .listStyle(.sidebar)

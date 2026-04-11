@@ -1,4 +1,9 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 struct ReportsView: View {
     @EnvironmentObject var dataStore: DataStore
@@ -10,17 +15,27 @@ struct ReportsView: View {
         VStack(spacing: 0) {
             // Report selector
             HStack(spacing: AppTheme.Spacing.sm) {
-                ForEach(reports, id: \.self) { report in
-                    FilterPill(report, isSelected: selectedReport == report) {
-                        selectedReport = report
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        ForEach(reports, id: \.self) { report in
+                            FilterPill(report, isSelected: selectedReport == report) {
+                                selectedReport = report
+                            }
+                        }
                     }
                 }
                 Spacer()
 
                 Button(action: exportCSV) {
-                    Label("Export CSV", systemImage: "square.and.arrow.up")
+                    Label("Export CSV", systemImage: "tablecells")
                 }
                 .buttonStyle(.bordered)
+
+                Button(action: exportPDF) {
+                    Label("Export PDF", systemImage: "doc.richtext")
+                }
+                .buttonStyle(.bordered)
+                .tint(AppTheme.primaryOrange)
             }
             .padding(AppTheme.Spacing.md)
             .background(AppTheme.secondaryBackground)
@@ -328,9 +343,10 @@ struct ReportsView: View {
         }
     }
 
-    private func exportCSV() {
-        var csv = ""
+    // MARK: - CSV Generation (shared between CSV and PDF export)
 
+    private func buildCSVString() -> String {
+        var csv = ""
         switch selectedReport {
         case "Clients":
             csv = "Client,Type,Projects,Bids,Revenue,Costs,Profit,Margin\n"
@@ -352,7 +368,13 @@ struct ReportsView: View {
                 csv += "\"\(p.title)\",\"\(clientName)\",\(clientType),\(p.computedStatus),\(p.contractAmount),\(p.totalRevenue),\(p.totalCosts),\(p.profit),\(String(format: "%.1f", p.profitMargin))%\n"
             }
         }
+        return csv
+    }
 
+    // MARK: - Export CSV
+
+    private func exportCSV() {
+        let csv = buildCSVString()
         let csvData = csv.data(using: .utf8) ?? Data()
         #if os(macOS)
         let panel = NSSavePanel()
@@ -370,4 +392,188 @@ struct ReportsView: View {
         PlatformService.shareItems([tempURL])
         #endif
     }
+
+    // MARK: - Export PDF (CSV → PDF table)
+
+    private func exportPDF() {
+        let csv = buildCSVString()
+        let rows = parseCSV(csv)
+        guard !rows.isEmpty else { return }
+
+        let pdfData = renderCSVToPDF(rows: rows, title: "SteelSync \(selectedReport) Report")
+
+        #if os(macOS)
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.pdf]
+        panel.nameFieldStringValue = "SteelSync_\(selectedReport)_Report.pdf"
+        panel.begin { result in
+            if result == .OK, let url = panel.url {
+                try? pdfData.write(to: url)
+            }
+        }
+        #else
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SteelSync_\(selectedReport)_Report.pdf")
+        try? pdfData.write(to: tempURL)
+        PlatformService.shareItems([tempURL])
+        #endif
+    }
+
+    /// Parse CSV string into [[String]] rows, handling quoted fields
+    private func parseCSV(_ csv: String) -> [[String]] {
+        csv.components(separatedBy: "\n")
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            .map { line in
+                var fields: [String] = []
+                var current = ""
+                var inQuotes = false
+                for char in line {
+                    if char == "\"" { inQuotes.toggle() }
+                    else if char == "," && !inQuotes { fields.append(current); current = "" }
+                    else { current.append(char) }
+                }
+                fields.append(current)
+                return fields
+            }
+    }
+
+    /// Renders CSV rows as a formatted PDF table using Core Graphics (cross-platform)
+    private func renderCSVToPDF(rows: [[String]], title: String) -> Data {
+        let pageWidth: CGFloat = 792  // US Letter landscape
+        let pageHeight: CGFloat = 612
+        let margin: CGFloat = 40
+        let usableWidth = pageWidth - margin * 2
+        let titleAreaHeight: CGFloat = 50
+        let rowHeight: CGFloat = 20
+        let fontSize: CGFloat = 9
+        let headerFontSize: CGFloat = 14
+
+        let colCount = rows.first?.count ?? 1
+        let colWidth = usableWidth / CGFloat(colCount)
+        let maxRowsPerPage = Int((pageHeight - margin * 2 - titleAreaHeight) / rowHeight)
+
+        let pdfData = NSMutableData()
+        var mediaBox = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
+
+        guard let consumer = CGDataConsumer(data: pdfData),
+              let cgContext = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else {
+            return Data()
+        }
+
+        // On macOS, NSString.draw() requires NSGraphicsContext.current to be set
+        #if os(macOS)
+        let nsContext = NSGraphicsContext(cgContext: cgContext, flipped: true)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = nsContext
+        #endif
+
+        #if os(macOS)
+        let titleFont = NSFont.boldSystemFont(ofSize: headerFontSize)
+        let bodyFontReg = NSFont.systemFont(ofSize: fontSize)
+        let bodyFontBold = NSFont.boldSystemFont(ofSize: fontSize)
+        let dateFont = NSFont.systemFont(ofSize: 8)
+        let textColor = NSColor.black
+        let headerBg = NSColor.systemOrange.withAlphaComponent(0.15).cgColor
+        let separatorColor = NSColor.gray.withAlphaComponent(0.3).cgColor
+        #else
+        let titleFont = UIFont.boldSystemFont(ofSize: headerFontSize)
+        let bodyFontReg = UIFont.systemFont(ofSize: fontSize)
+        let bodyFontBold = UIFont.boldSystemFont(ofSize: fontSize)
+        let dateFont = UIFont.systemFont(ofSize: 8)
+        let textColor = UIColor.black
+        let headerBg = UIColor.systemOrange.withAlphaComponent(0.15).cgColor
+        let separatorColor = UIColor.separator.cgColor
+        #endif
+
+        var y: CGFloat = 0
+
+        for (rowIdx, row) in rows.enumerated() {
+            if rowIdx % maxRowsPerPage == 0 {
+                if rowIdx > 0 { cgContext.endPDFPage() }
+                cgContext.beginPDFPage(nil)
+
+                // Flip coordinate system for text drawing
+                cgContext.textMatrix = .identity
+                cgContext.translateBy(x: 0, y: pageHeight)
+                cgContext.scaleBy(x: 1, y: -1)
+
+                #if os(macOS)
+                // Re-set NSGraphicsContext after new page
+                NSGraphicsContext.current = NSGraphicsContext(cgContext: cgContext, flipped: true)
+                #endif
+
+                y = margin
+
+                // Title
+                let titleAttrs: [NSAttributedString.Key: Any] = [.font: titleFont, .foregroundColor: textColor]
+                (title as NSString).draw(at: CGPoint(x: margin, y: y), withAttributes: titleAttrs)
+
+                let dateStr = "Generated: \(Date().shortDate)"
+                let dateAttrs: [NSAttributedString.Key: Any] = [.font: dateFont, .foregroundColor: textColor]
+                (dateStr as NSString).draw(at: CGPoint(x: pageWidth - margin - 120, y: y + 4), withAttributes: dateAttrs)
+
+                y += titleAreaHeight
+
+                // Redraw column headers on subsequent pages
+                if rowIdx > 0, let header = rows.first {
+                    drawPDFRow(header, at: &y, x: margin, colWidth: colWidth, isHeader: true,
+                               fontReg: bodyFontReg, fontBold: bodyFontBold, textColor: textColor,
+                               headerBg: headerBg, separatorColor: separatorColor,
+                               context: cgContext, pageWidth: pageWidth, margin: margin)
+                }
+            }
+
+            drawPDFRow(row, at: &y, x: margin, colWidth: colWidth, isHeader: (rowIdx == 0),
+                       fontReg: bodyFontReg, fontBold: bodyFontBold, textColor: textColor,
+                       headerBg: headerBg, separatorColor: separatorColor,
+                       context: cgContext, pageWidth: pageWidth, margin: margin)
+        }
+
+        cgContext.endPDFPage()
+        cgContext.closePDF()
+
+        #if os(macOS)
+        NSGraphicsContext.restoreGraphicsState()
+        #endif
+
+        return pdfData as Data
+    }
+
+    #if os(macOS)
+    private typealias PlatformFont = NSFont
+    private typealias PlatformColor = NSColor
+    #else
+    private typealias PlatformFont = UIFont
+    private typealias PlatformColor = UIColor
+    #endif
+
+    private func drawPDFRow(_ fields: [String], at y: inout CGFloat, x: CGFloat, colWidth: CGFloat,
+                            isHeader: Bool, fontReg: PlatformFont, fontBold: PlatformFont,
+                            textColor: PlatformColor, headerBg: CGColor, separatorColor: CGColor,
+                            context: CGContext, pageWidth: CGFloat, margin: CGFloat) {
+        let rowHeight: CGFloat = 20
+
+        if isHeader {
+            context.setFillColor(headerBg)
+            context.fill(CGRect(x: x, y: y, width: pageWidth - margin * 2, height: rowHeight))
+        }
+
+        context.setStrokeColor(separatorColor)
+        context.setLineWidth(0.5)
+        context.move(to: CGPoint(x: x, y: y + rowHeight))
+        context.addLine(to: CGPoint(x: pageWidth - margin, y: y + rowHeight))
+        context.strokePath()
+
+        let font = isHeader ? fontBold : fontReg
+        let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: textColor]
+
+        for (colIdx, field) in fields.enumerated() {
+            let cellX = x + CGFloat(colIdx) * colWidth + 4
+            let cellRect = CGRect(x: cellX, y: y + 3, width: colWidth - 8, height: rowHeight - 6)
+            let text = field.trimmingCharacters(in: .whitespaces)
+            (text as NSString).draw(in: cellRect, withAttributes: attrs)
+        }
+        y += rowHeight
+    }
+
 }

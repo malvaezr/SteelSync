@@ -13,7 +13,7 @@ struct AddChangeOrderView: View {
     @State private var invoiceDate = Date()
     @State private var workOrderNumber = ""
     @State private var poNumber = ""
-    @State private var description = ""
+    @State private var coDescription = ""
     @State private var scope = ""
 
     // Line items
@@ -66,15 +66,13 @@ struct AddChangeOrderView: View {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
-                    .disabled(description.isEmpty)
                     .buttonStyle(.borderedProminent)
                     .tint(AppTheme.primaryOrange)
             }
             .padding()
             Divider()
 
-            ScrollView {
-                Form {
+            Form {
                     // Invoice Details
                     Section {
                         HStack {
@@ -114,7 +112,7 @@ struct AddChangeOrderView: View {
 
                     // Scope
                     Section {
-                        TextField("Brief Description", text: $description)
+                        TextField("Brief Description", text: $coDescription)
                         TextEditor(text: $scope)
                             .frame(height: 60)
                             .overlay(
@@ -149,11 +147,20 @@ struct AddChangeOrderView: View {
                                     .font(.callout)
                                     .frame(width: 140, alignment: .leading)
                                 TextField("0", value: $laborLines[index].quantity, format: .number)
+                                    #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
                                     .textFieldStyle(.roundedBorder).frame(width: 50)
                                 TextField("0", value: $laborLines[index].hours, format: .number)
+                                    #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
                                     .textFieldStyle(.roundedBorder).frame(width: 55)
-                                Text(line.rate.currencyWithCents)
-                                    .font(.caption).frame(width: 70)
+                                TextField("0", value: $laborLines[index].rate, format: .number)
+                                    #if !os(macOS)
+                                    .keyboardType(.decimalPad)
+                                    #endif
+                                    .textFieldStyle(.roundedBorder).frame(width: 70)
                                 Text(line.lineTotal.currencyWithCents)
                                     .font(.callout).fontWeight(.medium)
                                     .frame(width: 80, alignment: .trailing)
@@ -174,39 +181,31 @@ struct AddChangeOrderView: View {
 
                     // Additional Charges / Materials
                     Section {
-                        if !additionalLines.isEmpty {
-                            HStack {
-                                Text("Description").font(.caption).fontWeight(.bold).frame(minWidth: 120, alignment: .leading)
-                                Text("Qty").font(.caption).fontWeight(.bold).frame(width: 50)
-                                Text("Hours").font(.caption).fontWeight(.bold).frame(width: 55)
-                                Text("Rate").font(.caption).fontWeight(.bold).frame(width: 70)
-                                Text("Total").font(.caption).fontWeight(.bold).frame(width: 70, alignment: .trailing)
-                                Spacer().frame(width: 24)
-                            }
-                            .padding(.vertical, 2)
-                        }
-
                         ForEach(Array(additionalLines.enumerated()), id: \.element.id) { index, line in
                             HStack {
                                 TextField("Description", text: $additionalLines[index].description)
-                                    .textFieldStyle(.roundedBorder).frame(minWidth: 120)
-                                TextField("0", value: $additionalLines[index].quantity, format: .number)
-                                    .textFieldStyle(.roundedBorder).frame(width: 50)
-                                TextField("0", value: $additionalLines[index].hours, format: .number)
-                                    .textFieldStyle(.roundedBorder).frame(width: 55)
-                                TextField("$0", value: $additionalLines[index].rate, format: .number)
-                                    .textFieldStyle(.roundedBorder).frame(width: 70)
-                                Text(line.lineTotal.currencyWithCents)
-                                    .font(.callout).fontWeight(.medium)
-                                    .frame(width: 70, alignment: .trailing)
+                                    .textFieldStyle(.roundedBorder)
+                                HStack(spacing: 4) {
+                                    Text("$")
+                                        .foregroundColor(.secondary)
+                                    TextField("0", value: $additionalLines[index].rate, format: .number)
+                                        #if !os(macOS)
+                                        .keyboardType(.decimalPad)
+                                        #endif
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(width: 90)
+                                }
                                 Button { additionalLines.remove(at: index) } label: {
                                     Image(systemName: "xmark.circle.fill").foregroundColor(.red.opacity(0.6))
-                                }.buttonStyle(.plain).frame(width: 24)
+                                }.buttonStyle(.plain)
                             }
                         }
 
                         Button {
-                            additionalLines.append(AdditionalChargeItem())
+                            var item = AdditionalChargeItem()
+                            item.quantity = 1
+                            item.hours = 1
+                            additionalLines.append(item)
                         } label: {
                             Label("Add Line Item", systemImage: "plus")
                                 .font(.callout).foregroundColor(AppTheme.primaryOrange)
@@ -225,6 +224,9 @@ struct AddChangeOrderView: View {
                         HStack {
                             Text("Tax Rate (%)").foregroundColor(.secondary)
                             TextField("0", text: $taxRateString)
+                                #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
                                 .textFieldStyle(.roundedBorder).frame(width: 60)
                             Spacer()
                             if taxAmount > 0 {
@@ -273,7 +275,6 @@ struct AddChangeOrderView: View {
                     }
                 }
                 .formStyle(.grouped)
-            }
         }
         #if os(macOS)
         .frame(width: 700, height: 800)
@@ -286,7 +287,7 @@ struct AddChangeOrderView: View {
     private func save() {
         let co = ChangeOrder(
             number: nextNumber,
-            description: description,
+            description: coDescription,
             amount: totalDue,
             submittedDate: invoiceDate,
             signedDate: isSigned ? signedDate : nil,
@@ -302,6 +303,97 @@ struct AddChangeOrderView: View {
             additionalNotes: additionalNotes
         )
         dataStore.addChangeOrder(co, to: projectID)
+        dismiss()
+    }
+}
+
+// MARK: - Edit Change Order (Simple Total Input)
+struct EditChangeOrderSheet: View {
+    let changeOrder: ChangeOrder
+    let projectID: CKRecord.ID
+    @EnvironmentObject var dataStore: DataStore
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var description: String
+    @State private var amount: String
+    @State private var scope: String
+    @State private var isSigned: Bool
+    @State private var signedDate: Date
+    @State private var submittedDate: Date
+    @State private var billedTo: COBilledTo
+
+    init(changeOrder: ChangeOrder, projectID: CKRecord.ID) {
+        self.changeOrder = changeOrder
+        self.projectID = projectID
+        _description = State(initialValue: changeOrder.description)
+        _amount = State(initialValue: NSDecimalNumber(decimal: changeOrder.amount).stringValue)
+        _scope = State(initialValue: changeOrder.scope)
+        _isSigned = State(initialValue: changeOrder.isSigned)
+        _signedDate = State(initialValue: changeOrder.signedDate ?? Date())
+        _submittedDate = State(initialValue: changeOrder.submittedDate)
+        _billedTo = State(initialValue: changeOrder.billedTo)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Change Order #\(changeOrder.number)") {
+                    TextField("Brief Description", text: $description)
+                    HStack {
+                        Text("$")
+                        TextField("Total Amount", text: $amount)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
+                    }
+                    DatePicker("Date", selection: $submittedDate, displayedComponents: .date)
+                    Picker("Billed To", selection: $billedTo) {
+                        ForEach(COBilledTo.allCases, id: \.self) { type in
+                            Text(type.displayName).tag(type)
+                        }
+                    }
+                }
+                Section("Scope / Details") {
+                    TextEditor(text: $scope)
+                        .frame(height: 80)
+                }
+                Section("Approval") {
+                    Toggle("Signed / Approved", isOn: $isSigned)
+                    if isSigned {
+                        DatePicker("Signed Date", selection: $signedDate, displayedComponents: .date)
+                    }
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("Edit CO #\(changeOrder.number)")
+            #if !os(macOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(AppTheme.primaryOrange)
+                }
+            }
+        }
+        #if os(macOS)
+        .frame(width: 480, height: 420)
+        #endif
+    }
+
+    private func save() {
+        var updated = changeOrder
+        updated.description = description
+        updated.amount = Decimal(string: amount) ?? changeOrder.amount
+        updated.scope = scope
+        updated.submittedDate = submittedDate
+        updated.signedDate = isSigned ? signedDate : nil
+        updated.billedTo = billedTo
+        dataStore.updateChangeOrder(updated, in: projectID)
         dismiss()
     }
 }
@@ -406,6 +498,9 @@ struct AddPaymentView: View {
                             .foregroundColor(.green)
                             .fontWeight(.semibold)
                         TextField("Amount", text: $amount)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
                             .textFieldStyle(.plain)
                             .font(.title3)
                     }
@@ -578,6 +673,9 @@ struct AddPayrollView: View {
                                     .font(.callout)
                                     .foregroundColor(.secondary)
                                 TextField("0", text: $crewLines[index].hoursWorked)
+                                    #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
                                     .textFieldStyle(.roundedBorder)
                                     .frame(width: 60)
                                 Spacer()
@@ -703,7 +801,7 @@ struct AddCostView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var category: Cost.CostCategory = .machinery
-    @State private var description = ""
+    @State private var coDescription = ""
     @State private var amount = ""
     @State private var date = Date()
     @State private var useQuantity = false
@@ -732,7 +830,7 @@ struct AddCostView: View {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
-                    .disabled(description.isEmpty || parsedAmount == 0)
+                    .disabled(coDescription.isEmpty)
                     .buttonStyle(.borderedProminent)
                     .tint(AppTheme.primaryOrange)
             }
@@ -769,11 +867,11 @@ struct AddCostView: View {
 
                 // Details
                 Section {
-                    TextEditor(text: $description)
+                    TextEditor(text: $coDescription)
                         .frame(height: 50)
                         .overlay(
                             Group {
-                                if description.isEmpty {
+                                if coDescription.isEmpty {
                                     Text("What was this cost for...")
                                         .foregroundColor(AppTheme.tertiaryText)
                                         .padding(.leading, 4)
@@ -800,6 +898,9 @@ struct AddCostView: View {
                             VStack(alignment: .leading) {
                                 Text("Qty").font(.caption).foregroundColor(.secondary)
                                 TextField("0", text: $quantity)
+                                    #if !os(macOS)
+                            .keyboardType(.numberPad)
+                            #endif
                                     .textFieldStyle(.roundedBorder)
                             }
                             Text("x")
@@ -810,6 +911,9 @@ struct AddCostView: View {
                                 HStack {
                                     Text("$").foregroundColor(.secondary)
                                     TextField("0.00", text: $unitPrice)
+                                        #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
                                         .textFieldStyle(.plain)
                                 }
                                 .padding(6)
@@ -836,6 +940,9 @@ struct AddCostView: View {
                                 .foregroundColor(.secondary)
                                 .fontWeight(.semibold)
                             TextField("Amount", text: $amount)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
                                 .textFieldStyle(.plain)
                                 .font(.title3)
                         }
@@ -884,7 +991,7 @@ struct AddCostView: View {
     }
 
     private func save() {
-        let cost = Cost(category: category, description: description, amount: parsedAmount, date: date)
+        let cost = Cost(category: category, description: coDescription, amount: parsedAmount, date: date)
         dataStore.addCost(cost, to: projectID)
         dismiss()
     }
@@ -1160,11 +1267,17 @@ struct CloseEquipmentRentalView: View {
                     HStack {
                         Text("Gallons")
                         TextField("0", text: $fuelGallons)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 70)
                         Text("x").foregroundColor(.secondary)
                         Text("$").foregroundColor(.secondary)
                         TextField("9.95", text: $fuelPrice)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 70)
                         Text("/gal").foregroundColor(.secondary)
@@ -1272,6 +1385,224 @@ struct CloseEquipmentRentalView: View {
                               fuelGallons: parsedFuelGal,
                               fuelPricePerGallon: parsedFuelPrice,
                               in: projectID)
+        dismiss()
+    }
+}
+
+// MARK: - Quick Entry (Lump Sum Backfill)
+
+struct QuickEntrySheet: View {
+    let project: Project
+    @EnvironmentObject var dataStore: DataStore
+    @Environment(\.dismiss) private var dismiss
+
+    enum EntryCategory: String, CaseIterable {
+        case payment = "Payment"
+        case changeOrder = "Change Order"
+        case payroll = "Payroll"
+        case equipment = "Equipment"
+        case cost = "Misc. Cost"
+
+        var icon: String {
+            switch self {
+            case .payment: return "dollarsign.circle.fill"
+            case .changeOrder: return "doc.badge.plus"
+            case .payroll: return "person.2.fill"
+            case .equipment: return "shippingbox.fill"
+            case .cost: return "cart.fill"
+            }
+        }
+
+        var color: Color {
+            switch self {
+            case .payment: return .green
+            case .changeOrder: return .blue
+            case .payroll: return .purple
+            case .equipment: return .orange
+            case .cost: return .red
+            }
+        }
+    }
+
+    @State private var category: EntryCategory = .payment
+    @State private var amount = ""
+    @State private var description = ""
+    @State private var date = Date()
+
+    // Category-specific optional fields
+    @State private var costSubcategory: Cost.CostCategory = .other
+    @State private var coBilledTo: COBilledTo = .gc
+
+    private var parsedAmount: Decimal {
+        Decimal(string: amount) ?? 0
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Header warning
+                HStack(spacing: 8) {
+                    Image(systemName: "bolt.fill")
+                        .foregroundColor(.yellow)
+                    Text("Quick Entry — Lump Sum")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                    Spacer()
+                    Text("For backfill only. Use detailed forms when possible.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(10)
+                .background(Color.yellow.opacity(0.08))
+
+                Form {
+                    // Category picker
+                    Section("Category") {
+                        Picker("Type", selection: $category) {
+                            ForEach(EntryCategory.allCases, id: \.self) { cat in
+                                Label(cat.rawValue, systemImage: cat.icon).tag(cat)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
+                    // Amount + date
+                    Section("Amount") {
+                        HStack {
+                            Text("$").font(.title2).foregroundColor(.green).fontWeight(.bold)
+                            TextField("0.00", text: $amount)
+                                .font(.title2)
+                                #if !os(macOS)
+                                .keyboardType(.decimalPad)
+                                #endif
+                        }
+                        DatePicker("Date", selection: $date, displayedComponents: .date)
+                    }
+
+                    // Description
+                    Section("Description") {
+                        TextField(descriptionPlaceholder, text: $description)
+                    }
+
+                    // Category-specific fields
+                    switch category {
+                    case .cost:
+                        Section("Cost Category") {
+                            Picker("Subcategory", selection: $costSubcategory) {
+                                ForEach(Cost.CostCategory.allCases, id: \.self) { cat in
+                                    Text(cat.rawValue).tag(cat)
+                                }
+                            }
+                        }
+                    case .changeOrder:
+                        Section("Billed To") {
+                            Picker("Billed To", selection: $coBilledTo) {
+                                ForEach(COBilledTo.allCases, id: \.self) { bt in
+                                    Text(bt.displayName).tag(bt)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                    default:
+                        EmptyView()
+                    }
+
+                    // Summary
+                    if parsedAmount > 0 {
+                        Section("Summary") {
+                            HStack {
+                                Image(systemName: category.icon)
+                                    .foregroundColor(category.color)
+                                Text(category.rawValue)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Text(parsedAmount.currencyFormatted)
+                                    .font(.headline)
+                                    .foregroundColor(category.color)
+                            }
+                            InfoRow(label: "Project", value: project.title)
+                            InfoRow(label: "Date", value: date.shortDate)
+                            if !description.isEmpty {
+                                InfoRow(label: "Note", value: description)
+                            }
+                        }
+                    }
+                }
+                .formStyle(.grouped)
+            }
+            .navigationTitle("Quick Entry")
+            #if !os(macOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .disabled(parsedAmount == 0)
+                        .buttonStyle(.borderedProminent)
+                        .tint(AppTheme.primaryOrange)
+                }
+            }
+        }
+        #if os(macOS)
+        .frame(width: 480, height: 520)
+        #endif
+    }
+
+    private var descriptionPlaceholder: String {
+        switch category {
+        case .payment: return "e.g., Check #1234"
+        case .changeOrder: return "e.g., Added steel for mezzanine"
+        case .payroll: return "e.g., Week of 3/10 labor"
+        case .equipment: return "e.g., Crane rental March"
+        case .cost: return "e.g., Hotel stays for crew"
+        }
+    }
+
+    private func save() {
+        let note = description.isEmpty ? "Quick entry (lump sum)" : "\(description) [Quick entry]"
+
+        switch category {
+        case .payment:
+            let payment = Payment(amount: parsedAmount, date: date, notes: note)
+            dataStore.addPayment(payment, to: project.id)
+
+        case .changeOrder:
+            let nextNum = (dataStore.changeOrders(for: project.id).count) + 1
+            let co = ChangeOrder(
+                number: nextNum,
+                description: description.isEmpty ? "Quick entry CO" : description,
+                amount: parsedAmount,
+                submittedDate: date,
+                signedDate: date,
+                billedTo: coBilledTo
+            )
+            dataStore.addChangeOrder(co, to: project.id)
+
+        case .payroll:
+            let cal = Calendar.current
+            let weekNum = cal.component(.weekOfYear, from: date)
+            let year = cal.component(.yearForWeekOfYear, from: date)
+            let entry = PayrollEntry(
+                weekNumber: weekNum,
+                year: year,
+                totalHours: 0,
+                totalAmount: parsedAmount,
+                notes: note
+            )
+            dataStore.addPayrollEntry(entry, to: project.id)
+
+        case .equipment:
+            let cost = Cost(category: .machinery, description: note, amount: parsedAmount, date: date)
+            dataStore.addCost(cost, to: project.id)
+
+        case .cost:
+            let cost = Cost(category: costSubcategory, description: note, amount: parsedAmount, date: date)
+            dataStore.addCost(cost, to: project.id)
+        }
+
         dismiss()
     }
 }

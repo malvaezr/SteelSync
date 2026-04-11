@@ -59,20 +59,44 @@ struct AddBidView: View {
                         TextField("Client Name", text: $clientName)
                     }
                     TextField("Address", text: $address)
-                    HStack { Text("$"); TextField("Bid Amount", text: $bidAmount) }
+                    HStack {
+                        Text("$")
+                        TextField("Bid Amount", text: $bidAmount)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
+                    }
                     DatePicker("Bid Due Date", selection: $bidDueDate, displayedComponents: .date)
                 }
 
                 Section("Construction Metrics") {
                     HStack {
                         TextField("Sq Ft", text: $squareFeet)
+                    #if !os(macOS)
+                            .keyboardType(.numberPad)
+                            #endif
                         TextField("Beams", text: $beams)
+                    #if !os(macOS)
+                            .keyboardType(.numberPad)
+                            #endif
                         TextField("Columns", text: $columns)
+                    #if !os(macOS)
+                            .keyboardType(.numberPad)
+                            #endif
                     }
                     HStack {
                         TextField("Joists", text: $joists)
+                    #if !os(macOS)
+                            .keyboardType(.numberPad)
+                            #endif
                         TextField("Wall Panels", text: $wallPanels)
+                    #if !os(macOS)
+                            .keyboardType(.numberPad)
+                            #endif
                         TextField("Est. Tons", text: $estimatedTons)
+                    #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
                     }
                 }
 
@@ -177,19 +201,43 @@ struct EditBidView: View {
                         TextField("Client Name", text: $clientName)
                     }
                     TextField("Address", text: $address)
-                    HStack { Text("$"); TextField("Bid Amount", text: $bidAmount) }
+                    HStack {
+                        Text("$")
+                        TextField("Bid Amount", text: $bidAmount)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
+                    }
                     DatePicker("Bid Due Date", selection: $bidDueDate, displayedComponents: .date)
                 }
                 Section("Construction Metrics") {
                     HStack {
                         TextField("Sq Ft", text: $squareFeet)
+                    #if !os(macOS)
+                            .keyboardType(.numberPad)
+                            #endif
                         TextField("Beams", text: $beams)
+                    #if !os(macOS)
+                            .keyboardType(.numberPad)
+                            #endif
                         TextField("Columns", text: $columns)
+                    #if !os(macOS)
+                            .keyboardType(.numberPad)
+                            #endif
                     }
                     HStack {
                         TextField("Joists", text: $joists)
+                    #if !os(macOS)
+                            .keyboardType(.numberPad)
+                            #endif
                         TextField("Wall Panels", text: $wallPanels)
+                    #if !os(macOS)
+                            .keyboardType(.numberPad)
+                            #endif
                         TextField("Est. Tons", text: $estimatedTons)
+                    #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
                     }
                 }
                 Section("Notes") {
@@ -301,7 +349,13 @@ struct ConvertBidToProjectView: View {
                     InfoRow(label: "Bid Amount", value: bid.bidAmount.currencyFormatted)
                 }
                 Section("Contract Details") {
-                    HStack { Text("$"); TextField("Contract Amount", text: $contractAmount) }
+                    HStack {
+                        Text("$")
+                        TextField("Contract Amount", text: $contractAmount)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
+                    }
                 }
             }
             .formStyle(.grouped)

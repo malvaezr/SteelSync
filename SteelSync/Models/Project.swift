@@ -187,6 +187,16 @@ struct AdditionalChargeItem: Identifiable, Codable, Hashable {
 
 // MARK: - Change Order / Work Order Invoice
 
+/// Who the change order is billed to
+enum COBilledTo: String, Codable, CaseIterable, Hashable {
+    case gc = "GC"
+    case sub = "Sub"
+    case fabricator = "Fabricator"
+    case other = "Other"
+
+    var displayName: String { rawValue }
+}
+
 struct ChangeOrder: Identifiable, Codable, Hashable {
     let id: UUID
     var number: Int
@@ -195,6 +205,7 @@ struct ChangeOrder: Identifiable, Codable, Hashable {
     var submittedDate: Date
     var signedDate: Date?
     var scope: String
+    var billedTo: COBilledTo
     var resourceUsage: [ResourceUsage]
     var attachments: [Attachment]
     var recordID: CKRecord.ID?
@@ -212,7 +223,7 @@ struct ChangeOrder: Identifiable, Codable, Hashable {
     var additionalNotes: String
 
     enum CodingKeys: String, CodingKey {
-        case id, number, description, amount, submittedDate, signedDate, scope
+        case id, number, description, amount, submittedDate, signedDate, scope, billedTo
         case resourceUsage, attachments
         case invoiceNumber, invoiceDate, workOrderNumber, poNumber
         case laborLineItems, additionalCharges, taxRate, paymentTerms, additionalNotes
@@ -226,6 +237,7 @@ struct ChangeOrder: Identifiable, Codable, Hashable {
         submittedDate: Date = Date(),
         signedDate: Date? = nil,
         scope: String = "",
+        billedTo: COBilledTo = .gc,
         resourceUsage: [ResourceUsage] = [],
         attachments: [Attachment] = [],
         recordID: CKRecord.ID? = nil,
@@ -242,12 +254,37 @@ struct ChangeOrder: Identifiable, Codable, Hashable {
     ) {
         self.id = id; self.number = number; self.description = description
         self.amount = amount; self.submittedDate = submittedDate; self.signedDate = signedDate
-        self.scope = scope; self.resourceUsage = resourceUsage; self.attachments = attachments
+        self.scope = scope; self.billedTo = billedTo
+        self.resourceUsage = resourceUsage; self.attachments = attachments
         self.recordID = recordID; self.projectRef = projectRef
         self.invoiceNumber = invoiceNumber; self.invoiceDate = invoiceDate
         self.workOrderNumber = workOrderNumber; self.poNumber = poNumber
         self.laborLineItems = laborLineItems; self.additionalCharges = additionalCharges
         self.taxRate = taxRate; self.paymentTerms = paymentTerms; self.additionalNotes = additionalNotes
+    }
+
+    // Backward-compatible decoding — billedTo defaults to .gc for old data
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        number = try c.decode(Int.self, forKey: .number)
+        description = try c.decode(String.self, forKey: .description)
+        amount = try c.decode(Decimal.self, forKey: .amount)
+        submittedDate = try c.decode(Date.self, forKey: .submittedDate)
+        signedDate = try c.decodeIfPresent(Date.self, forKey: .signedDate)
+        scope = try c.decode(String.self, forKey: .scope)
+        billedTo = try c.decodeIfPresent(COBilledTo.self, forKey: .billedTo) ?? .gc
+        resourceUsage = try c.decode([ResourceUsage].self, forKey: .resourceUsage)
+        attachments = try c.decode([Attachment].self, forKey: .attachments)
+        invoiceNumber = try c.decode(String.self, forKey: .invoiceNumber)
+        invoiceDate = try c.decode(Date.self, forKey: .invoiceDate)
+        workOrderNumber = try c.decode(String.self, forKey: .workOrderNumber)
+        poNumber = try c.decode(String.self, forKey: .poNumber)
+        laborLineItems = try c.decode([LaborLineItem].self, forKey: .laborLineItems)
+        additionalCharges = try c.decode([AdditionalChargeItem].self, forKey: .additionalCharges)
+        taxRate = try c.decode(Decimal.self, forKey: .taxRate)
+        paymentTerms = try c.decode(String.self, forKey: .paymentTerms)
+        additionalNotes = try c.decode(String.self, forKey: .additionalNotes)
     }
 
     var isSigned: Bool { signedDate != nil }

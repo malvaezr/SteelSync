@@ -8,8 +8,11 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case schedule = "Schedule"
     case equipment = "Equipment"
     case todo = "To-Do"
+    case planningPad = "Planning Pad"
     case reports = "Reports"
     case activity = "Activity"
+    case assistant = "Assistant"
+    case settings = "Settings"
 
     var id: String { rawValue }
 
@@ -22,8 +25,11 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .schedule: return "calendar.day.timeline.left"
         case .equipment: return "shippingbox.fill"
         case .todo: return "checklist"
+        case .planningPad: return "pencil.and.outline"
         case .reports: return "chart.bar.fill"
         case .activity: return "clock.arrow.circlepath"
+        case .assistant: return "bubble.left.and.text.bubble.right"
+        case .settings: return "gearshape.fill"
         }
     }
 
@@ -36,8 +42,11 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .schedule: return "calendar.day.timeline.left"
         case .equipment: return "shippingbox.fill"
         case .todo: return "checklist"
+        case .planningPad: return "pencil.and.outline"
         case .reports: return "chart.bar.fill"
         case .activity: return "clock.arrow.circlepath"
+        case .assistant: return "bubble.left.and.text.bubble.right.fill"
+        case .settings: return "gearshape.fill"
         }
     }
 }
@@ -47,6 +56,7 @@ class NavigationState: ObservableObject {
     @Published var selectedSection: SidebarItem? = .dashboard
     @Published var selectedProjectID: CKRecordIDWrapper?
     @Published var selectedBidID: CKRecordIDWrapper?
+    @Published var columnVisibility: NavigationSplitViewVisibility = .automatic
 }
 
 // Wrapper to make CKRecord.ID work with SwiftUI selection

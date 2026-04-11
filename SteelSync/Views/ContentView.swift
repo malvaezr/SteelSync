@@ -5,7 +5,7 @@ struct ContentView: View {
     @EnvironmentObject var navigationState: NavigationState
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $navigationState.columnVisibility) {
             SidebarView()
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
         } detail: {
@@ -35,6 +35,12 @@ struct ContentView: View {
             ReportsView()
         case .activity:
             ActivityView()
+        case .planningPad:
+            PlanningPadView()
+        case .assistant:
+            AssistantView()
+        case .settings:
+            SettingsView()
         case .none:
             WelcomeView()
         }

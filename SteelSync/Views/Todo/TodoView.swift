@@ -38,13 +38,14 @@ struct TodoView: View {
             .padding(AppTheme.Spacing.md)
             #endif
 
-            HStack(spacing: AppTheme.Spacing.sm) {
-                ForEach(filters, id: \.self) { filter in
-                    FilterPill(filter, isSelected: selectedFilter == filter) {
-                        selectedFilter = filter
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    ForEach(filters, id: \.self) { filter in
+                        FilterPill(filter, isSelected: selectedFilter == filter) {
+                            selectedFilter = filter
+                        }
                     }
                 }
-                Spacer()
             }
             .padding(.horizontal, AppTheme.Spacing.md)
             .padding(.bottom, AppTheme.Spacing.sm)

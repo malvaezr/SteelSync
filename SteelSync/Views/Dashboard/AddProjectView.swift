@@ -61,6 +61,9 @@ struct AddProjectView: View {
                     HStack {
                         Text("$")
                         TextField("Contract Amount", text: $contractAmount)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
                     }
                     Picker("Status", selection: $status) {
                         ForEach(statuses, id: \.self) { Text($0) }
@@ -182,6 +185,9 @@ struct EditProjectView: View {
                     HStack {
                         Text("$")
                         TextField("Contract Amount", text: $contractAmount)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
                     }
                     Picker("Status", selection: $status) {
                         ForEach(statuses, id: \.self) { Text($0) }

@@ -91,9 +91,10 @@ struct GanttTodayMarkerView: View {
     let vm: GanttViewModel
     let tasks: [GanttTask]
     let height: CGFloat
+    var now: Date = Date()
 
     var body: some View {
-        let x = vm.xPosition(for: Date(), tasks: tasks)
+        let x = vm.xPosition(for: now, tasks: tasks)
         let columnWidth = vm.dayWidth
 
         ZStack(alignment: .top) {

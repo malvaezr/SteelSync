@@ -13,6 +13,24 @@ enum RateType: Int, Codable, CaseIterable {
     }
 }
 
+/// Preset hourly rates for a client's change order labor categories
+struct ClientRateSchedule: Codable, Hashable {
+    var foremanRate: Decimal
+    var ironWorkerRate: Decimal
+    var weldingGenRate: Decimal
+    var truckAndToolsRate: Decimal
+    var torchRate: Decimal
+    var scissorLiftRate: Decimal
+    var forkliftRate: Decimal
+    var boomLiftRate: Decimal
+
+    static let `default` = ClientRateSchedule(
+        foremanRate: 75, ironWorkerRate: 55, weldingGenRate: 20,
+        truckAndToolsRate: 15, torchRate: 15, scissorLiftRate: 25,
+        forkliftRate: 55, boomLiftRate: 40
+    )
+}
+
 struct Client: Identifiable, Hashable {
     var id: CKRecord.ID
     var name: String
@@ -21,6 +39,7 @@ struct Client: Identifiable, Hashable {
     var phone: String
     var billingAddress: String
     var preferredRateType: RateType
+    var rateSchedule: ClientRateSchedule
 
     init(
         id: CKRecord.ID = CKRecord.ID(recordName: UUID().uuidString),
@@ -29,7 +48,8 @@ struct Client: Identifiable, Hashable {
         email: String = "",
         phone: String = "",
         billingAddress: String = "",
-        preferredRateType: RateType = .subcontractor
+        preferredRateType: RateType = .subcontractor,
+        rateSchedule: ClientRateSchedule = .default
     ) {
         self.id = id
         self.name = name
@@ -38,6 +58,7 @@ struct Client: Identifiable, Hashable {
         self.phone = phone
         self.billingAddress = billingAddress
         self.preferredRateType = preferredRateType
+        self.rateSchedule = rateSchedule
     }
 }
 

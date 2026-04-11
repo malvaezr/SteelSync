@@ -49,13 +49,14 @@ struct BiddingView: View {
                 .frame(height: 120)
 
                 // Filters
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    ForEach(filters, id: \.self) { filter in
-                        FilterPill(filter, isSelected: selectedFilter == filter) {
-                            selectedFilter = filter
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        ForEach(filters, id: \.self) { filter in
+                            FilterPill(filter, isSelected: selectedFilter == filter) {
+                                selectedFilter = filter
+                            }
                         }
                     }
-                    Spacer()
                 }
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.bottom, AppTheme.Spacing.sm)
@@ -106,7 +107,7 @@ struct BiddingView: View {
                 .searchable(text: $searchText, prompt: "Search bids...")
             }
             #if os(macOS)
-            .frame(minWidth: 480)
+            .frame(minWidth: 280, idealWidth: 480)
             #endif
             .toolbar {
                 ToolbarItem(placement: .automatic) {
@@ -120,14 +121,14 @@ struct BiddingView: View {
             if let bid = selectedBid {
                 BidDetailView(bidID: bid.id)
                     #if os(macOS)
-                    .frame(minWidth: 450)
+                    .frame(minWidth: 250, idealWidth: 450)
                     #endif
             } else {
                 EmptyStateView(icon: "doc.text", title: "No Bid Selected",
                                message: "Select a bid from the list to view details.",
                                buttonTitle: "Add Bid") { showAddBid = true }
                 #if os(macOS)
-                .frame(minWidth: 450)
+                .frame(minWidth: 250, idealWidth: 450)
                 #endif
             }
         }

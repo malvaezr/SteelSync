@@ -6,12 +6,17 @@ import SwiftUI
 struct SteelSyncApp: App {
     @StateObject private var dataStore = DataStore()
     @StateObject private var navigationState = NavigationState()
+    @ObservedObject private var themeManager = ThemeManager.shared
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(dataStore)
                 .environmentObject(navigationState)
+                .environmentObject(themeManager)
+                .tint(themeManager.current.accent)
+                .background(themeManager.current.background(dark: themeManager.isDarkMode))
+                .preferredColorScheme(themeManager.colorScheme)
                 #if os(macOS)
                 .frame(minWidth: 900, minHeight: 600)
                 #endif

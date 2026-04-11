@@ -103,11 +103,48 @@ extension BidProject: CloudKitConvertible {
         if let d = nextFollowUp { r["nextFollowUp"] = d as CKRecordValue }
         if let d = reminderDate { r["reminderDate"] = d as CKRecordValue }
         CKField.setRef(r, "clientRef", clientRef?.recordID.recordName, zoneID: zoneID)
+
+        // Upload actual file data as CKAssets for cross-device sync
+        let assets: [CKAsset] = attachments.compactMap { att in
+            guard let url = att.fileURL, FileManager.default.isReadableFile(atPath: url.path) else { return nil }
+            return CKAsset(fileURL: url)
+        }
+        if !assets.isEmpty {
+            r["attachmentAssets"] = assets as CKRecordValue
+        }
         return r
     }
 
     static func from(_ record: CKRecord) -> BidProject? {
-        BidProject(
+        // Decode attachment metadata from JSON
+        var attachments = CKField.decodeJSON(record, "attachmentsJSON", as: [Attachment].self) ?? []
+
+        // If CKAsset files are present, download them to local storage and update file URLs
+        let assets = record["attachmentAssets"] as? [CKAsset] ?? []
+        let bidID = record.recordID.recordName
+        if !assets.isEmpty {
+            let localFolder = (try? FileStorageService.bidFolder(for: bidID)) ?? FileStorageService.documentsRoot
+            for i in 0..<min(assets.count, attachments.count) {
+                guard let tempURL = assets[i].fileURL else { continue }
+                let destURL = localFolder.appendingPathComponent(attachments[i].filename)
+                // Only copy if the file doesn't already exist locally
+                if !FileManager.default.fileExists(atPath: destURL.path) {
+                    try? FileManager.default.copyItem(at: tempURL, to: destURL)
+                }
+                // Update the local file size from the actual file
+                let attrs = try? FileManager.default.attributesOfItem(atPath: destURL.path)
+                let fileSize = attrs?[.size] as? Int64 ?? attachments[i].fileSize
+                attachments[i] = Attachment(
+                    id: attachments[i].id,
+                    filename: attachments[i].filename,
+                    fileSize: fileSize,
+                    fileURL: destURL,
+                    uploadedDate: attachments[i].uploadedDate
+                )
+            }
+        }
+
+        return BidProject(
             recordID: record.recordID,
             projectName: CKField.string(record, "projectName"),
             clientName: CKField.string(record, "clientName"),
@@ -131,7 +168,7 @@ extension BidProject: CloudKitConvertible {
             nextFollowUp: CKField.optDate(record, "nextFollowUp"),
             reminderDate: CKField.optDate(record, "reminderDate"),
             notes: CKField.string(record, "notes"),
-            attachments: CKField.decodeJSON(record, "attachmentsJSON", as: [Attachment].self) ?? []
+            attachments: attachments
         )
     }
 }
@@ -451,6 +488,58 @@ extension AuditEntry: CloudKitConvertible {
             entityDescription: CKField.string(record, "entityDescription"),
             userIdentifier: CKField.string(record, "userIdentifier"), userName: CKField.string(record, "userName"),
             details: CKField.string(record, "details")
+        )
+    }
+}
+
+// MARK: - TimesheetEntry
+
+extension TimesheetEntry: CloudKitConvertible {
+    static let ckRecordType = "SS_TimesheetEntry"
+    var ckRecordName: String { id.uuidString }
+
+    func toCKRecord(in zoneID: CKRecordZone.ID) -> CKRecord {
+        let r = CKRecord(recordType: Self.ckRecordType, recordID: CKRecord.ID(recordName: ckRecordName, zoneID: zoneID))
+        r["uuid"] = id.uuidString as CKRecordValue
+        r["employeeName"] = employeeName as CKRecordValue
+        r["employeeType"] = employeeType as CKRecordValue
+        r["employeeRef"] = employeeRef as CKRecordValue
+        r["projectName"] = projectName as CKRecordValue
+        r["projectRef"] = projectRef as CKRecordValue
+        CKField.setDecimal(r, "hourlyRate", hourlyRate)
+        CKField.setDecimal(r, "mondayHours", mondayHours)
+        CKField.setDecimal(r, "tuesdayHours", tuesdayHours)
+        CKField.setDecimal(r, "wednesdayHours", wednesdayHours)
+        CKField.setDecimal(r, "thursdayHours", thursdayHours)
+        CKField.setDecimal(r, "fridayHours", fridayHours)
+        CKField.setDecimal(r, "saturdayHours", saturdayHours)
+        CKField.setDecimal(r, "sundayHours", sundayHours)
+        CKField.setDecimal(r, "perDiem", perDiem)
+        r["notes"] = notes as CKRecordValue
+        r["weekStartDate"] = weekStartDate as CKRecordValue
+        return r
+    }
+
+    static func from(_ record: CKRecord) -> TimesheetEntry? {
+        TimesheetEntry(
+            id: CKField.uuid(record, "uuid"),
+            employeeName: CKField.string(record, "employeeName"),
+            employeeType: CKField.string(record, "employeeType"),
+            employeeRef: CKField.string(record, "employeeRef"),
+            projectName: CKField.string(record, "projectName"),
+            projectRef: CKField.string(record, "projectRef"),
+            hourlyRate: CKField.decimal(record, "hourlyRate"),
+            mondayHours: CKField.decimal(record, "mondayHours"),
+            tuesdayHours: CKField.decimal(record, "tuesdayHours"),
+            wednesdayHours: CKField.decimal(record, "wednesdayHours"),
+            thursdayHours: CKField.decimal(record, "thursdayHours"),
+            fridayHours: CKField.decimal(record, "fridayHours"),
+            saturdayHours: CKField.decimal(record, "saturdayHours"),
+            sundayHours: CKField.decimal(record, "sundayHours"),
+            perDiem: CKField.decimal(record, "perDiem"),
+            notes: CKField.string(record, "notes"),
+            weekStartDate: CKField.date(record, "weekStartDate"),
+            recordID: record.recordID
         )
     }
 }

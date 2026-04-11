@@ -17,6 +17,10 @@ class DataStore: ObservableObject {
     @Published var costs: [CKRecord.ID: [Cost]] = [:]
     @Published var equipmentRentals: [CKRecord.ID: [EquipmentRental]] = [:]
     @Published var ganttTasks: [GanttTask] = []
+    @Published var payApplications: [CKRecord.ID: [PayApplication]] = [:]
+    @Published var timesheetEntries: [TimesheetEntry] = []
+    @Published var planningPads: [PlanningPad] = []
+    @Published var assistantMessages: [AssistantMessage] = []
     @Published var auditLog: [AuditEntry] = []
     @Published var isLoading = false
     @Published var cloudKitAvailable = false
@@ -48,6 +52,9 @@ class DataStore: ObservableObject {
                 PersistenceService.saveAll(from: self)
             }
         }
+
+        // Recalculate all project balances to pick up timesheet costs
+        recalculateAllBalances()
 
         // Defer CloudKit check
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
@@ -85,6 +92,7 @@ class DataStore: ObservableObject {
             syncStatus = .error("iCloud not available")
             return
         }
+        persistNow() // Flush pending writes before syncing
         isSyncing = true
         syncProgress = 0
         syncStatus = .syncing
@@ -103,6 +111,7 @@ class DataStore: ObservableObject {
         for ev in calendarEvents { localIDs.insert(ev.ckRecordName) }
         for g in ganttTasks { localIDs.insert(g.ckRecordName) }
         for a in auditLog { localIDs.insert(a.ckRecordName) }
+        for ts in timesheetEntries { localIDs.insert(ts.ckRecordName) }
         for (_, items) in changeOrders { for co in items { localIDs.insert(co.ckRecordName) } }
         for (_, items) in payments { for p in items { localIDs.insert(p.ckRecordName) } }
         for (_, items) in payrollEntries { for e in items { localIDs.insert(e.ckRecordName) } }
@@ -140,6 +149,7 @@ class DataStore: ObservableObject {
 
         let success = await cloudKit.fetchAllDataFromCloud(into: self)
         syncProgress = 1.0
+        cloudKitAvailable = cloudKit.isAvailable
         if success {
             syncStatus = .synced
             lastSyncDate = Date()
@@ -151,8 +161,23 @@ class DataStore: ObservableObject {
         isSyncing = false
     }
 
-    /// Saves locally. Called via logAudit after every mutation.
+    /// Saves locally with debounce — buffers rapid mutations into a single write.
+    private var persistWorkItem: DispatchWorkItem?
+
     private func persistData() {
+        persistWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            PersistenceService.saveAll(from: self)
+            WidgetBridge.updateWidgets(from: self)
+        }
+        persistWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: item)
+    }
+
+    /// Force immediate save (used before cloud sync or app termination).
+    func persistNow() {
+        persistWorkItem?.cancel()
         PersistenceService.saveAll(from: self)
         WidgetBridge.updateWidgets(from: self)
     }
@@ -199,7 +224,7 @@ class DataStore: ObservableObject {
             userName: cloudKit.isAvailable ? cloudKit.userName : "Local User",
             details: details.isEmpty ? "\(action.rawValue) \(type.lowercased())" : details
         )
-        auditLog.insert(entry, at: 0)
+        auditLog.append(entry)
         persistData()
     }
 
@@ -407,6 +432,12 @@ class DataStore: ObservableObject {
 
     // MARK: - Balance Recalculation
 
+    func recalculateAllBalances() {
+        for project in projects {
+            recalculateBalance(for: project.id)
+        }
+    }
+
     func recalculateBalance(for projectID: CKRecord.ID) {
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return }
         let cos = changeOrders[projectID] ?? []
@@ -414,12 +445,17 @@ class DataStore: ObservableObject {
         let payroll = payrollEntries[projectID] ?? []
         let csts = costs[projectID] ?? []
 
+        // Include timesheet labor costs linked to this project
+        let timesheetLabor = timesheetEntries
+            .filter { $0.projectRef == projectID.recordName }
+            .reduce(Decimal.zero) { $0 + $1.totalPay }
+
         projects[index].balanceSummary = ProjectBalanceSummary(
             contractAmount: projects[index].contractAmount,
             changeOrderTotal: cos.reduce(0) { $0 + $1.amount },
             paymentsTotal: pmts.reduce(0) { $0 + $1.amount },
             costTotal: csts.reduce(0) { $0 + $1.amount },
-            payrollTotal: payroll.reduce(0) { $0 + $1.totalAmount }
+            payrollTotal: payroll.reduce(0) { $0 + $1.totalAmount } + timesheetLabor
         )
     }
 
@@ -687,6 +723,181 @@ class DataStore: ObservableObject {
             ganttTasks.append(contentsOf: tasks)
         }
         persistData()
+    }
+
+    // MARK: - Pay Application / SOV Operations
+
+    func payApps(for projectID: CKRecord.ID) -> [PayApplication] {
+        (payApplications[projectID] ?? []).sorted { $0.applicationNumber < $1.applicationNumber }
+    }
+
+    func addPayApplication(_ payApp: PayApplication, to projectID: CKRecord.ID) {
+        var list = payApplications[projectID] ?? []
+        list.append(payApp)
+        payApplications[projectID] = list
+        logAudit(.created, type: "Pay App", name: "Application #\(payApp.applicationNumber)", details: "Period to \(payApp.periodTo.shortDate)")
+    }
+
+    func updatePayApplication(_ payApp: PayApplication, in projectID: CKRecord.ID) {
+        guard var list = payApplications[projectID],
+              let idx = list.firstIndex(where: { $0.id == payApp.id }) else { return }
+        list[idx] = payApp
+        payApplications[projectID] = list
+        logAudit(.updated, type: "Pay App", name: "Application #\(payApp.applicationNumber)")
+    }
+
+    func deletePayApplication(_ payApp: PayApplication, from projectID: CKRecord.ID) {
+        payApplications[projectID]?.removeAll { $0.id == payApp.id }
+        logAudit(.deleted, type: "Pay App", name: "Application #\(payApp.applicationNumber)")
+    }
+
+    /// Build a new pay application, auto-populating from previous pay apps and change orders
+    func buildNewPayApp(for projectID: CKRecord.ID, periodTo: Date, retainageRate: Decimal = 0.10) -> PayApplication {
+        let project = projects.first { $0.id == projectID }
+        let previousApps = payApps(for: projectID)
+        let nextNumber = (previousApps.map(\.applicationNumber).max() ?? 0) + 1
+        let cos = changeOrders(for: projectID)
+
+        // Get the most recent pay app to carry forward totals
+        let lastApp = previousApps.last
+
+        // Build contract line items from project scope
+        var lineItems: [SOVLineItem] = []
+        var itemNum = 1
+
+        // If there was a previous pay app, carry forward its line items with updated previous totals
+        if let last = lastApp {
+            for prevItem in last.lineItems {
+                let item = SOVLineItem(
+                    itemNumber: itemNum,
+                    description: prevItem.description,
+                    scheduledValue: prevItem.scheduledValue,
+                    previousCompleted: prevItem.totalCompletedToDate,
+                    isChangeOrder: prevItem.isChangeOrder,
+                    changeOrderID: prevItem.changeOrderID
+                )
+                lineItems.append(item)
+                itemNum += 1
+            }
+
+            // Add any NEW change orders not already in the SOV (all COs included regardless of date)
+            let existingCOIDs = Set(last.lineItems.compactMap(\.changeOrderID))
+            for co in cos where !existingCOIDs.contains(co.id) {
+                lineItems.append(SOVLineItem(
+                    itemNumber: itemNum,
+                    description: "CO #\(co.number): \(co.description)",
+                    scheduledValue: co.amount,
+                    isChangeOrder: true,
+                    changeOrderID: co.id
+                ))
+                itemNum += 1
+            }
+        } else {
+            // First pay app — start with contract amount as line item 1
+            if let p = project {
+                lineItems.append(SOVLineItem(
+                    itemNumber: 1,
+                    description: "Original Contract",
+                    scheduledValue: p.contractAmount
+                ))
+                itemNum = 2
+            }
+
+            // Add all existing change orders
+            for co in cos {
+                lineItems.append(SOVLineItem(
+                    itemNumber: itemNum,
+                    description: "CO #\(co.number): \(co.description)",
+                    scheduledValue: co.amount,
+                    isChangeOrder: true,
+                    changeOrderID: co.id
+                ))
+                itemNum += 1
+            }
+        }
+
+        return PayApplication(
+            applicationNumber: nextNumber,
+            periodTo: periodTo,
+            projectID: projectID.recordName,
+            retainageRate: retainageRate,
+            lineItems: lineItems
+        )
+    }
+
+    // MARK: - Planning Pad Operations
+
+    func planningPad(for date: Date) -> PlanningPad? {
+        let cal = Calendar.current
+        return planningPads.first { cal.isDate($0.date, inSameDayAs: date) }
+    }
+
+    func savePlanningPad(_ pad: PlanningPad) {
+        if let idx = planningPads.firstIndex(where: { $0.id == pad.id }) {
+            planningPads[idx] = pad
+        } else {
+            planningPads.append(pad)
+        }
+        persistData()
+    }
+
+    // MARK: - Assistant Message Operations
+
+    func addAssistantMessage(_ message: AssistantMessage) {
+        assistantMessages.append(message)
+        // Keep last 200 messages to prevent unbounded growth
+        if assistantMessages.count > 200 {
+            assistantMessages = Array(assistantMessages.suffix(200))
+        }
+        persistData()
+    }
+
+    func clearAssistantMessages() {
+        assistantMessages.removeAll()
+        persistData()
+    }
+
+    // MARK: - Timesheet Operations
+
+    func timesheetEntries(for weekStart: Date) -> [TimesheetEntry] {
+        let cal = Calendar.current
+        return timesheetEntries.filter { cal.isDate($0.weekStartDate, inSameDayAs: weekStart) }
+            .sorted { $0.employeeName < $1.employeeName }
+    }
+
+    func addTimesheetEntry(_ entry: TimesheetEntry) {
+        timesheetEntries.append(entry)
+        logAudit(.created, type: "Timesheet", name: entry.employeeName, details: "\(entry.projectName) — \(entry.weekLabel)")
+        recalculateTimesheetProject(entry)
+        persistData()
+    }
+
+    func updateTimesheetEntry(_ entry: TimesheetEntry) {
+        guard let idx = timesheetEntries.firstIndex(where: { $0.id == entry.id }) else { return }
+        timesheetEntries[idx] = entry
+        recalculateTimesheetProject(entry)
+        persistData()
+    }
+
+    func deleteTimesheetEntry(_ entry: TimesheetEntry) {
+        timesheetEntries.removeAll { $0.id == entry.id }
+        logAudit(.deleted, type: "Timesheet", name: entry.employeeName)
+        recalculateTimesheetProject(entry)
+        persistData()
+    }
+
+    private func recalculateTimesheetProject(_ entry: TimesheetEntry) {
+        if let project = projects.first(where: { $0.id.recordName == entry.projectRef }) {
+            recalculateBalance(for: project.id)
+        }
+    }
+
+    func timesheetWeekTotals(for weekStart: Date) -> (hours: Decimal, perDiem: Decimal, pay: Decimal) {
+        let entries = timesheetEntries(for: weekStart)
+        let hours = entries.reduce(Decimal.zero) { $0 + $1.totalHours }
+        let perDiem = entries.reduce(Decimal.zero) { $0 + $1.perDiem }
+        let pay = entries.reduce(Decimal.zero) { $0 + $1.totalPay }
+        return (hours, perDiem, pay)
     }
 
     // MARK: - Report Calculations

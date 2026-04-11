@@ -231,6 +231,7 @@ class CloudKitService {
             store.calendarEvents = (byType[CalendarEvent.ckRecordType] ?? []).compactMap { CalendarEvent.from($0) }
             store.ganttTasks = (byType[GanttTask.ckRecordType] ?? []).compactMap { GanttTask.from($0) }
             store.auditLog = (byType[AuditEntry.ckRecordType] ?? []).compactMap { AuditEntry.from($0) }
+            store.timesheetEntries = (byType[TimesheetEntry.ckRecordType] ?? []).compactMap { TimesheetEntry.from($0) }
 
             // Child records — extract projectRef and group by parent
             store.changeOrders = groupChildRecords(byType[ChangeOrder.ckRecordType] ?? [], as: ChangeOrder.self)
@@ -244,6 +245,11 @@ class CloudKitService {
             lastSyncError = nil
             print("[CloudKit] Pull complete: \(store.projects.count) projects, \(store.clients.count) clients, \(store.bids.count) bids")
             return true
+        } catch let ckError as CKError where ckError.code == .notAuthenticated {
+            isAvailable = false
+            lastSyncError = "Not signed into iCloud. Open System Settings → Apple Account → iCloud and sign in."
+            print("[CloudKit] fetchAllDataFromCloud failed: Not authenticated. Sign into iCloud in System Settings.")
+            return false
         } catch {
             lastSyncError = error.localizedDescription
             print("[CloudKit] fetchAllDataFromCloud failed: \(error.localizedDescription)")
@@ -305,6 +311,7 @@ class CloudKitService {
 
         // Audit entries (last 100)
         for a in store.auditLog.prefix(100) { allRecords.append(a.toCKRecord(in: zoneID)) }
+        for ts in store.timesheetEntries { allRecords.append(ts.toCKRecord(in: zoneID)) }
 
         print("[CloudKit] Uploading \(allRecords.count) records in batches...")
 

@@ -8,9 +8,19 @@ struct PhoneTimeClockView: View {
     @State private var elapsedSeconds: TimeInterval = 0
     @State private var timer: Timer? = nil
 
-    // TODO: Replace with dataStore.timeEntries when available
-    @State private var todayEntries: [(id: UUID, projectName: String, clockIn: Date, clockOut: Date, hours: Decimal)] = []
-    @State private var weekTotalHours: Decimal = 0
+    private var todayEntries: [(id: UUID, projectName: String, clockIn: Date, clockOut: Date, hours: Decimal)] {
+        // Pull today's timesheet entries from DataStore
+        let cal = Calendar.current
+        return dataStore.timesheetEntries
+            .filter { cal.isDateInToday($0.weekStartDate) || $0.totalHours > 0 }
+            .filter { !$0.projectName.isEmpty }
+            .map { (id: $0.id, projectName: $0.projectName, clockIn: $0.weekStartDate, clockOut: Date(), hours: $0.totalHours) }
+    }
+
+    private var weekTotalHours: Decimal {
+        let weekStart = TimesheetEntry.currentWeekStart()
+        return dataStore.timesheetEntries(for: weekStart).reduce(Decimal.zero) { $0 + $1.totalHours }
+    }
 
     private var selectedProject: Project? {
         guard let pid = selectedProjectID else { return nil }
@@ -183,21 +193,36 @@ struct PhoneTimeClockView: View {
 
     private func toggleClock() {
         if isClockedIn {
-            // Clock out
+            // Clock out — create a TimesheetEntry for today's hours
             let clockOut = Date()
             if let clockIn = clockInTime, let project = selectedProject {
                 let hours = TimeEntry.calculateHours(from: clockIn, to: clockOut)
-                todayEntries.append((
-                    id: UUID(),
+                let weekStart = TimesheetEntry.weekStart(for: clockIn)
+                let dayOfWeek = Calendar.current.component(.weekday, from: clockIn)
+
+                // Build entry with hours placed in the correct day column
+                var entry = TimesheetEntry(
+                    employeeName: "Field Entry",
+                    employeeType: "",
                     projectName: project.title,
-                    clockIn: clockIn,
-                    clockOut: clockOut,
-                    hours: hours
-                ))
-                weekTotalHours += hours
-                // TODO: Create TimeEntry in DataStore when timeEntries support is added
-                // let entry = TimeEntry(...)
-                // dataStore.addTimeEntry(entry, to: project.id)
+                    projectRef: project.id.recordName,
+                    weekStartDate: weekStart
+                )
+
+                // Map weekday (1=Sun..7=Sat) to the right column
+                switch dayOfWeek {
+                case 2: entry.mondayHours = hours
+                case 3: entry.tuesdayHours = hours
+                case 4: entry.wednesdayHours = hours
+                case 5: entry.thursdayHours = hours
+                case 6: entry.fridayHours = hours
+                case 7: entry.saturdayHours = hours
+                case 1: entry.sundayHours = hours
+                default: entry.mondayHours = hours
+                }
+
+                entry.notes = "Clocked \(clockIn.formatted(date: .omitted, time: .shortened)) - \(clockOut.formatted(date: .omitted, time: .shortened))"
+                dataStore.addTimesheetEntry(entry)
             }
             stopTimer()
             isClockedIn = false

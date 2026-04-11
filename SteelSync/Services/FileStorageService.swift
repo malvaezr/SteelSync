@@ -51,6 +51,10 @@ struct FileStorageService {
 
     /// Copies a file into the bid's local storage. Returns Result with Attachment or error.
     static func importFile(from sourceURL: URL, bidID: String) -> Result<Attachment, Error> {
+        // Access security-scoped resource first (required for files picked via .fileImporter on iPad)
+        let accessed = sourceURL.startAccessingSecurityScopedResource()
+        defer { if accessed { sourceURL.stopAccessingSecurityScopedResource() } }
+
         // Verify source exists and is readable
         guard FileManager.default.isReadableFile(atPath: sourceURL.path) else {
             return .failure(FileImportError.fileNotReadable(sourceURL.path))
@@ -69,10 +73,6 @@ struct FileStorageService {
                 destURL = folder.appendingPathComponent("\(nameWithoutExt)_\(counter).\(ext)")
                 counter += 1
             }
-
-            // Access security-scoped resource if needed
-            let accessed = sourceURL.startAccessingSecurityScopedResource()
-            defer { if accessed { sourceURL.stopAccessingSecurityScopedResource() } }
 
             try FileManager.default.copyItem(at: sourceURL, to: destURL)
 
@@ -98,27 +98,52 @@ struct FileStorageService {
         try? FileManager.default.removeItem(at: url)
     }
 
-    /// Opens a file with the default system application
+    /// Opens a file with the default system application.
+    /// On macOS, copies to a temp location first to work around sandbox restrictions.
     static func openFile(_ attachment: Attachment) {
         guard let url = attachment.fileURL else { return }
+        guard FileManager.default.isReadableFile(atPath: url.path) else { return }
         #if os(macOS)
-        NSWorkspace.shared.open(url)
+        if let tempURL = copyToTempForSharing(url) {
+            NSWorkspace.shared.open(tempURL)
+        }
         #else
         UIApplication.shared.open(url)
         #endif
     }
 
-    /// Shows file in Finder/Files
+    /// Shows file in Finder/Files.
+    /// On macOS, copies to a temp location first to work around sandbox restrictions.
     @MainActor
     static func revealInFinder(_ attachment: Attachment) {
         guard let url = attachment.fileURL else { return }
+        guard FileManager.default.isReadableFile(atPath: url.path) else { return }
         #if os(macOS)
-        NSWorkspace.shared.activateFileViewerSelecting([url])
+        if let tempURL = copyToTempForSharing(url) {
+            NSWorkspace.shared.activateFileViewerSelecting([tempURL])
+        }
         #else
-        // On iOS, share the file instead
         PlatformService.shareItems([url])
         #endif
     }
+
+    /// Copies a file from the app container to a temp directory so external apps can access it.
+    #if os(macOS)
+    private static func copyToTempForSharing(_ url: URL) -> URL? {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SteelSyncShared", isDirectory: true)
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let destURL = tempDir.appendingPathComponent(url.lastPathComponent)
+        // Remove stale copy if exists, then copy fresh
+        try? FileManager.default.removeItem(at: destURL)
+        do {
+            try FileManager.default.copyItem(at: url, to: destURL)
+            return destURL
+        } catch {
+            return nil
+        }
+    }
+    #endif
 
     /// Presents an open panel for selecting plan documents
     #if os(macOS)

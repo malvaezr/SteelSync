@@ -27,7 +27,7 @@ struct ActivityView: View {
                 $0.userName.localizedCaseInsensitiveContains(searchText)
             }
         }
-        return result
+        return result.sorted { $0.timestamp > $1.timestamp }
     }
 
     private var groupedEntries: [(String, [AuditEntry])] {

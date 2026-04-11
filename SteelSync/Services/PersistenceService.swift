@@ -83,17 +83,18 @@ struct PersistenceService {
         let idName: String
         var name: String; var contactName: String; var email: String
         var phone: String; var billingAddress: String; var preferredRateType: RateType
+        var rateSchedule: ClientRateSchedule?
 
         init(_ c: Client) {
             idName = c.id.recordName; name = c.name; contactName = c.contactName
             email = c.email; phone = c.phone; billingAddress = c.billingAddress
-            preferredRateType = c.preferredRateType
+            preferredRateType = c.preferredRateType; rateSchedule = c.rateSchedule
         }
 
         func toClient() -> Client {
             Client(id: CKRecord.ID(recordName: idName), name: name, contactName: contactName,
                    email: email, phone: phone, billingAddress: billingAddress,
-                   preferredRateType: preferredRateType)
+                   preferredRateType: preferredRateType, rateSchedule: rateSchedule ?? .default)
         }
     }
 
@@ -169,7 +170,7 @@ struct PersistenceService {
         let fm = FileManager.default
         let names = ["projects", "bids", "clients", "employees", "todos", "calendarEvents",
                      "changeOrders", "payments", "payrollEntries", "costs", "equipmentRentals",
-                     "ganttTasks", "auditLog"]
+                     "ganttTasks", "payApplications", "auditLog"]
         let timestamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
         let backupFolder = backupDir.appendingPathComponent(timestamp, isDirectory: true)
         try? fm.createDirectory(at: backupFolder, withIntermediateDirectories: true)
@@ -198,7 +199,11 @@ struct PersistenceService {
         save(encodeDict(store.costs), as: "costs")
         save(encodeDict(store.equipmentRentals), as: "equipmentRentals")
         save(store.ganttTasks, as: "ganttTasks")
+        save(encodeDict(store.payApplications), as: "payApplications")
         save(store.auditLog, as: "auditLog")
+        save(store.timesheetEntries, as: "timesheetEntries")
+        save(store.planningPads, as: "planningPads")
+        save(store.assistantMessages, as: "assistantMessages")
     }
 
     // MARK: - Load All
@@ -235,7 +240,13 @@ struct PersistenceService {
             store.equipmentRentals = decodeDict(er)
         }
         if let g = load([GanttTask].self, from: "ganttTasks") { store.ganttTasks = g }
+        if let pa: [CodableDictEntry<PayApplication>] = load([CodableDictEntry<PayApplication>].self, from: "payApplications") {
+            store.payApplications = decodeDict(pa)
+        }
         if let a = load([AuditEntry].self, from: "auditLog") { store.auditLog = a }
+        if let ts = load([TimesheetEntry].self, from: "timesheetEntries") { store.timesheetEntries = ts }
+        if let pp = load([PlanningPad].self, from: "planningPads") { store.planningPads = pp }
+        if let am = load([AssistantMessage].self, from: "assistantMessages") { store.assistantMessages = am }
         return true
     }
 }
