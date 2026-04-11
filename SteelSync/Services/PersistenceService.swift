@@ -202,6 +202,7 @@ struct PersistenceService {
         save(encodeDict(store.payApplications), as: "payApplications")
         save(store.auditLog, as: "auditLog")
         save(store.timesheetEntries, as: "timesheetEntries")
+        save(encodeDict(store.rfis), as: "rfis")
         save(store.planningPads, as: "planningPads")
         save(store.assistantMessages, as: "assistantMessages")
     }
@@ -245,6 +246,9 @@ struct PersistenceService {
         }
         if let a = load([AuditEntry].self, from: "auditLog") { store.auditLog = a }
         if let ts = load([TimesheetEntry].self, from: "timesheetEntries") { store.timesheetEntries = ts }
+        if let ri: [CodableDictEntry<RFI>] = load([CodableDictEntry<RFI>].self, from: "rfis") {
+            store.rfis = decodeDict(ri)
+        }
         if let pp = load([PlanningPad].self, from: "planningPads") { store.planningPads = pp }
         if let am = load([AssistantMessage].self, from: "assistantMessages") { store.assistantMessages = am }
         return true

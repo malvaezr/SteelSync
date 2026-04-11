@@ -19,6 +19,7 @@ class DataStore: ObservableObject {
     @Published var ganttTasks: [GanttTask] = []
     @Published var payApplications: [CKRecord.ID: [PayApplication]] = [:]
     @Published var timesheetEntries: [TimesheetEntry] = []
+    @Published var rfis: [CKRecord.ID: [RFI]] = [:]
     @Published var planningPads: [PlanningPad] = []
     @Published var assistantMessages: [AssistantMessage] = []
     @Published var auditLog: [AuditEntry] = []
@@ -823,6 +824,39 @@ class DataStore: ObservableObject {
             retainageRate: retainageRate,
             lineItems: lineItems
         )
+    }
+
+    // MARK: - RFI Operations
+
+    func rfis(for projectID: CKRecord.ID) -> [RFI] {
+        (rfis[projectID] ?? []).sorted { $0.number < $1.number }
+    }
+
+    func addRFI(_ rfi: RFI, to projectID: CKRecord.ID) {
+        var list = rfis[projectID] ?? []
+        list.append(rfi)
+        rfis[projectID] = list
+        logAudit(.created, type: "RFI", name: "RFI #\(rfi.number): \(rfi.subject)", details: rfi.submittedTo)
+        persistData()
+    }
+
+    func updateRFI(_ rfi: RFI, in projectID: CKRecord.ID) {
+        guard var list = rfis[projectID],
+              let idx = list.firstIndex(where: { $0.id == rfi.id }) else { return }
+        list[idx] = rfi
+        rfis[projectID] = list
+        logAudit(.updated, type: "RFI", name: "RFI #\(rfi.number)")
+        persistData()
+    }
+
+    func deleteRFI(_ rfi: RFI, from projectID: CKRecord.ID) {
+        rfis[projectID]?.removeAll { $0.id == rfi.id }
+        logAudit(.deleted, type: "RFI", name: "RFI #\(rfi.number)")
+        persistData()
+    }
+
+    func nextRFINumber(for projectID: CKRecord.ID) -> Int {
+        (rfis[projectID]?.map(\.number).max() ?? 0) + 1
     }
 
     // MARK: - Planning Pad Operations

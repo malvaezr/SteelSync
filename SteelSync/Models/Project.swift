@@ -410,6 +410,27 @@ struct Cost: Identifiable, Codable, Hashable {
             }
         }
         var displayName: String { rawValue }
+
+        /// Standard construction cost code for accounting export
+        var costCode: String {
+            switch self {
+            case .machinery: return "01-300"
+            case .hotel: return "01-500"
+            case .gas: return "01-510"
+            case .diesel: return "01-520"
+            case .insurance: return "01-400"
+            case .materialsAndTools: return "02-100"
+            case .subcontractor: return "03-100"
+            case .permits: return "01-200"
+            case .other: return "09-000"
+            }
+        }
+    }
+
+    /// Labor cost codes (used in Job Costing report)
+    enum LaborCostCode {
+        static let payroll = "01-100"
+        static let timesheet = "01-110"
     }
 
     enum CostCategoryGroup: String, CaseIterable {

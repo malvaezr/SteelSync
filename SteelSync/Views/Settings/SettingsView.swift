@@ -2,6 +2,8 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject private var themeManager = ThemeManager.shared
+    @ObservedObject private var llmService = LLMService.shared
+    @State private var showModelFilePicker = false
 
     var body: some View {
         ScrollView {
@@ -43,6 +45,21 @@ struct SettingsView: View {
                     .padding(.vertical, AppTheme.Spacing.sm)
                 }
 
+                // AI Model Section
+                GroupBox {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                        Text("AI Model")
+                            .font(AppTheme.Typography.headline)
+
+                        Text("Download a local AI model for smarter, conversational responses. Runs entirely on-device — your data never leaves this machine.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        aiModelStatusView
+                    }
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                }
+
                 // App Info Section
                 GroupBox {
                     VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
@@ -59,6 +76,73 @@ struct SettingsView: View {
             .padding(AppTheme.Spacing.lg)
         }
         .navigationTitle("Settings")
+    }
+
+    @ViewBuilder
+    private var aiModelStatusView: some View {
+        switch llmService.status {
+        case .notDownloaded:
+            HStack {
+                Image(systemName: "cpu").foregroundColor(.secondary)
+                VStack(alignment: .leading) {
+                    Text("Llama-3.2 8B").font(.callout).fontWeight(.medium)
+                    Text("~4.5 GB download").font(.caption2).foregroundColor(.secondary)
+                }
+                Spacer()
+                Button("Download") { llmService.downloadModel() }
+                    .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.primaryOrange)
+                Button("Import File...") { showModelFilePicker = true }
+                    .buttonStyle(.bordered)
+            }
+            .fileImporter(isPresented: $showModelFilePicker, allowedContentTypes: [.data], allowsMultipleSelection: false) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    _ = llmService.importModelFile(from: url)
+                }
+            }
+
+        case .downloading(let progress):
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Downloading...").font(.callout)
+                    Spacer()
+                    Text("\(Int(progress * 100))%").font(.caption).foregroundColor(.secondary)
+                    Button("Cancel") { llmService.cancelDownload() }
+                        .font(.caption).foregroundColor(.red)
+                }
+                ProgressView(value: progress)
+                    .tint(AppTheme.primaryOrange)
+            }
+
+        case .downloaded, .loading, .ready, .generating:
+            HStack {
+                Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
+                VStack(alignment: .leading) {
+                    Text("Llama-3.2 8B").font(.callout).fontWeight(.medium)
+                    Text(llmService.status == .ready ? "Loaded & Ready" :
+                         llmService.status == .generating ? "Generating..." :
+                         llmService.status == .loading ? "Loading..." :
+                         "Downloaded (\(llmService.modelFileSizeFormatted))")
+                        .font(.caption2).foregroundColor(.secondary)
+                }
+                Spacer()
+                if llmService.status == .downloaded {
+                    Button("Load") { llmService.loadModel() }
+                        .buttonStyle(.bordered)
+                }
+                Button("Delete", role: .destructive) { llmService.deleteModel() }
+                    .font(.caption)
+            }
+
+        case .error(let msg):
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.red)
+                Text(msg).font(.caption).foregroundColor(.red)
+                Spacer()
+                Button("Retry") { llmService.downloadModel() }
+                    .buttonStyle(.bordered)
+            }
+        }
     }
 
     private func modeButton(label: String, icon: String, isDark: Bool) -> some View {

@@ -543,3 +543,43 @@ extension TimesheetEntry: CloudKitConvertible {
         )
     }
 }
+
+// MARK: - RFI
+
+extension RFI: CloudKitConvertible {
+    static let ckRecordType = "SS_RFI"
+
+    func toCKRecord(in zoneID: CKRecordZone.ID) -> CKRecord {
+        let r = CKRecord(recordType: Self.ckRecordType, recordID: CKRecord.ID(recordName: ckRecordName, zoneID: zoneID))
+        r["uuid"] = id.uuidString as CKRecordValue
+        r["number"] = number as CKRecordValue
+        r["subject"] = subject as CKRecordValue
+        r["submittedTo"] = submittedTo as CKRecordValue
+        r["submittedDate"] = submittedDate as CKRecordValue
+        r["responseDueDate"] = responseDueDate as CKRecordValue
+        if let d = responseReceivedDate { r["responseReceivedDate"] = d as CKRecordValue }
+        r["status"] = status.rawValue as CKRecordValue
+        r["priority"] = priority.rawValue as CKRecordValue
+        r["notes"] = notes as CKRecordValue
+        r["attachmentsJSON"] = CKField.encodeJSON(attachments) as CKRecordValue
+        if let ref = projectRef { r["projectRef"] = ref }
+        return r
+    }
+
+    static func from(_ record: CKRecord) -> RFI? {
+        RFI(
+            id: CKField.uuid(record, "uuid"),
+            number: CKField.int(record, "number"),
+            subject: CKField.string(record, "subject"),
+            submittedTo: CKField.string(record, "submittedTo"),
+            submittedDate: CKField.date(record, "submittedDate"),
+            responseDueDate: CKField.date(record, "responseDueDate"),
+            responseReceivedDate: CKField.optDate(record, "responseReceivedDate"),
+            status: RFIStatus(rawValue: CKField.string(record, "status")) ?? .draft,
+            priority: RFIPriority(rawValue: CKField.string(record, "priority")) ?? .medium,
+            notes: CKField.string(record, "notes"),
+            attachments: CKField.decodeJSON(record, "attachmentsJSON", as: [Attachment].self) ?? [],
+            recordID: record.recordID
+        )
+    }
+}

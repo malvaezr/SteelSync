@@ -15,8 +15,10 @@ struct ProjectDetailView: View {
     @State private var rentalToClose: EquipmentRental? = nil
     @State private var showEditProgress = false
     @State private var showQuickEntry = false
+    @State private var showAddRFI = false
+    @State private var editingRFI: RFI?
 
-    private let tabs = ["Overview", "Change Orders", "Payments", "Payroll", "Equipment", "Costs", "Pay Apps"]
+    private let tabs = ["Overview", "Change Orders", "Payments", "Payroll", "Equipment", "Costs", "RFIs", "Pay Apps"]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -71,6 +73,8 @@ struct ProjectDetailView: View {
                                 equipmentTab
                             case "Costs":
                                 costsTab
+                            case "RFIs":
+                                rfiTab
                             case "Pay Apps":
                                 PayAppsTab(project: project)
                             default:
@@ -109,6 +113,12 @@ struct ProjectDetailView: View {
         }
         .sheet(isPresented: $showQuickEntry) {
             QuickEntrySheet(project: project)
+        }
+        .sheet(isPresented: $showAddRFI) {
+            AddRFISheet(projectID: project.id, nextNumber: dataStore.nextRFINumber(for: project.id))
+        }
+        .sheet(item: $editingRFI) { rfi in
+            EditRFISheet(rfi: rfi, projectID: project.id)
         }
     }
 
@@ -465,6 +475,90 @@ struct ProjectDetailView: View {
                     Text(entries.reduce(0) { $0 + $1.totalAmount }.currencyFormatted)
                         .font(.headline)
                 }
+            }
+        }
+    }
+
+    // MARK: - RFI Tab
+    private var rfiTab: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionHeaderView(title: "Requests for Information", action: { showAddRFI = true })
+
+            let projectRFIs = dataStore.rfis(for: project.id)
+            if projectRFIs.isEmpty {
+                EmptyStateView(icon: "doc.text.magnifyingglass", title: "No RFIs",
+                               message: "Track Requests for Information submitted to the architect or engineer.",
+                               buttonTitle: "Add RFI") { showAddRFI = true }
+                .frame(height: 200)
+            } else {
+                // Summary metrics
+                let open = projectRFIs.filter { $0.status != .closed }.count
+                let overdue = projectRFIs.filter { $0.isOverdue }.count
+
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    MetricCard(title: "Total RFIs", value: "\(projectRFIs.count)", icon: "doc.text.fill", color: .blue)
+                    MetricCard(title: "Open", value: "\(open)", icon: "circle", color: .orange)
+                    if overdue > 0 {
+                        MetricCard(title: "Overdue", value: "\(overdue)", icon: "exclamationmark.triangle.fill", color: .red)
+                    }
+                }
+                .frame(height: 70)
+
+                List {
+                    ForEach(projectRFIs) { rfi in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Text("RFI #\(rfi.number)")
+                                        .font(.caption).fontWeight(.bold)
+                                    Text(rfi.subject)
+                                        .font(.callout).lineLimit(1)
+                                    if !rfi.attachments.isEmpty {
+                                        Image(systemName: "paperclip")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text("\(rfi.attachments.count)")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                HStack(spacing: 8) {
+                                    Text("To: \(rfi.submittedTo)")
+                                        .font(.caption2).foregroundColor(.secondary)
+                                    Text("Due: \(rfi.responseDueDate.shortDate)")
+                                        .font(.caption2).foregroundColor(rfi.isOverdue ? .red : .secondary)
+                                    if rfi.isOverdue {
+                                        Text("OVERDUE").font(.caption2).fontWeight(.bold).foregroundColor(.red)
+                                    }
+                                }
+                            }
+                            Spacer()
+                            // Open first attachment if available
+                            if let firstAtt = rfi.attachments.first {
+                                Button { FileStorageService.openFile(firstAtt) } label: {
+                                    Image(systemName: "eye.fill").foregroundColor(.blue)
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                            StatusBadge(text: rfi.status.rawValue,
+                                        color: rfi.status == .closed ? .green :
+                                               rfi.status == .responded ? .orange :
+                                               rfi.status == .submitted ? .blue : .gray)
+                            StatusBadge(text: rfi.priority.rawValue,
+                                        color: rfi.priority == .urgent ? .red :
+                                               rfi.priority == .high ? .orange : .secondary)
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture { editingRFI = rfi }
+                        .contextMenu {
+                            Button("Edit") { editingRFI = rfi }
+                            Divider()
+                            Button("Delete", role: .destructive) { dataStore.deleteRFI(rfi, from: project.id) }
+                        }
+                    }
+                }
+                .listStyle(.inset)
+                .frame(minHeight: 200)
             }
         }
     }

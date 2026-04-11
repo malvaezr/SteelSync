@@ -239,6 +239,7 @@ class CloudKitService {
             store.payrollEntries = groupChildRecords(byType[PayrollEntry.ckRecordType] ?? [], as: PayrollEntry.self)
             store.costs = groupChildRecords(byType[Cost.ckRecordType] ?? [], as: Cost.self)
             store.equipmentRentals = groupChildRecords(byType[EquipmentRental.ckRecordType] ?? [], as: EquipmentRental.self)
+            store.rfis = groupChildRecords(byType[RFI.ckRecordType] ?? [], as: RFI.self)
 
             // Persist locally as cache
             PersistenceService.saveAll(from: store)
@@ -312,6 +313,10 @@ class CloudKitService {
         // Audit entries (last 100)
         for a in store.auditLog.prefix(100) { allRecords.append(a.toCKRecord(in: zoneID)) }
         for ts in store.timesheetEntries { allRecords.append(ts.toCKRecord(in: zoneID)) }
+        for (projectID, items) in store.rfis {
+            let ref = CKRecord.Reference(recordID: CKRecord.ID(recordName: projectID.recordName, zoneID: zoneID), action: .none)
+            for rfi in items { let r = rfi.toCKRecord(in: zoneID); r["projectRef"] = ref; allRecords.append(r) }
+        }
 
         print("[CloudKit] Uploading \(allRecords.count) records in batches...")
 

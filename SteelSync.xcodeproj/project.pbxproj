@@ -36,6 +36,7 @@
 		130AE1D68EBAAEC93B33AF9B /* QueryParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 062E9F90EF9A227D6B3A84BA /* QueryParser.swift */; };
 		1348029DBE42409885CC5D44 /* AddProjectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52278865AEFCBD823BDEC6C1 /* AddProjectView.swift */; };
 		14944B2C4D92BCEFA3115CE3 /* PhoneEquipmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05696EA88AFDF328A1548B80 /* PhoneEquipmentView.swift */; };
+		14BC3885EA461CB13B060178 /* DataContextBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD983F907DFBB240BC58830 /* DataContextBuilder.swift */; };
 		14CC8EEE31D389D4192A55AA /* WeeklyAssignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9295F43337F5AB4398EC520E /* WeeklyAssignment.swift */; };
 		153D7735DA36C7181B4B358E /* ChatBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF7CCD36013F2C98AAB86D4E /* ChatBubbleView.swift */; };
 		15A143C3EFCBDD7555A9651F /* AddProjectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52278865AEFCBD823BDEC6C1 /* AddProjectView.swift */; };
@@ -79,11 +80,13 @@
 		2FD58DB82DCB2FDC5903C755 /* TimekeepingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F14DBFBCB15B4C618E554D /* TimekeepingView.swift */; };
 		303C11EFFB1A61451058E2AB /* PayApplication.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8BD59F1AD2C45F5E18F52CE /* PayApplication.swift */; };
 		30949225AAAD5D6959DABE89 /* PlanningPadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50B92F4BD367A2FF06611B8D /* PlanningPadView.swift */; };
+		3152F87155B7EB8919DC052F /* RFI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530A1552340FF002D1AB9A8C /* RFI.swift */; };
 		3198C4209EA0615E343D59D5 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF057FE0994C4C5EA948780E /* Extensions.swift */; };
 		323FD5B94D4B3D6A7B4C5FA3 /* BidDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F89C7F8FCAE982405AB863B9 /* BidDetailView.swift */; };
 		325F54ED87871D67F1091F56 /* TodoOverviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B11124CBC093401AD48942 /* TodoOverviewWidget.swift */; };
 		32B5A58D1D24918211EA5296 /* CalendarEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76ADDAF194FFEAE179F13A66 /* CalendarEvent.swift */; };
 		335FC26B619348AF1D78CB21 /* TimesheetEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D5CEF28092A786A2F20668 /* TimesheetEntry.swift */; };
+		33FF89DA556BE5F68FF1E358 /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F988730EAC002233173ACC1 /* LLMService.swift */; };
 		342C95135BDA5FBCE2DDA7C3 /* ClientsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E42E79F8F54FFD90C87D9CB /* ClientsView.swift */; };
 		34D5139F2AE1E2D3265D783E /* SteelSynciPhoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2AA041E74BB1773BB8AC2D5 /* SteelSynciPhoneApp.swift */; };
 		363A5E988468B26A360CFDD6 /* HandwritingRecognitionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2953DF713912AE6F41BA1451 /* HandwritingRecognitionService.swift */; };
@@ -100,6 +103,7 @@
 		3CD136921C43A05DB6F9AA0A /* PayApplication.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8BD59F1AD2C45F5E18F52CE /* PayApplication.swift */; };
 		3D5C0121883C4A8B1355A8D6 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07BA1BD89EC94E153CBC023 /* SampleData.swift */; };
 		3E5B75903E513C9C5709D9C3 /* TimeEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CEF8300A84E73A0EF9DF08 /* TimeEntry.swift */; };
+		3EAC78D04FFD5C380F56AE23 /* RFI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530A1552340FF002D1AB9A8C /* RFI.swift */; };
 		403F8D096C16B77C5CCEFF9D /* PDFExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 812971A7EA828E9BF47A7BB6 /* PDFExportService.swift */; };
 		4083469F238CA562A5B9239A /* TimeEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CEF8300A84E73A0EF9DF08 /* TimeEntry.swift */; };
 		412183FF90984B2035D79874 /* BidProject.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B1F30E7135A898D7C439BB /* BidProject.swift */; };
@@ -123,6 +127,7 @@
 		492E407DF77C73C59CF88D76 /* PersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8D56045443EE049CDCFAF6A /* PersistenceService.swift */; };
 		4B4377C62B473D0E5D992312 /* IPhoneMoreTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A39DA812F1FF3B17DB5C37FD /* IPhoneMoreTab.swift */; };
 		4B64B4CAB182C442FEB3D167 /* PencilCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E414F6FDD05FC4316E2ED3 /* PencilCanvasView.swift */; };
+		4BE21E0936CA8D3C35C3EFCC /* RFI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530A1552340FF002D1AB9A8C /* RFI.swift */; };
 		4BE510047D4B8D0AD1A7D0A8 /* SteelSyncShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A800CC308927F8E692D3235 /* SteelSyncShortcuts.swift */; };
 		4C039FA5BBE0222A1421ED7F /* PayAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84676B7C0A4D5D79E4F93B51 /* PayAppView.swift */; };
 		4D9F5C25078587377C0F00CA /* WidgetHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 186A0414E37E1B8158AB72AA /* WidgetHelpers.swift */; };
@@ -157,6 +162,7 @@
 		679A71A34C7AD40A584AE640 /* SteelSyncWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F8F1EA2DBACE66865331D899 /* SteelSyncWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		67EE0A5B065CE15BF1703F5B /* WeeklyAssignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9295F43337F5AB4398EC520E /* WeeklyAssignment.swift */; };
 		6899AE35C90C26BF289DD775 /* EquipmentOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 630778E6199E0CE162622606 /* EquipmentOverviewView.swift */; };
+		68F2231B9FFE4A9D2553B3C6 /* DataContextBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD983F907DFBB240BC58830 /* DataContextBuilder.swift */; };
 		69A98901ACF23C7FC918D169 /* PayAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84676B7C0A4D5D79E4F93B51 /* PayAppView.swift */; };
 		69C15DD2CA248EF58DD60377 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB8D10C49A60882B9F6EBA0 /* Project.swift */; };
 		6B4A516DDC54B84B5C5D827C /* BiddingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1011451B642A320E127016B5 /* BiddingView.swift */; };
@@ -168,6 +174,7 @@
 		6D44218E45225BB9ED30BE6C /* GanttViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8968AE25CF9FEFEBC09B15 /* GanttViewModel.swift */; };
 		6EBE5E18902D83F3DAFDE04A /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB8D10C49A60882B9F6EBA0 /* Project.swift */; };
 		6EC58620CD289848B05DA51A /* IPhoneMoreTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = A39DA812F1FF3B17DB5C37FD /* IPhoneMoreTab.swift */; };
+		6F3C27F1631D789BE6AC5374 /* DataContextBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD983F907DFBB240BC58830 /* DataContextBuilder.swift */; };
 		6FD41242261FDFB7BC1FBDBE /* TimesheetEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D5CEF28092A786A2F20668 /* TimesheetEntry.swift */; };
 		706A1710F172094D5544FE71 /* AssistantMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B4736E176810AB66924CAB0 /* AssistantMessage.swift */; };
 		709C22B318CBD0190B9957DE /* PencilCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E414F6FDD05FC4316E2ED3 /* PencilCanvasView.swift */; };
@@ -201,6 +208,7 @@
 		877B1F3B91A32759B8A11F73 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB8D10C49A60882B9F6EBA0 /* Project.swift */; };
 		88F47B86C0BC08134B80DAB9 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF057FE0994C4C5EA948780E /* Extensions.swift */; };
 		8AF731867F13B7637EE01D62 /* TimesheetEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D5CEF28092A786A2F20668 /* TimesheetEntry.swift */; };
+		8B741AFEBB6842E34C33693C /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F988730EAC002233173ACC1 /* LLMService.swift */; };
 		8B7A77CDB65D04C31329603E /* TimesheetEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D5CEF28092A786A2F20668 /* TimesheetEntry.swift */; };
 		8BF42D2C95FBFFA5C8BA9915 /* AuditEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDBB35CC1116B739A37685FC /* AuditEntry.swift */; };
 		8C390FB2D6544368454832E4 /* PhoneTasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5457B4910B697E9E929D192B /* PhoneTasksView.swift */; };
@@ -214,6 +222,7 @@
 		9363C1D939713C3093D9361B /* SteelSynciPhoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2AA041E74BB1773BB8AC2D5 /* SteelSynciPhoneApp.swift */; };
 		93F541157CA6635691298474 /* Employee.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92C10C75857F4F50E8DB20F0 /* Employee.swift */; };
 		946FF567392494818D20BB07 /* AppNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2380E2E3DB04FD3BFBBC87CB /* AppNavigation.swift */; };
+		9534D7F9A881D002FA90F860 /* DataContextBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD983F907DFBB240BC58830 /* DataContextBuilder.swift */; };
 		9548C8FE61944EB9838B2A1C /* FileStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1457AB1F27C9C7902279360C /* FileStorageService.swift */; };
 		98A186F68E9A68C04478827D /* TodoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE55FFFA9E85076D77C95BC8 /* TodoView.swift */; };
 		9A83C60E3EBC904D17164E61 /* WorkOrderInvoicePDFView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF20B46D8C773A462C02FB9E /* WorkOrderInvoicePDFView.swift */; };
@@ -274,6 +283,7 @@
 		C682267F8390112E3074AD73 /* AuditEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDBB35CC1116B739A37685FC /* AuditEntry.swift */; };
 		C69A0E6BA7DE1E9391AF8B47 /* GanttTaskEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7942C645F9E3BF0378EFFFBF /* GanttTaskEditSheet.swift */; };
 		C6B1EDF97306BA5AC0BB5C2F /* AppNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2380E2E3DB04FD3BFBBC87CB /* AppNavigation.swift */; };
+		C7FE106D3D4715BA29901F9F /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F988730EAC002233173ACC1 /* LLMService.swift */; };
 		C8CDA35C866FBBB5EEB3639A /* PayAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84676B7C0A4D5D79E4F93B51 /* PayAppView.swift */; };
 		C9D68512441FF880E231EE23 /* ResponseFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45C110DB5B14052C675D8B39 /* ResponseFormatter.swift */; };
 		CB8FAEF0A8442C673F0B8F5B /* IPhoneClientDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00B2A9D3F85908604D8FA4F /* IPhoneClientDetailView.swift */; };
@@ -290,6 +300,7 @@
 		D0D313AFA298081CE1481856 /* FileStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1457AB1F27C9C7902279360C /* FileStorageService.swift */; };
 		D176D034932B083513BE9CB9 /* SteelSyncWidgets-iPad.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AB2E2EF4FCA2EC8FD48F4C36 /* SteelSyncWidgets-iPad.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D21F40A65B5572E4AD7E5E53 /* ResponseFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45C110DB5B14052C675D8B39 /* ResponseFormatter.swift */; };
+		D38F4C00766EAC98AEE00ACC /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F988730EAC002233173ACC1 /* LLMService.swift */; };
 		D4ED81BE69288DFD06F93449 /* ClientsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E42E79F8F54FFD90C87D9CB /* ClientsView.swift */; };
 		D5E91D26A6590F1F069C53B9 /* GanttTaskBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A24368A58D2D9D49A30308 /* GanttTaskBarView.swift */; };
 		D60242FE96BCEC881264603F /* ModelConversions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58398A718E943CC2D34502F3 /* ModelConversions.swift */; };
@@ -312,6 +323,7 @@
 		E81ACE17A99FAEDB19A0CE93 /* TodoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE55FFFA9E85076D77C95BC8 /* TodoView.swift */; };
 		E8DEDA6B660B3DBA9A5E3D0D /* ReportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFF1D8406912DF24AF71B5B7 /* ReportsView.swift */; };
 		E9985F8B648BA6F76E39905D /* QueryIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E268B6D3996E866432356D2 /* QueryIntent.swift */; };
+		EC754C8F0FF998D3137DB3BC /* RFI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530A1552340FF002D1AB9A8C /* RFI.swift */; };
 		EC8201D0DE18E2CBFF047823 /* WeeklyAssignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9295F43337F5AB4398EC520E /* WeeklyAssignment.swift */; };
 		ED104C62D201762EF33D37A0 /* GanttViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8968AE25CF9FEFEBC09B15 /* GanttViewModel.swift */; };
 		ED491C60C59C66D157295C00 /* GanttTaskEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7942C645F9E3BF0378EFFFBF /* GanttTaskEditSheet.swift */; };
@@ -415,6 +427,7 @@
 		25E01754ECDAAAC0D6656DFD /* SteelSync.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SteelSync.entitlements; sourceTree = "<group>"; };
 		26CEF8300A84E73A0EF9DF08 /* TimeEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeEntry.swift; sourceTree = "<group>"; };
 		2953DF713912AE6F41BA1451 /* HandwritingRecognitionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandwritingRecognitionService.swift; sourceTree = "<group>"; };
+		2DD983F907DFBB240BC58830 /* DataContextBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataContextBuilder.swift; sourceTree = "<group>"; };
 		2E219DA3083B346857FFA6CF /* SteelSyncWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SteelSyncWidgets.entitlements; sourceTree = "<group>"; };
 		2E4FDB469A32E53EAB31384F /* CrewManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewManagementView.swift; sourceTree = "<group>"; };
 		382FFF1355B696458FB6E3D8 /* DataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataStore.swift; sourceTree = "<group>"; };
@@ -429,6 +442,7 @@
 		4E45F2790914CAB1DF0A535B /* SteelSyncPhoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelSyncPhoneApp.swift; sourceTree = "<group>"; };
 		50B92F4BD367A2FF06611B8D /* PlanningPadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanningPadView.swift; sourceTree = "<group>"; };
 		52278865AEFCBD823BDEC6C1 /* AddProjectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddProjectView.swift; sourceTree = "<group>"; };
+		530A1552340FF002D1AB9A8C /* RFI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RFI.swift; sourceTree = "<group>"; };
 		5457B4910B697E9E929D192B /* PhoneTasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneTasksView.swift; sourceTree = "<group>"; };
 		55E356FA009E8DB227C6B981 /* IPhoneRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPhoneRootView.swift; sourceTree = "<group>"; };
 		58398A718E943CC2D34502F3 /* ModelConversions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelConversions.swift; sourceTree = "<group>"; };
@@ -455,6 +469,7 @@
 		8B4736E176810AB66924CAB0 /* AssistantMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantMessage.swift; sourceTree = "<group>"; };
 		8BFD8E6173E599D60E1E9C2C /* PhoneComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneComponents.swift; sourceTree = "<group>"; };
 		8E268B6D3996E866432356D2 /* QueryIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryIntent.swift; sourceTree = "<group>"; };
+		8F988730EAC002233173ACC1 /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
 		9295F43337F5AB4398EC520E /* WeeklyAssignment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyAssignment.swift; sourceTree = "<group>"; };
 		92C10C75857F4F50E8DB20F0 /* Employee.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Employee.swift; sourceTree = "<group>"; };
 		9328DFEC95485FE83580A9FA /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -646,6 +661,7 @@
 				23F45CE67DC5A5F39DB10635 /* PlanningPad.swift */,
 				5EB8D10C49A60882B9F6EBA0 /* Project.swift */,
 				A4FFFCC03C9E0ECCD289C86B /* ResourceType.swift */,
+				530A1552340FF002D1AB9A8C /* RFI.swift */,
 				D07BA1BD89EC94E153CBC023 /* SampleData.swift */,
 				26CEF8300A84E73A0EF9DF08 /* TimeEntry.swift */,
 				C8D5CEF28092A786A2F20668 /* TimesheetEntry.swift */,
@@ -827,8 +843,18 @@
 				2493EBC395F13A8EE6F94B4A /* WidgetBridge.swift */,
 				8924670EBB8793EEE84D6D75 /* Assistant */,
 				3CDC18C68991E94B3094BFD8 /* CloudKitConversions */,
+				C16590BAB90EE79874972332 /* LLM */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		C16590BAB90EE79874972332 /* LLM */ = {
+			isa = PBXGroup;
+			children = (
+				2DD983F907DFBB240BC58830 /* DataContextBuilder.swift */,
+				8F988730EAC002233173ACC1 /* LLMService.swift */,
+			);
+			path = LLM;
 			sourceTree = "<group>";
 		};
 		CFBB0012F86790594C4F8350 /* Projects */ = {
@@ -1147,6 +1173,7 @@
 				FD308D48EE7B05825935CD90 /* ContentView.swift in Sources */,
 				2B70B45FD05AE85348720C00 /* CrewManagementView.swift in Sources */,
 				AC8A65D4FFF3769673A80C37 /* DashboardView.swift in Sources */,
+				68F2231B9FFE4A9D2553B3C6 /* DataContextBuilder.swift in Sources */,
 				0EF2705BEFF256BA6D85E722 /* DataStore.swift in Sources */,
 				162C0ED47A5BCC38EFF887DF /* Employee.swift in Sources */,
 				C2A4B1C4986D7313497897B5 /* EquipmentOverviewView.swift in Sources */,
@@ -1170,6 +1197,7 @@
 				5313181281B0C9290540860E /* IPhoneProjectsTab.swift in Sources */,
 				A282CF3E5BEDAAA309F46352 /* IPhoneRootView.swift in Sources */,
 				12E92DAFBB868C79926145B5 /* IPhoneTodoTab.swift in Sources */,
+				D38F4C00766EAC98AEE00ACC /* LLMService.swift in Sources */,
 				765D7EF3B7A8D7F516CF2ABB /* ModelConversions.swift in Sources */,
 				236892F4F5205CD629403534 /* PDFExportService.swift in Sources */,
 				69A98901ACF23C7FC918D169 /* PayAppView.swift in Sources */,
@@ -1196,6 +1224,7 @@
 				83808EBAA9290FEEAED39F96 /* ProjectFormSheets.swift in Sources */,
 				B2892A357F66AA5C07BC9BA3 /* QueryIntent.swift in Sources */,
 				28DFB7FB9C1B39092870D636 /* QueryParser.swift in Sources */,
+				3EAC78D04FFD5C380F56AE23 /* RFI.swift in Sources */,
 				A59AF71B14DC14B6B6B53A1A /* ReportsView.swift in Sources */,
 				BC1D30B270CD7D8FD3651C5D /* ResourceType.swift in Sources */,
 				FF67291AFB8302182948318A /* ResponseFormatter.swift in Sources */,
@@ -1244,6 +1273,7 @@
 				1CCD076936941CD2C9C77ACE /* ContentView.swift in Sources */,
 				64B56A414DC4F6989B39F154 /* CrewManagementView.swift in Sources */,
 				0BC92D0D54EF7E5286CB9D0C /* DashboardView.swift in Sources */,
+				9534D7F9A881D002FA90F860 /* DataContextBuilder.swift in Sources */,
 				8525133AD9B01D31CE61A2C8 /* DataStore.swift in Sources */,
 				4216F36D9D5833AFC52AA576 /* Employee.swift in Sources */,
 				1E3C94F14EF867BEAB6CDC59 /* EquipmentOverviewView.swift in Sources */,
@@ -1267,6 +1297,7 @@
 				DAA1367920240D0D9C7E097C /* IPhoneProjectsTab.swift in Sources */,
 				6D0F0579AD9A8484A6DA165C /* IPhoneRootView.swift in Sources */,
 				FB2A79FED77CC330C136C0B7 /* IPhoneTodoTab.swift in Sources */,
+				33FF89DA556BE5F68FF1E358 /* LLMService.swift in Sources */,
 				F5F8789129336C36E0A13718 /* ModelConversions.swift in Sources */,
 				403F8D096C16B77C5CCEFF9D /* PDFExportService.swift in Sources */,
 				4C039FA5BBE0222A1421ED7F /* PayAppView.swift in Sources */,
@@ -1281,6 +1312,7 @@
 				902AFEDEE46533DC42E16094 /* ProjectFormSheets.swift in Sources */,
 				430D09B7A4C044B843A66A8F /* QueryIntent.swift in Sources */,
 				B98E9895A6395B127A81CF9B /* QueryParser.swift in Sources */,
+				EC754C8F0FF998D3137DB3BC /* RFI.swift in Sources */,
 				E8DEDA6B660B3DBA9A5E3D0D /* ReportsView.swift in Sources */,
 				867A071AD2292114401EF208 /* ResourceType.swift in Sources */,
 				C9D68512441FF880E231EE23 /* ResponseFormatter.swift in Sources */,
@@ -1327,6 +1359,7 @@
 				D694C0A890DBB41E5393933A /* ContentView.swift in Sources */,
 				F3D7EC45E4D9765FB5A0B528 /* CrewManagementView.swift in Sources */,
 				2AA068004C16F672153FB504 /* DashboardView.swift in Sources */,
+				6F3C27F1631D789BE6AC5374 /* DataContextBuilder.swift in Sources */,
 				017A933A23D6C56079257D32 /* DataStore.swift in Sources */,
 				60976257FA7823A311A783CC /* Employee.swift in Sources */,
 				6899AE35C90C26BF289DD775 /* EquipmentOverviewView.swift in Sources */,
@@ -1350,6 +1383,7 @@
 				7446E167668DAB596C73AC95 /* IPhoneProjectsTab.swift in Sources */,
 				192EA51D309B8B395819CA34 /* IPhoneRootView.swift in Sources */,
 				3CCB2C3B8F9741D0A64C290F /* IPhoneTodoTab.swift in Sources */,
+				C7FE106D3D4715BA29901F9F /* LLMService.swift in Sources */,
 				D60242FE96BCEC881264603F /* ModelConversions.swift in Sources */,
 				E077AD655D5793C500FC3FCF /* PDFExportService.swift in Sources */,
 				5A69D7F7C8D482DC03416198 /* PayAppView.swift in Sources */,
@@ -1364,6 +1398,7 @@
 				BD70855640563C4A7C2EBF3B /* ProjectFormSheets.swift in Sources */,
 				85230BDB58223049474EEA7C /* QueryIntent.swift in Sources */,
 				5DAF2AE5BACA240BD96F5D65 /* QueryParser.swift in Sources */,
+				3152F87155B7EB8919DC052F /* RFI.swift in Sources */,
 				16EB635499CDBA479D9F18A4 /* ReportsView.swift in Sources */,
 				0A603E1782F3F73EC95C0B0E /* ResourceType.swift in Sources */,
 				2155A1201B30B934B760ABB2 /* ResponseFormatter.swift in Sources */,
@@ -1438,6 +1473,7 @@
 				74BF9E501E6BF3ED56E6368A /* ContentView.swift in Sources */,
 				FF167F1E5AD52014B45D080A /* CrewManagementView.swift in Sources */,
 				2138F4FFD74F1F006BD9C985 /* DashboardView.swift in Sources */,
+				14BC3885EA461CB13B060178 /* DataContextBuilder.swift in Sources */,
 				547E41F233616859FCF071BA /* DataStore.swift in Sources */,
 				93F541157CA6635691298474 /* Employee.swift in Sources */,
 				421313FAAF4CAE1AC6488D07 /* EquipmentOverviewView.swift in Sources */,
@@ -1461,6 +1497,7 @@
 				E36A7C6795BB6EB8F58E9420 /* IPhoneProjectsTab.swift in Sources */,
 				468B6E8B27AEB20ABD68C229 /* IPhoneRootView.swift in Sources */,
 				A855DB33C64C91A320F9D1F8 /* IPhoneTodoTab.swift in Sources */,
+				8B741AFEBB6842E34C33693C /* LLMService.swift in Sources */,
 				B38E23A8F69BDB947030698C /* ModelConversions.swift in Sources */,
 				913896951CDA4C6F4F5BF537 /* PDFExportService.swift in Sources */,
 				C8CDA35C866FBBB5EEB3639A /* PayAppView.swift in Sources */,
@@ -1475,6 +1512,7 @@
 				BBEF86FE257923169587B133 /* ProjectFormSheets.swift in Sources */,
 				E9985F8B648BA6F76E39905D /* QueryIntent.swift in Sources */,
 				130AE1D68EBAAEC93B33AF9B /* QueryParser.swift in Sources */,
+				4BE21E0936CA8D3C35C3EFCC /* RFI.swift in Sources */,
 				F1302595A8DDF1FDBC2E9400 /* ReportsView.swift in Sources */,
 				06B27A92E3622890AD33B891 /* ResourceType.swift in Sources */,
 				D21F40A65B5572E4AD7E5E53 /* ResponseFormatter.swift in Sources */,

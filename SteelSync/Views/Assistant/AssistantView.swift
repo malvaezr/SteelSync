@@ -9,24 +9,31 @@ struct AssistantView: View {
     private var messages: [AssistantMessage] { dataStore.assistantMessages }
 
     private let suggestedQueries = [
+        "What needs attention?",
         "How's the business?",
+        "Who worked the most this week?",
+        "Payroll this month",
+        "Margin trend",
+        "Overdue RFIs",
         "Active projects",
         "Pending bids",
-        "Overdue tasks",
-        "Win rate",
-        "Active employees",
-        "Today's events",
+        "Costs this quarter",
     ]
 
     var body: some View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Image(systemName: "cpu.fill")
+                Image(systemName: service.isLLMAvailable ? "brain" : "cpu.fill")
                     .font(.title2)
-                    .foregroundColor(.blue)
-                Text("SteelSync Assistant")
-                    .font(AppTheme.Typography.title2)
+                    .foregroundColor(service.isLLMAvailable ? .green : .blue)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("SteelSync Assistant")
+                        .font(AppTheme.Typography.title2)
+                    Text(service.isLLMAvailable ? "AI Mode (Llama 8B)" : "Basic Mode")
+                        .font(.caption2)
+                        .foregroundColor(service.isLLMAvailable ? .green : .secondary)
+                }
                 Spacer()
                 if !messages.isEmpty {
                     Button("Clear") {
@@ -157,9 +164,35 @@ struct AssistantView: View {
         dataStore.addAssistantMessage(userMsg)
         inputText = ""
 
-        let response = service.processQuery(text, dataStore: dataStore)
-        let assistantMsg = AssistantMessage(role: .assistant, content: response)
-        dataStore.addAssistantMessage(assistantMsg)
+        if service.isLLMAvailable {
+            // LLM mode — stream response
+            let placeholder = AssistantMessage(role: .assistant, content: "Thinking...")
+            dataStore.addAssistantMessage(placeholder)
+
+            Task {
+                let systemPrompt = DataContextBuilder.buildSystemPrompt(from: dataStore)
+                let response = await LLMService.shared.generate(systemPrompt: systemPrompt, userMessage: text)
+
+                // Replace placeholder with final response
+                if !response.isEmpty {
+                    var updated = placeholder
+                    updated = AssistantMessage(id: placeholder.id, role: .assistant, content: response)
+                    // Remove placeholder and add final
+                    dataStore.assistantMessages.removeAll { $0.id == placeholder.id }
+                    dataStore.addAssistantMessage(updated)
+                } else {
+                    // LLM returned empty — fall back to keyword engine
+                    let fallback = service.processQuery(text, dataStore: dataStore)
+                    dataStore.assistantMessages.removeAll { $0.id == placeholder.id }
+                    dataStore.addAssistantMessage(AssistantMessage(role: .assistant, content: fallback))
+                }
+            }
+        } else {
+            // Keyword engine mode
+            let response = service.processQuery(text, dataStore: dataStore)
+            let assistantMsg = AssistantMessage(role: .assistant, content: response)
+            dataStore.addAssistantMessage(assistantMsg)
+        }
     }
 }
 

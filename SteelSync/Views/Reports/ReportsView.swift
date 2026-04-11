@@ -9,7 +9,9 @@ struct ReportsView: View {
     @EnvironmentObject var dataStore: DataStore
     @State private var selectedReport = "Overview"
 
-    private let reports = ["Overview", "Projects", "Bidding", "Clients", "Financial"]
+    private let reports = ["Overview", "Projects", "Bidding", "Clients", "Financial", "Job Costing", "1099 Summary"]
+    @State private var selectedJobCostProject: Project?
+    @State private var selected1099Year: Int = Calendar.current.component(.year, from: Date())
 
     var body: some View {
         VStack(spacing: 0) {
@@ -55,6 +57,10 @@ struct ReportsView: View {
                         clientsReport
                     case "Financial":
                         financialReport
+                    case "Job Costing":
+                        jobCostingReport
+                    case "1099 Summary":
+                        contractor1099Report
                     default:
                         EmptyView()
                     }
@@ -326,6 +332,197 @@ struct ReportsView: View {
         }
     }
 
+    // MARK: - Job Costing Report
+
+    private var jobCostingReport: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            HStack {
+                Text("Job Costing Report").font(AppTheme.Typography.headline)
+                Spacer()
+                Picker("Project", selection: $selectedJobCostProject) {
+                    Text("All Projects").tag(nil as Project?)
+                    ForEach(dataStore.projects) { p in
+                        Text(p.title).tag(p as Project?)
+                    }
+                }
+                .frame(maxWidth: 250)
+            }
+
+            let projectsToShow = selectedJobCostProject.map { [$0] } ?? dataStore.projects
+
+            ForEach(projectsToShow) { project in
+                GroupBox {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                        Text(project.title).font(.headline)
+
+                        let costs = dataStore.costs(for: project.id)
+                        let payroll = dataStore.payrollEntries(for: project.id)
+                        let timesheets = dataStore.timesheetEntries.filter { $0.projectRef == project.id.recordName }
+
+                        let payrollTotal = payroll.reduce(Decimal.zero) { $0 + $1.totalAmount }
+                        let timesheetTotal = timesheets.reduce(Decimal.zero) { $0 + $1.totalPay }
+                        let costTotal = costs.reduce(Decimal.zero) { $0 + $1.amount }
+                        let grandTotal = payrollTotal + timesheetTotal + costTotal
+
+                        // Labor section
+                        if payrollTotal + timesheetTotal > 0 {
+                            jobCostRow("Labor (Payroll)", code: Cost.LaborCostCode.payroll, amount: payrollTotal, total: grandTotal)
+                            jobCostRow("Labor (Timesheet)", code: Cost.LaborCostCode.timesheet, amount: timesheetTotal, total: grandTotal)
+                        }
+
+                        // Costs by category
+                        ForEach(Cost.CostCategory.allCases, id: \.self) { cat in
+                            let catCosts = costs.filter { $0.category == cat }
+                            let catTotal = catCosts.reduce(Decimal.zero) { $0 + $1.amount }
+                            if catTotal > 0 {
+                                jobCostRow(cat.displayName, code: cat.costCode, amount: catTotal, total: grandTotal)
+                            }
+                        }
+
+                        Divider()
+                        HStack {
+                            Text("TOTAL COSTS").font(.caption).fontWeight(.bold)
+                            Spacer()
+                            Text(grandTotal.currencyFormatted).font(.caption).fontWeight(.bold)
+                        }
+                        HStack {
+                            Text("Revenue").font(.caption).foregroundColor(.secondary)
+                            Spacer()
+                            Text(project.totalRevenue.currencyFormatted).font(.caption)
+                        }
+                        HStack {
+                            Text("Profit").font(.caption).fontWeight(.bold)
+                            Spacer()
+                            Text((project.totalRevenue - grandTotal).currencyFormatted)
+                                .font(.caption).fontWeight(.bold)
+                                .foregroundColor((project.totalRevenue - grandTotal) >= 0 ? .green : .red)
+                        }
+                    }
+                }
+            }
+
+            if projectsToShow.isEmpty {
+                EmptyStateView(icon: "chart.bar.doc.horizontal", title: "No Projects",
+                               message: "Select a project or add costs to see the job costing breakdown.")
+            }
+        }
+    }
+
+    private func jobCostRow(_ label: String, code: String, amount: Decimal, total: Decimal) -> some View {
+        let pct = total > 0 ? Double(truncating: (amount / total * 100) as NSDecimalNumber) : 0
+        return HStack {
+            Text(code).font(.caption2).fontWeight(.medium).foregroundColor(.secondary).frame(width: 50, alignment: .leading)
+            Text(label).font(.caption)
+            Spacer()
+            Text(String(format: "%.1f%%", pct)).font(.caption2).foregroundColor(.secondary).frame(width: 45, alignment: .trailing)
+            Text(amount.currencyFormatted).font(.caption).fontWeight(.medium).frame(width: 90, alignment: .trailing)
+        }
+    }
+
+    // MARK: - 1099 Contractor Summary
+
+    private var contractor1099Report: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            HStack {
+                Text("1099-NEC Contractor Summary").font(AppTheme.Typography.headline)
+                Spacer()
+                Picker("Tax Year", selection: $selected1099Year) {
+                    ForEach((2024...Calendar.current.component(.year, from: Date())).reversed(), id: \.self) { year in
+                        Text(String(year)).tag(year)
+                    }
+                }
+                .frame(maxWidth: 120)
+            }
+
+            let payments = contractorPayments(for: selected1099Year)
+
+            if payments.isEmpty {
+                EmptyStateView(icon: "doc.text", title: "No 1099 Data",
+                               message: "No contractor payments found for \(selected1099Year). Add timesheet entries for 1099 contractors.")
+                .frame(height: 200)
+            } else {
+                // Summary metrics
+                let totalPaid = payments.reduce(Decimal.zero) { $0 + $1.total }
+                let meetsThreshold = payments.filter { $0.total >= 600 }.count
+
+                HStack(spacing: AppTheme.Spacing.md) {
+                    MetricCard(title: "Contractors", value: "\(payments.count)", icon: "person.2.fill", color: .blue)
+                    MetricCard(title: "Total Paid", value: totalPaid.currencyFormatted, icon: "dollarsign.circle.fill", color: .green)
+                    MetricCard(title: "Meets $600", value: "\(meetsThreshold)", icon: "exclamationmark.triangle.fill", color: .orange)
+                }
+                .frame(height: 80)
+
+                // Table
+                GroupBox {
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("Contractor").font(.caption).fontWeight(.bold).frame(maxWidth: .infinity, alignment: .leading)
+                            Text("Employee ID").font(.caption).fontWeight(.bold).frame(width: 80)
+                            Text("Total Paid").font(.caption).fontWeight(.bold).frame(width: 100, alignment: .trailing)
+                            Text("1099?").font(.caption).fontWeight(.bold).frame(width: 60)
+                        }
+                        .padding(.vertical, 4)
+                        .background(AppTheme.primaryOrange.opacity(0.1))
+
+                        ForEach(payments, id: \.name) { contractor in
+                            Divider()
+                            HStack {
+                                Text(contractor.name).font(.callout).frame(maxWidth: .infinity, alignment: .leading)
+                                Text(contractor.employeeID).font(.caption).foregroundColor(.secondary).frame(width: 80)
+                                Text(contractor.total.currencyFormatted).font(.callout).fontWeight(.medium).frame(width: 100, alignment: .trailing)
+                                if contractor.total >= 600 {
+                                    Image(systemName: "checkmark.circle.fill").foregroundColor(.orange).frame(width: 60)
+                                } else {
+                                    Image(systemName: "minus.circle").foregroundColor(.secondary).frame(width: 60)
+                                }
+                            }
+                            .padding(.vertical, 3)
+                        }
+                    }
+                }
+
+                Text("Contractors paid $600 or more require IRS Form 1099-NEC.")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    /// Aggregate all payments to 1099 contractors for a given tax year
+    private func contractorPayments(for year: Int) -> [(name: String, employeeID: String, total: Decimal)] {
+        let cal = Calendar.current
+        var totals: [String: (name: String, employeeID: String, total: Decimal)] = [:]
+
+        // From timesheet entries
+        for entry in dataStore.timesheetEntries {
+            guard cal.component(.year, from: entry.weekStartDate) == year else { continue }
+            guard entry.employeeType.lowercased().contains("contractor") || entry.employeeType == "1099" else { continue }
+            let key = entry.employeeRef.isEmpty ? entry.employeeName : entry.employeeRef
+            var existing = totals[key] ?? (name: entry.employeeName, employeeID: entry.employeeRef, total: 0)
+            existing.total += entry.totalPay
+            totals[key] = existing
+        }
+
+        // From manual payroll entries
+        for (_, entries) in dataStore.payrollEntries {
+            for entry in entries {
+                guard cal.component(.year, from: entry.weekStartDate) == year else { continue }
+                for detail in entry.employeeDetails {
+                    // Match against employees to check if contractor
+                    if let emp = dataStore.employees.first(where: { $0.fullName == detail.employeeName }),
+                       emp.employeeType == .contractor {
+                        let key = emp.id.uuidString
+                        var existing = totals[key] ?? (name: emp.fullName, employeeID: emp.employeeID, total: 0)
+                        existing.total += detail.totalPay
+                        totals[key] = existing
+                    }
+                }
+            }
+        }
+
+        return totals.values.sorted { $0.total > $1.total }
+    }
+
     // MARK: - Helpers
     private func statusColor(_ project: Project) -> Color {
         switch project.computedStatus {
@@ -334,6 +531,10 @@ struct ReportsView: View {
         case "Completed": return AppTheme.ProjectStatus.completed
         default: return AppTheme.ProjectStatus.onHold
         }
+    }
+
+    private func pct(_ value: Decimal, of total: Decimal) -> String {
+        total > 0 ? String(format: "%.1f%%", Double(truncating: (value / total * 100) as NSDecimalNumber)) : "0%"
     }
 
     private func bidStatusColor(_ bid: BidProject) -> Color {
@@ -358,6 +559,26 @@ struct ReportsView: View {
                 let prof = projects.reduce(Decimal(0)) { $0 + $1.profit }
                 let margin = rev > 0 ? Double(truncating: (prof / rev * 100) as NSDecimalNumber) : 0
                 csv += "\"\(c.name)\",\(c.preferredRateType.displayName),\(projects.count),\(bids.count),\(rev),\(costs),\(prof),\(String(format: "%.1f", margin))%\n"
+            }
+        case "Job Costing":
+            csv = "Project,Cost Code,Category,Amount,% of Total\n"
+            let projects = selectedJobCostProject.map { [$0] } ?? dataStore.projects
+            for p in projects {
+                let costs = dataStore.costs(for: p.id)
+                let payrollTotal = dataStore.payrollEntries(for: p.id).reduce(Decimal.zero) { $0 + $1.totalAmount }
+                let tsTotal = dataStore.timesheetEntries.filter { $0.projectRef == p.id.recordName }.reduce(Decimal.zero) { $0 + $1.totalPay }
+                let grand = costs.reduce(Decimal.zero) { $0 + $1.amount } + payrollTotal + tsTotal
+                if payrollTotal > 0 { csv += "\"\(p.title)\",\(Cost.LaborCostCode.payroll),Labor (Payroll),\(payrollTotal),\(pct(payrollTotal, of: grand))\n" }
+                if tsTotal > 0 { csv += "\"\(p.title)\",\(Cost.LaborCostCode.timesheet),Labor (Timesheet),\(tsTotal),\(pct(tsTotal, of: grand))\n" }
+                for cat in Cost.CostCategory.allCases {
+                    let amt = costs.filter { $0.category == cat }.reduce(Decimal.zero) { $0 + $1.amount }
+                    if amt > 0 { csv += "\"\(p.title)\",\(cat.costCode),\(cat.displayName),\(amt),\(pct(amt, of: grand))\n" }
+                }
+            }
+        case "1099 Summary":
+            csv = "Contractor,Employee ID,Total Paid,Meets $600 Threshold\n"
+            for c in contractorPayments(for: selected1099Year) {
+                csv += "\"\(c.name)\",\(c.employeeID),\(c.total),\(c.total >= 600 ? "Yes" : "No")\n"
             }
         default:
             csv = "Project,Client,Client Type,Status,Contract,Revenue,Costs,Profit,Margin\n"

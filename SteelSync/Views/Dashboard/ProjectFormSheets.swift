@@ -1606,3 +1606,222 @@ struct QuickEntrySheet: View {
         dismiss()
     }
 }
+
+// MARK: - Add RFI
+
+struct AddRFISheet: View {
+    let projectID: CKRecord.ID
+    let nextNumber: Int
+    @EnvironmentObject var dataStore: DataStore
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var subject = ""
+    @State private var submittedTo = ""
+    @State private var submittedDate = Date()
+    @State private var responseDueDate = Calendar.current.date(byAdding: .day, value: 14, to: Date()) ?? Date()
+    @State private var priority: RFIPriority = .medium
+    @State private var notes = ""
+    @State private var showFileImporter = false
+    @State private var uploadedAttachments: [Attachment] = []
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("RFI #\(nextNumber)") {
+                    TextField("Subject (e.g. Beam connection at grid B-4)", text: $subject)
+                    TextField("Submitted To (e.g. Architect)", text: $submittedTo)
+                    Picker("Priority", selection: $priority) {
+                        ForEach(RFIPriority.allCases, id: \.self) { p in
+                            Text(p.rawValue).tag(p)
+                        }
+                    }
+                }
+                Section("Dates") {
+                    DatePicker("Submitted", selection: $submittedDate, displayedComponents: .date)
+                    DatePicker("Response Due", selection: $responseDueDate, displayedComponents: .date)
+                }
+                Section("RFI Document") {
+                    if uploadedAttachments.isEmpty {
+                        Button { showFileImporter = true } label: {
+                            HStack {
+                                Image(systemName: "doc.badge.plus")
+                                    .font(.title2)
+                                    .foregroundColor(AppTheme.primaryOrange)
+                                VStack(alignment: .leading) {
+                                    Text("Upload RFI Sheet")
+                                        .fontWeight(.medium)
+                                    Text("PDF, image, or drawing file")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        ForEach(uploadedAttachments) { att in
+                            HStack {
+                                Image(systemName: FileStorageService.iconName(for: att.filename))
+                                    .foregroundColor(AppTheme.primaryOrange)
+                                VStack(alignment: .leading) {
+                                    Text(att.filename).font(.callout).lineLimit(1)
+                                    Text(att.fileSizeFormatted).font(.caption2).foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Button { uploadedAttachments.removeAll { $0.id == att.id } } label: {
+                                    Image(systemName: "xmark.circle.fill").foregroundColor(.red.opacity(0.6))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        Button { showFileImporter = true } label: {
+                            Label("Add More Files", systemImage: "plus").font(.caption)
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                }
+                Section("Notes (optional)") {
+                    TextField("Internal notes", text: $notes)
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("New RFI")
+            #if !os(macOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") { save() }
+                        .disabled(subject.isEmpty)
+                        .buttonStyle(.borderedProminent)
+                        .tint(AppTheme.primaryOrange)
+                }
+            }
+            .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.pdf, .png, .jpeg, .tiff, .data], allowsMultipleSelection: true) { result in
+                if case .success(let urls) = result {
+                    for url in urls {
+                        let accessed = url.startAccessingSecurityScopedResource()
+                        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+                        let rfiFolder = "RFI_\(projectID.recordName)"
+                        if case .success(let att) = FileStorageService.importFile(from: url, bidID: rfiFolder) {
+                            uploadedAttachments.append(att)
+                        }
+                    }
+                }
+            }
+        }
+        #if os(macOS)
+        .frame(width: 500, height: 520)
+        #endif
+    }
+
+    private func save() {
+        let rfi = RFI(
+            number: nextNumber,
+            subject: subject,
+            submittedTo: submittedTo,
+            submittedDate: submittedDate,
+            responseDueDate: responseDueDate,
+            status: submittedTo.isEmpty ? .draft : .submitted,
+            priority: priority,
+            notes: notes,
+            attachments: uploadedAttachments
+        )
+        dataStore.addRFI(rfi, to: projectID)
+        dismiss()
+    }
+}
+
+// MARK: - Edit RFI
+
+struct EditRFISheet: View {
+    @State var rfi: RFI
+    let projectID: CKRecord.ID
+    @EnvironmentObject var dataStore: DataStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var showFileImporter = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("RFI #\(rfi.number)") {
+                    TextField("Subject", text: $rfi.subject)
+                    TextField("Submitted To", text: $rfi.submittedTo)
+                    Picker("Status", selection: $rfi.status) {
+                        ForEach(RFIStatus.allCases, id: \.self) { s in
+                            Text(s.rawValue).tag(s)
+                        }
+                    }
+                    Picker("Priority", selection: $rfi.priority) {
+                        ForEach(RFIPriority.allCases, id: \.self) { p in
+                            Text(p.rawValue).tag(p)
+                        }
+                    }
+                }
+                Section("Dates") {
+                    DatePicker("Submitted", selection: $rfi.submittedDate, displayedComponents: .date)
+                    DatePicker("Response Due", selection: $rfi.responseDueDate, displayedComponents: .date)
+                    if rfi.status == .responded || rfi.status == .closed {
+                        DatePicker("Response Received", selection: Binding(
+                            get: { rfi.responseReceivedDate ?? Date() },
+                            set: { rfi.responseReceivedDate = $0 }
+                        ), displayedComponents: .date)
+                    }
+                }
+                Section("Documents (\(rfi.attachments.count) file\(rfi.attachments.count == 1 ? "" : "s"))") {
+                    ForEach(rfi.attachments) { att in
+                        HStack {
+                            Image(systemName: FileStorageService.iconName(for: att.filename))
+                                .foregroundColor(AppTheme.primaryOrange)
+                            Text(att.filename).font(.callout).lineLimit(1)
+                            Spacer()
+                            Text(att.fileSizeFormatted).font(.caption2).foregroundColor(.secondary)
+                            Button { rfi.attachments.removeAll { $0.id == att.id } } label: {
+                                Image(systemName: "xmark.circle.fill").foregroundColor(.red.opacity(0.6))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    Button { showFileImporter = true } label: {
+                        Label("Upload Document", systemImage: "doc.badge.plus").font(.callout)
+                    }
+                    .buttonStyle(.borderless)
+                }
+                Section("Notes") {
+                    TextField("Internal notes", text: $rfi.notes)
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("Edit RFI #\(rfi.number)")
+            #if !os(macOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        dataStore.updateRFI(rfi, in: projectID)
+                        dismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.primaryOrange)
+                }
+            }
+            .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.pdf, .png, .jpeg, .tiff, .data], allowsMultipleSelection: true) { result in
+                if case .success(let urls) = result {
+                    for url in urls {
+                        let accessed = url.startAccessingSecurityScopedResource()
+                        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+                        let rfiFolder = "RFI_\(projectID.recordName)"
+                        if case .success(let att) = FileStorageService.importFile(from: url, bidID: rfiFolder) {
+                            rfi.attachments.append(att)
+                        }
+                    }
+                }
+            }
+        }
+        #if os(macOS)
+        .frame(width: 500, height: 550)
+        #endif
+    }
+}
