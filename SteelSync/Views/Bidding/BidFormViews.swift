@@ -1,6 +1,80 @@
 import SwiftUI
 import CloudKit
 
+// MARK: - Shared Sheet Chrome
+
+private struct SheetHeader: View {
+    let title: String
+    let saveTitle: String
+    var saveDisabled: Bool = false
+    let onCancel: () -> Void
+    let onSave: () -> Void
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(AppTheme.primaryText)
+            Spacer()
+            Button("Cancel") { onCancel() }
+                .buttonStyle(.appGhost)
+                .keyboardShortcut(.cancelAction)
+            Button(saveTitle) { onSave() }
+                .buttonStyle(.appPrimary)
+                .keyboardShortcut(.defaultAction)
+                .disabled(saveDisabled)
+        }
+        .padding(.horizontal, AppTheme.Spacing.lg)
+        .padding(.vertical, AppTheme.Spacing.md)
+        .background(AppTheme.background)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(AppTheme.primaryText.opacity(0.08)).frame(height: 0.5)
+        }
+    }
+}
+
+private struct SectionTitle: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundColor(AppTheme.secondaryText)
+            .textCase(.uppercase)
+            .tracking(0.5)
+            .padding(.bottom, 2)
+    }
+}
+
+private struct CurrencyInput: View {
+    let placeholder: String
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("$")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(AppTheme.secondaryText)
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 14))
+                #if !os(macOS)
+                .keyboardType(.decimalPad)
+                #endif
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(minHeight: 36)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(AppTheme.secondaryBackground)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(AppTheme.primaryText.opacity(0.08), lineWidth: 0.5)
+        )
+    }
+}
+
 // MARK: - Add Bid
 struct AddBidView: View {
     @EnvironmentObject var dataStore: DataStore
@@ -22,94 +96,124 @@ struct AddBidView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("New Bid")
-                    .font(AppTheme.Typography.title2)
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(projectName.isEmpty || clientName.isEmpty)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+            SheetHeader(
+                title: "New Bid",
+                saveTitle: "Save",
+                saveDisabled: projectName.isEmpty || clientName.isEmpty,
+                onCancel: { dismiss() },
+                onSave: save
+            )
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    projectInfoSection
+                    metricsSection
+                    notesSection
+                }
+                .padding(AppTheme.Spacing.lg)
             }
-            .padding()
-            Divider()
-
-            Form {
-                Section("Project Information") {
-                    TextField("Project Name", text: $projectName)
-                    Picker("Client", selection: $selectedClientID) {
-                        Text("Other / New Client").tag(nil as CKRecord.ID?)
-                        ForEach(dataStore.clients) { client in
-                            HStack {
-                                Text(client.name)
-                                Text(client.preferredRateType == .generalContractor ? "(GC)" : "(Sub)")
-                                    .foregroundColor(.secondary)
-                            }
-                            .tag(client.id as CKRecord.ID?)
-                        }
-                    }
-                    .onChange(of: selectedClientID) { _, newValue in
-                        if let id = newValue, let c = dataStore.clients.first(where: { $0.id == id }) {
-                            clientName = c.name
-                        }
-                    }
-                    if selectedClientID == nil {
-                        TextField("Client Name", text: $clientName)
-                    }
-                    TextField("Address", text: $address)
-                    HStack {
-                        Text("$")
-                        TextField("Bid Amount", text: $bidAmount)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                    }
-                    DatePicker("Bid Due Date", selection: $bidDueDate, displayedComponents: .date)
-                }
-
-                Section("Construction Metrics") {
-                    HStack {
-                        TextField("Sq Ft", text: $squareFeet)
-                    #if !os(macOS)
-                            .keyboardType(.numberPad)
-                            #endif
-                        TextField("Beams", text: $beams)
-                    #if !os(macOS)
-                            .keyboardType(.numberPad)
-                            #endif
-                        TextField("Columns", text: $columns)
-                    #if !os(macOS)
-                            .keyboardType(.numberPad)
-                            #endif
-                    }
-                    HStack {
-                        TextField("Joists", text: $joists)
-                    #if !os(macOS)
-                            .keyboardType(.numberPad)
-                            #endif
-                        TextField("Wall Panels", text: $wallPanels)
-                    #if !os(macOS)
-                            .keyboardType(.numberPad)
-                            #endif
-                        TextField("Est. Tons", text: $estimatedTons)
-                    #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                    }
-                }
-
-                Section("Notes") {
-                    TextEditor(text: $notes)
-                        .frame(height: 60)
-                }
-            }
-            .formStyle(.grouped)
+            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 550, height: 580)
+        .frame(width: 560, height: 620)
         #endif
+    }
+
+    @ViewBuilder private var projectInfoSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Project Information")
+
+            LabeledField(label: "Project Name") {
+                TextField("e.g. Downtown Office Tower", text: $projectName)
+                    .textFieldStyle(.appField)
+            }
+
+            LabeledField(label: "Client") {
+                Picker("", selection: $selectedClientID) {
+                    Text("Other / New Client").tag(nil as CKRecord.ID?)
+                    ForEach(dataStore.clients) { client in
+                        Text("\(client.name) (\(client.preferredRateType == .generalContractor ? "GC" : "Sub"))")
+                            .tag(client.id as CKRecord.ID?)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .appControlSurface()
+                .onChange(of: selectedClientID) { _, newValue in
+                    if let id = newValue, let c = dataStore.clients.first(where: { $0.id == id }) {
+                        clientName = c.name
+                    }
+                }
+            }
+
+            if selectedClientID == nil {
+                LabeledField(label: "Client Name") {
+                    TextField("Company name", text: $clientName)
+                        .textFieldStyle(.appField)
+                }
+            }
+
+            LabeledField(label: "Address") {
+                TextField("Street, City, ST", text: $address)
+                    .textFieldStyle(.appField)
+            }
+
+            HStack(spacing: AppTheme.Spacing.md) {
+                LabeledField(label: "Bid Amount") {
+                    CurrencyInput(placeholder: "0.00", text: $bidAmount)
+                }
+                LabeledField(label: "Bid Due Date") {
+                    DatePicker("", selection: $bidDueDate, displayedComponents: .date)
+                        .labelsHidden()
+                        .appControlSurface()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var metricsSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Construction Metrics")
+
+            HStack(spacing: AppTheme.Spacing.md) {
+                LabeledField(label: "Sq Ft") { numberField("0", $squareFeet, decimal: false) }
+                LabeledField(label: "Beams") { numberField("0", $beams, decimal: false) }
+                LabeledField(label: "Columns") { numberField("0", $columns, decimal: false) }
+            }
+            HStack(spacing: AppTheme.Spacing.md) {
+                LabeledField(label: "Joists") { numberField("0", $joists, decimal: false) }
+                LabeledField(label: "Wall Panels") { numberField("0", $wallPanels, decimal: false) }
+                LabeledField(label: "Est. Tons") { numberField("0.0", $estimatedTons, decimal: true) }
+            }
+        }
+    }
+
+    @ViewBuilder private var notesSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Notes")
+            TextEditor(text: $notes)
+                .font(.system(size: 14))
+                .scrollContentBackground(.hidden)
+                .padding(8)
+                .frame(minHeight: 80)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(AppTheme.secondaryBackground)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(AppTheme.primaryText.opacity(0.08), lineWidth: 0.5)
+                )
+        }
+    }
+
+    @ViewBuilder
+    private func numberField(_ placeholder: String, _ text: Binding<String>, decimal: Bool) -> some View {
+        TextField(placeholder, text: text)
+            .textFieldStyle(.appField)
+            #if !os(macOS)
+            .keyboardType(decimal ? .decimalPad : .numberPad)
+            #endif
     }
 
     private func save() {
@@ -167,88 +271,122 @@ struct EditBidView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Edit Bid").font(AppTheme.Typography.title2)
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+            SheetHeader(
+                title: "Edit Bid",
+                saveTitle: "Save",
+                onCancel: { dismiss() },
+                onSave: save
+            )
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    projectInfoSection
+                    metricsSection
+                    notesSection
+                }
+                .padding(AppTheme.Spacing.lg)
             }
-            .padding()
-            Divider()
-            Form {
-                Section("Project Information") {
-                    TextField("Project Name", text: $projectName)
-                    Picker("Client", selection: $selectedClientID) {
-                        Text("Other / New Client").tag(nil as CKRecord.ID?)
-                        ForEach(dataStore.clients) { client in
-                            HStack {
-                                Text(client.name)
-                                Text(client.preferredRateType == .generalContractor ? "(GC)" : "(Sub)")
-                                    .foregroundColor(.secondary)
-                            }
-                            .tag(client.id as CKRecord.ID?)
-                        }
-                    }
-                    .onChange(of: selectedClientID) { _, newValue in
-                        if let id = newValue, let c = dataStore.clients.first(where: { $0.id == id }) {
-                            clientName = c.name
-                        }
-                    }
-                    if selectedClientID == nil {
-                        TextField("Client Name", text: $clientName)
-                    }
-                    TextField("Address", text: $address)
-                    HStack {
-                        Text("$")
-                        TextField("Bid Amount", text: $bidAmount)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                    }
-                    DatePicker("Bid Due Date", selection: $bidDueDate, displayedComponents: .date)
-                }
-                Section("Construction Metrics") {
-                    HStack {
-                        TextField("Sq Ft", text: $squareFeet)
-                    #if !os(macOS)
-                            .keyboardType(.numberPad)
-                            #endif
-                        TextField("Beams", text: $beams)
-                    #if !os(macOS)
-                            .keyboardType(.numberPad)
-                            #endif
-                        TextField("Columns", text: $columns)
-                    #if !os(macOS)
-                            .keyboardType(.numberPad)
-                            #endif
-                    }
-                    HStack {
-                        TextField("Joists", text: $joists)
-                    #if !os(macOS)
-                            .keyboardType(.numberPad)
-                            #endif
-                        TextField("Wall Panels", text: $wallPanels)
-                    #if !os(macOS)
-                            .keyboardType(.numberPad)
-                            #endif
-                        TextField("Est. Tons", text: $estimatedTons)
-                    #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                    }
-                }
-                Section("Notes") {
-                    TextEditor(text: $notes).frame(height: 60)
-                }
-            }
-            .formStyle(.grouped)
+            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 550, height: 580)
+        .frame(width: 560, height: 620)
         #endif
+    }
+
+    @ViewBuilder private var projectInfoSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Project Information")
+
+            LabeledField(label: "Project Name") {
+                TextField("Project name", text: $projectName)
+                    .textFieldStyle(.appField)
+            }
+
+            LabeledField(label: "Client") {
+                Picker("", selection: $selectedClientID) {
+                    Text("Other / New Client").tag(nil as CKRecord.ID?)
+                    ForEach(dataStore.clients) { client in
+                        Text("\(client.name) (\(client.preferredRateType == .generalContractor ? "GC" : "Sub"))")
+                            .tag(client.id as CKRecord.ID?)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .appControlSurface()
+                .onChange(of: selectedClientID) { _, newValue in
+                    if let id = newValue, let c = dataStore.clients.first(where: { $0.id == id }) {
+                        clientName = c.name
+                    }
+                }
+            }
+
+            if selectedClientID == nil {
+                LabeledField(label: "Client Name") {
+                    TextField("Company name", text: $clientName)
+                        .textFieldStyle(.appField)
+                }
+            }
+
+            LabeledField(label: "Address") {
+                TextField("Street, City, ST", text: $address)
+                    .textFieldStyle(.appField)
+            }
+
+            HStack(spacing: AppTheme.Spacing.md) {
+                LabeledField(label: "Bid Amount") {
+                    CurrencyInput(placeholder: "0.00", text: $bidAmount)
+                }
+                LabeledField(label: "Bid Due Date") {
+                    DatePicker("", selection: $bidDueDate, displayedComponents: .date)
+                        .labelsHidden()
+                        .appControlSurface()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var metricsSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Construction Metrics")
+            HStack(spacing: AppTheme.Spacing.md) {
+                LabeledField(label: "Sq Ft") { numberField("0", $squareFeet, decimal: false) }
+                LabeledField(label: "Beams") { numberField("0", $beams, decimal: false) }
+                LabeledField(label: "Columns") { numberField("0", $columns, decimal: false) }
+            }
+            HStack(spacing: AppTheme.Spacing.md) {
+                LabeledField(label: "Joists") { numberField("0", $joists, decimal: false) }
+                LabeledField(label: "Wall Panels") { numberField("0", $wallPanels, decimal: false) }
+                LabeledField(label: "Est. Tons") { numberField("0.0", $estimatedTons, decimal: true) }
+            }
+        }
+    }
+
+    @ViewBuilder private var notesSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Notes")
+            TextEditor(text: $notes)
+                .font(.system(size: 14))
+                .scrollContentBackground(.hidden)
+                .padding(8)
+                .frame(minHeight: 80)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(AppTheme.secondaryBackground)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(AppTheme.primaryText.opacity(0.08), lineWidth: 0.5)
+                )
+        }
+    }
+
+    @ViewBuilder
+    private func numberField(_ placeholder: String, _ text: Binding<String>, decimal: Bool) -> some View {
+        TextField(placeholder, text: text)
+            .textFieldStyle(.appField)
+            #if !os(macOS)
+            .keyboardType(decimal ? .decimalPad : .numberPad)
+            #endif
     }
 
     private func save() {
@@ -280,31 +418,44 @@ struct AddTouchpointView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Log Touchpoint").font(AppTheme.Typography.title3)
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
-            }
-            .padding()
-            Divider()
-            Form {
-                Picker("Type", selection: $type) {
-                    ForEach(Touchpoint.TouchpointType.allCases, id: \.self) { t in
-                        Label(t.rawValue, systemImage: t.icon).tag(t)
+            SheetHeader(
+                title: "Log Touchpoint",
+                saveTitle: "Save",
+                onCancel: { dismiss() },
+                onSave: save
+            )
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                    LabeledField(label: "Type") {
+                        Picker("", selection: $type) {
+                            ForEach(Touchpoint.TouchpointType.allCases, id: \.self) { t in
+                                Label(t.rawValue, systemImage: t.icon).tag(t)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .appControlSurface()
+                    }
+
+                    LabeledField(label: "Date") {
+                        DatePicker("", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                            .labelsHidden()
+                            .appControlSurface()
+                    }
+
+                    LabeledField(label: "Notes") {
+                        TextField("Details...", text: $notes, axis: .vertical)
+                            .lineLimit(3...6)
+                            .textFieldStyle(.appField)
                     }
                 }
-                DatePicker("Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
-                TextField("Notes", text: $notes, axis: .vertical)
-                    .lineLimit(3...6)
+                .padding(AppTheme.Spacing.lg)
             }
-            .formStyle(.grouped)
+            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 420, height: 300)
+        .frame(width: 440, height: 360)
         #endif
     }
 
@@ -331,37 +482,42 @@ struct ConvertBidToProjectView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Convert to Project").font(AppTheme.Typography.title3)
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Convert") { convert() }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
-            }
-            .padding()
-            Divider()
-            Form {
-                Section {
-                    InfoRow(label: "Project", value: bid.projectName)
-                    InfoRow(label: "Client", value: bid.clientName)
-                    InfoRow(label: "Bid Amount", value: bid.bidAmount.currencyFormatted)
-                }
-                Section("Contract Details") {
-                    HStack {
-                        Text("$")
-                        TextField("Contract Amount", text: $contractAmount)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
+            SheetHeader(
+                title: "Convert to Project",
+                saveTitle: "Convert",
+                onCancel: { dismiss() },
+                onSave: convert
+            )
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                        SectionTitle(text: "Bid")
+                        VStack(spacing: AppTheme.Spacing.sm) {
+                            InfoRow(label: "Project", value: bid.projectName)
+                            InfoRow(label: "Client", value: bid.clientName)
+                            InfoRow(label: "Bid Amount", value: bid.bidAmount.currencyFormatted)
+                        }
+                        .padding(AppTheme.Spacing.md)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(AppTheme.secondaryBackground)
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                        SectionTitle(text: "Contract Details")
+                        LabeledField(label: "Contract Amount") {
+                            CurrencyInput(placeholder: "0.00", text: $contractAmount)
+                        }
                     }
                 }
+                .padding(AppTheme.Spacing.lg)
             }
-            .formStyle(.grouped)
+            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 420, height: 300)
+        .frame(width: 440, height: 380)
         #endif
     }
 

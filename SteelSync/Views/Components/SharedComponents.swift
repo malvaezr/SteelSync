@@ -1,5 +1,72 @@
 import SwiftUI
 
+// MARK: - Screen Header
+//
+// Unified header used at the top of every top-level destination so the app feels
+// coherent. Pass a title, optional subtitle, and a trailing actions ViewBuilder.
+//
+// Usage:
+//   ScreenHeader(title: "Projects", subtitle: "12 active") {
+//       Button("Add Project") { ... }.buttonStyle(.appPrimary)
+//   }
+struct ScreenHeader<Actions: View>: View {
+    let title: String
+    var subtitle: String? = nil
+    var icon: String? = nil
+    @ViewBuilder var actions: () -> Actions
+
+    init(
+        title: String,
+        subtitle: String? = nil,
+        icon: String? = nil,
+        @ViewBuilder actions: @escaping () -> Actions = { EmptyView() }
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.icon = icon
+        self.actions = actions
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: AppTheme.Spacing.md) {
+            if let icon = icon {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundColor(AppTheme.primaryOrange)
+                    .frame(width: 28, height: 28)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(AppTheme.primaryText)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.6)
+                    .allowsTightening(true)
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.75)
+                }
+            }
+            .layoutPriority(0)
+            Spacer(minLength: AppTheme.Spacing.sm)
+            actions()
+                .layoutPriority(1)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, AppTheme.Spacing.lg)
+        .padding(.vertical, AppTheme.Spacing.md)
+        .background(AppTheme.background)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.gray.opacity(0.15))
+                .frame(height: 0.5)
+        }
+    }
+}
+
 // MARK: - Metric Card
 struct MetricCard: View {
     let title: String
@@ -9,23 +76,27 @@ struct MetricCard: View {
     var subtitle: String? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            HStack {
+        VStack(alignment: .leading, spacing: 10) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(color.opacity(0.14))
+                    .frame(width: 30, height: 30)
                 Image(systemName: icon)
-                    .font(.system(size: 14))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(color)
-                Spacer()
             }
 
             Text(value)
-                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundColor(AppTheme.primaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
 
             Text(title)
-                .font(AppTheme.Typography.caption)
+                .font(.system(size: 11, weight: .medium))
                 .foregroundColor(AppTheme.secondaryText)
+                .textCase(.uppercase)
+                .tracking(0.3)
 
             if let subtitle = subtitle {
                 Text(subtitle)
@@ -33,7 +104,16 @@ struct MetricCard: View {
                     .foregroundColor(AppTheme.tertiaryText)
             }
         }
-        .cardStyle()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(AppTheme.cardBackground)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(AppTheme.primaryText.opacity(0.06), lineWidth: 0.5)
+        )
     }
 }
 
@@ -148,23 +228,38 @@ struct FilterPill: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 4) {
+            HStack(spacing: 6) {
                 Text(title)
+                    .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
                 if let count = count {
                     Text("\(count)")
-                        .font(.caption2)
-                        .fontWeight(.bold)
+                        .font(.system(size: 11, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(
+                            Capsule().fill(
+                                isSelected ? Color.white.opacity(0.25) : AppTheme.primaryText.opacity(0.08)
+                            )
+                        )
                 }
             }
-            .font(.caption)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(isSelected ? AppTheme.primaryOrange : Color.clear)
-            .foregroundColor(isSelected ? .white : AppTheme.secondaryText)
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(isSelected ? Color.clear : Color.gray.opacity(0.3), lineWidth: 1))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .foregroundColor(isSelected ? AppTheme.primaryOrange : AppTheme.secondaryText)
+            .background(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(isSelected ? AppTheme.primaryOrange.opacity(0.14) : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .strokeBorder(
+                        isSelected ? AppTheme.primaryOrange.opacity(0.35) : AppTheme.primaryText.opacity(0.12),
+                        lineWidth: isSelected ? 1 : 0.5
+                    )
+            )
         }
         .buttonStyle(.plain)
+        .animation(.easeOut(duration: 0.15), value: isSelected)
     }
 }
 
@@ -194,11 +289,24 @@ struct CurrencyField: View {
     @Binding var value: String
 
     var body: some View {
-        HStack {
+        HStack(spacing: 6) {
             Text("$")
-                .foregroundColor(.secondary)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(AppTheme.secondaryText)
             TextField(label, text: $value)
                 .textFieldStyle(.plain)
+                .font(.system(size: 14))
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(minHeight: 36)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(AppTheme.secondaryBackground)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(AppTheme.primaryText.opacity(0.08), lineWidth: 0.5)
+        )
     }
 }

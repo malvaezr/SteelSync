@@ -539,7 +539,7 @@ struct ReportsView: View {
 
     private func bidStatusColor(_ bid: BidProject) -> Color {
         switch bid.status {
-        case .pending: return .blue; case .readyToSubmit: return .cyan
+        case .pending: return .blue; case .workingOn: return .yellow; case .readyToSubmit: return .cyan
         case .submitted: return .purple; case .awarded: return .green; case .lost: return .red
         }
     }

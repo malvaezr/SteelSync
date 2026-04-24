@@ -271,12 +271,15 @@ struct TodoOverviewWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
     let entry: TodoEntry
     var body: some View {
-        switch family {
-        case .systemSmall: TodoSmallView(entry: entry)
-        case .systemMedium: TodoMediumView(entry: entry)
-        case .systemLarge: TodoLargeView(entry: entry)
-        default: TodoSmallView(entry: entry)
+        Group {
+            switch family {
+            case .systemSmall: TodoSmallView(entry: entry)
+            case .systemMedium: TodoMediumView(entry: entry)
+            case .systemLarge: TodoLargeView(entry: entry)
+            default: TodoSmallView(entry: entry)
+            }
         }
+        .widgetURL(URL(string: "steelsync://tasks?filter=Overdue"))
     }
 }
 

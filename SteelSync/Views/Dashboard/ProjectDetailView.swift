@@ -1,10 +1,59 @@
 import SwiftUI
 import CloudKit
 
+/// Sections within a project detail view, grouped by PM workflow instead of a
+/// flat tab bar. Used by the left sidebar in `ProjectDetailView`.
+enum ProjectDetailSection: String, CaseIterable, Identifiable {
+    case overview = "Overview"
+    case changeOrders = "Change Orders"
+    case payments = "Payments"
+    case payApps = "Pay Apps"
+    case costs = "Costs"
+    case payroll = "Payroll"
+    case equipment = "Equipment"
+    case rfis = "RFIs"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .overview: return "square.grid.2x2.fill"
+        case .changeOrders: return "arrow.triangle.branch"
+        case .payments: return "creditcard.fill"
+        case .payApps: return "doc.plaintext.fill"
+        case .costs: return "cart.fill"
+        case .payroll: return "person.2.fill"
+        case .equipment: return "shippingbox.fill"
+        case .rfis: return "questionmark.bubble.fill"
+        }
+    }
+
+    var group: ProjectDetailGroup {
+        switch self {
+        case .overview: return .overview
+        case .payments, .payApps, .costs, .payroll: return .money
+        case .equipment, .rfis: return .field
+        case .changeOrders: return .changes
+        }
+    }
+}
+
+enum ProjectDetailGroup: String, CaseIterable {
+    case overview = "OVERVIEW"
+    case money = "MONEY"
+    case field = "FIELD OPS"
+    case changes = "CHANGES"
+
+    var sections: [ProjectDetailSection] {
+        ProjectDetailSection.allCases.filter { $0.group == self }
+    }
+}
+
 struct ProjectDetailView: View {
     let project: Project
     @EnvironmentObject var dataStore: DataStore
-    @State private var selectedTab = "Overview"
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var selectedSection: ProjectDetailSection = .overview
     @State private var showEditProject = false
     @State private var showAddChangeOrder = false
     @State private var editingChangeOrder: ChangeOrder?
@@ -17,75 +66,24 @@ struct ProjectDetailView: View {
     @State private var showQuickEntry = false
     @State private var showAddRFI = false
     @State private var editingRFI: RFI?
-
-    private let tabs = ["Overview", "Change Orders", "Payments", "Payroll", "Equipment", "Costs", "RFIs", "Pay Apps"]
+    @State private var costToDelete: Cost?
+    @State private var rfiToDelete: RFI?
+    @State private var changeOrderToDelete: ChangeOrder?
+    @State private var payrollEntryToDelete: PayrollEntry?
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
+            // Header (unchanged — keeps the project-specific status/metrics/progress row)
             projectHeader
 
             Divider()
 
-            // Tab bar
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 0) {
-                    ForEach(tabs, id: \.self) { tab in
-                        Button(action: { selectedTab = tab }) {
-                            Text(tab)
-                                .fixedSize()
-                                .font(.callout)
-                                .fontWeight(selectedTab == tab ? .semibold : .regular)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(selectedTab == tab ? AppTheme.primaryOrange.opacity(0.1) : Color.clear)
-                                .foregroundColor(selectedTab == tab ? AppTheme.primaryOrange : AppTheme.secondaryText)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    Spacer()
-                }
-                .padding(.horizontal)
+            // Measure actual available width so the inner sidebar collapses
+            // to a compact tab picker when the parent pane gets squeezed
+            // (e.g. iPad landscape with outer sidebar + project list both visible).
+            GeometryReader { geo in
+                adaptiveBody(availableWidth: geo.size.width)
             }
-            .background(AppTheme.secondaryBackground)
-
-            Divider()
-
-            // Tab content
-            Group {
-                switch selectedTab {
-                case "Overview":
-                    ScrollView {
-                        overviewTab
-                            .padding(AppTheme.Spacing.lg)
-                    }
-                default:
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                            switch selectedTab {
-                            case "Change Orders":
-                                changeOrdersTab
-                            case "Payments":
-                                paymentsTab
-                            case "Payroll":
-                                payrollTab
-                            case "Equipment":
-                                equipmentTab
-                            case "Costs":
-                                costsTab
-                            case "RFIs":
-                                rfiTab
-                            case "Pay Apps":
-                                PayAppsTab(project: project)
-                            default:
-                                EmptyView()
-                            }
-                        }
-                        .padding(AppTheme.Spacing.lg)
-                    }
-                }
-            }
-            .frame(maxHeight: .infinity)
         }
         .sheet(isPresented: $showEditProject) {
             EditProjectView(project: project)
@@ -120,6 +118,268 @@ struct ProjectDetailView: View {
         .sheet(item: $editingRFI) { rfi in
             EditRFISheet(rfi: rfi, projectID: project.id)
         }
+        .confirmationDialog(
+            "Delete RFI?",
+            isPresented: Binding(
+                get: { rfiToDelete != nil },
+                set: { if !$0 { rfiToDelete = nil } }
+            ),
+            presenting: rfiToDelete
+        ) { rfi in
+            Button("Delete", role: .destructive) {
+                dataStore.deleteRFI(rfi, from: project.id)
+                rfiToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { rfiToDelete = nil }
+        } message: { rfi in
+            Text("RFI #\(rfi.number) — \"\(rfi.subject)\" will be removed along with its attachments. This cannot be undone.")
+        }
+        .confirmationDialog(
+            "Delete change order?",
+            isPresented: Binding(
+                get: { changeOrderToDelete != nil },
+                set: { if !$0 { changeOrderToDelete = nil } }
+            ),
+            presenting: changeOrderToDelete
+        ) { co in
+            Button("Delete", role: .destructive) {
+                dataStore.deleteChangeOrder(co, from: project.id)
+                changeOrderToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { changeOrderToDelete = nil }
+        } message: { co in
+            Text("Change Order — \(co.description) (\(co.amount.currencyFormatted)) will be removed and the project balance will recalculate. This cannot be undone.")
+        }
+        .confirmationDialog(
+            "Delete payroll entry?",
+            isPresented: Binding(
+                get: { payrollEntryToDelete != nil },
+                set: { if !$0 { payrollEntryToDelete = nil } }
+            ),
+            presenting: payrollEntryToDelete
+        ) { entry in
+            Button("Delete", role: .destructive) {
+                dataStore.deletePayrollEntry(entry, from: project.id)
+                payrollEntryToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { payrollEntryToDelete = nil }
+        } message: { entry in
+            Text("\(entry.weekDateRange) — \(entry.totalHours.decimalFormatted) hrs, \(entry.totalAmount.currencyFormatted) for \(entry.employeeDetails.count) employee\(entry.employeeDetails.count == 1 ? "" : "s") will be removed. This cannot be undone.")
+        }
+    }
+
+    // MARK: - Adaptive Layout
+
+    /// Picks sidebar vs compact tab layout based on the ACTUAL available width,
+    /// not just horizontalSizeClass. On iPad landscape with nested split views,
+    /// the size class stays `.regular` even when the inner pane has very little
+    /// room, so we have to measure to know.
+    @ViewBuilder
+    private func adaptiveBody(availableWidth: CGFloat) -> some View {
+        // Thresholds:
+        //   < 640pt  → compact tab picker (too narrow for 200pt sidebar + content)
+        //   640–820  → slim sidebar (160pt)
+        //   820–1100 → standard sidebar (200pt)
+        //   1100+    → wide sidebar (220pt)
+        let isCompact: Bool = {
+            if availableWidth > 0 && availableWidth < 640 { return true }
+            #if os(iOS)
+            if horizontalSizeClass == .compact { return true }
+            #endif
+            return false
+        }()
+
+        if isCompact {
+            VStack(spacing: 0) {
+                compactSectionPicker
+                Divider()
+                ScrollView {
+                    sectionContent
+                        .padding(AppTheme.Spacing.lg)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .frame(maxHeight: .infinity)
+        } else {
+            HStack(spacing: 0) {
+                projectSidebar
+                    .frame(width: sidebarWidth(for: availableWidth))
+                    .background(AppTheme.secondaryBackground)
+
+                Divider()
+
+                ScrollView {
+                    sectionContent
+                        .padding(AppTheme.Spacing.lg)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .frame(maxHeight: .infinity)
+        }
+    }
+
+    /// Scales the inner sidebar width to the available pane width so narrow
+    /// panes don't swallow content while wide panes get a proper-size sidebar.
+    private func sidebarWidth(for availableWidth: CGFloat) -> CGFloat {
+        if availableWidth >= 1100 { return 220 }
+        if availableWidth >= 820 { return 200 }
+        return 160
+    }
+
+    /// Kept for backward compatibility with any sibling code still calling it.
+    /// The real decision now happens inside `adaptiveBody`.
+    private var useCompactLayout: Bool {
+        #if os(iOS)
+        return horizontalSizeClass == .compact
+        #else
+        return false
+        #endif
+    }
+
+    // MARK: - Compact Section Picker (used when sidebar is too tight)
+
+    @ViewBuilder
+    private var compactSectionPicker: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(ProjectDetailSection.allCases) { section in
+                        let isSelected = selectedSection == section
+                        Button {
+                            selectedSection = section
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: section.icon)
+                                    .font(.system(size: 11))
+                                Text(section.rawValue)
+                                    .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                                if let badge = sidebarBadge(for: section), badge > 0 {
+                                    Text("\(badge)")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(isSelected ? AppTheme.primaryOrange.opacity(0.15) : Color.gray.opacity(0.08))
+                            )
+                            .foregroundColor(isSelected ? AppTheme.primaryOrange : AppTheme.secondaryText)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, AppTheme.Spacing.md)
+                .padding(.vertical, 8)
+            }
+        }
+        .background(AppTheme.secondaryBackground)
+    }
+
+    // MARK: - Sidebar
+
+    @ViewBuilder
+    private var projectSidebar: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(ProjectDetailGroup.allCases, id: \.self) { group in
+                if !group.sections.isEmpty {
+                    Text(group.rawValue)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 14)
+                        .padding(.top, 14)
+                        .padding(.bottom, 4)
+
+                    ForEach(group.sections) { section in
+                        sidebarButton(section)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    @ViewBuilder
+    private func sidebarButton(_ section: ProjectDetailSection) -> some View {
+        let isSelected = selectedSection == section
+        Button {
+            selectedSection = section
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: section.icon)
+                    .font(.system(size: 12))
+                    .frame(width: 14)
+                    .foregroundColor(isSelected ? AppTheme.primaryOrange : .secondary)
+                Text(section.rawValue)
+                    .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? AppTheme.primaryText : AppTheme.secondaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                Spacer(minLength: 4)
+                if let badge = sidebarBadge(for: section), badge > 0 {
+                    Text("\(badge)")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(Capsule().fill(Color.gray.opacity(0.15)))
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                isSelected
+                    ? AppTheme.primaryOrange.opacity(0.12)
+                    : Color.clear
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Returns a count to display as a sidebar badge for each section, or nil if
+    /// no count is useful. Gives PMs an at-a-glance sense of what's inside each
+    /// section before clicking in.
+    private func sidebarBadge(for section: ProjectDetailSection) -> Int? {
+        switch section {
+        case .overview: return nil
+        case .changeOrders: return dataStore.changeOrders(for: project.id).count
+        case .payments: return dataStore.payments(for: project.id).count
+        case .payApps: return dataStore.payApps(for: project.id).count
+        case .costs: return dataStore.costs(for: project.id).count
+        case .payroll: return dataStore.payrollEntries(for: project.id).count
+        case .equipment: return dataStore.rentals(for: project.id).count
+        case .rfis:
+            let rfis = dataStore.rfis(for: project.id)
+            let open = rfis.filter { $0.status != .closed }.count
+            return open > 0 ? open : rfis.count
+        }
+    }
+
+    // MARK: - Section Content
+
+    @ViewBuilder
+    private var sectionContent: some View {
+        switch selectedSection {
+        case .overview:
+            overviewTab
+        case .changeOrders:
+            changeOrdersTab
+        case .payments:
+            paymentsTab
+        case .payApps:
+            PayAppsTab(project: project)
+        case .costs:
+            costsTab
+        case .payroll:
+            payrollTab
+        case .equipment:
+            equipmentTab
+        case .rfis:
+            rfiTab
+        }
     }
 
     // MARK: - Header
@@ -146,7 +406,7 @@ struct ProjectDetailView: View {
                         }
                     }
                     if !project.location.isEmpty {
-                        Label(project.location, systemImage: "mappin.circle.fill")
+                        Label(project.location, systemImage: AppIcons.location)
                             .font(.callout)
                             .foregroundColor(.secondary)
                     }
@@ -283,6 +543,34 @@ struct ProjectDetailView: View {
     }
 
     // MARK: - Change Orders Tab
+    /// Computes the invoicing status for a change order by checking every pay
+    /// application's line items. Status is derived, not stored — so adding a CO
+    /// to a pay app and sending that pay app updates this automatically.
+    private func invoicingStatus(for co: ChangeOrder) -> (label: String, color: Color) {
+        let payApps = dataStore.payApps(for: project.id)
+        // Find the pay app(s) that include this CO as a line item
+        let containingPayApps = payApps.filter { payApp in
+            payApp.lineItems.contains { $0.isChangeOrder && $0.changeOrderID == co.id }
+        }
+        guard let payApp = containingPayApps.first else {
+            return ("Not Invoiced", .gray)
+        }
+        // Check the linked invoice status on the pay app
+        guard let invoiceID = payApp.linkedInvoiceID,
+              let invoice = dataStore.invoices(for: project.id).first(where: { $0.id == invoiceID }) else {
+            return ("Pending Invoice", .orange)
+        }
+        if invoice.isOverdue { return ("Overdue", .red) }
+        switch invoice.status {
+        case .draft: return ("Pending Invoice", .orange)
+        case .sent: return ("Invoiced", .blue)
+        case .pendingPayment: return ("Pending Payment", .orange)
+        case .partiallyPaid: return ("Partially Paid", .yellow)
+        case .paid: return ("Paid", .green)
+        case .overdue: return ("Overdue", .red)
+        }
+    }
+
     private var changeOrdersTab: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             SectionHeaderView(title: "Change Orders", action: { showAddChangeOrder = true })
@@ -319,6 +607,8 @@ struct ProjectDetailView: View {
                                 .foregroundColor(co.amount >= 0 ? .green : .red)
                             StatusBadge(text: co.isSigned ? "Signed" : "Pending",
                                         color: co.isSigned ? .green : .orange)
+                            let invStatus = invoicingStatus(for: co)
+                            StatusBadge(text: invStatus.label, color: invStatus.color)
                             Button {
                                 PDFExportService.exportWorkOrderInvoice(
                                     changeOrder: co, project: project,
@@ -332,8 +622,8 @@ struct ProjectDetailView: View {
                         .contextMenu {
                             Button("Edit") { editingChangeOrder = co }
                             Divider()
-                            Button("Delete", role: .destructive) {
-                                dataStore.deleteChangeOrder(co, from: project.id)
+                            Button("Delete…", role: .destructive) {
+                                changeOrderToDelete = co
                             }
                         }
                     }
@@ -465,6 +755,17 @@ struct ProjectDetailView: View {
                     TableColumn("Employees") { e in Text("\(e.employeeDetails.count)") }
                         .width(min: 60, max: 80)
                     TableColumn("Notes") { e in Text(e.notes).foregroundColor(.secondary) }
+                    TableColumn("") { e in
+                        Button {
+                            payrollEntryToDelete = e
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundColor(.red)
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Delete this payroll entry")
+                    }
+                    .width(40)
                 }
                 .frame(minHeight: 150)
 
@@ -553,7 +854,7 @@ struct ProjectDetailView: View {
                         .contextMenu {
                             Button("Edit") { editingRFI = rfi }
                             Divider()
-                            Button("Delete", role: .destructive) { dataStore.deleteRFI(rfi, from: project.id) }
+                            Button("Delete…", role: .destructive) { rfiToDelete = rfi }
                         }
                     }
                 }
@@ -588,6 +889,17 @@ struct ProjectDetailView: View {
                                     .width(min: 80, max: 120)
                                 TableColumn("Date") { c in Text(c.date.shortDate) }
                                     .width(min: 90, max: 120)
+                                TableColumn("") { c in
+                                    Button {
+                                        costToDelete = c
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .foregroundColor(.red)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .help("Delete this cost")
+                                }
+                                .width(40)
                             }
                             .frame(minHeight: 100)
                         }
@@ -600,6 +912,24 @@ struct ProjectDetailView: View {
                         .font(.headline)
                 }
             }
+        }
+        .confirmationDialog(
+            "Delete this cost?",
+            isPresented: Binding(
+                get: { costToDelete != nil },
+                set: { if !$0 { costToDelete = nil } }
+            ),
+            presenting: costToDelete
+        ) { cost in
+            Button("Delete", role: .destructive) {
+                dataStore.deleteCost(cost, from: project.id)
+                costToDelete = nil
+            }
+            Button("Cancel", role: .cancel) {
+                costToDelete = nil
+            }
+        } message: { cost in
+            Text("\"\(cost.description)\" — \(cost.amount.currencyFormatted)\nThis cannot be undone.")
         }
     }
 

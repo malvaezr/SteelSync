@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct GanttTaskEditSheet: View {
+    @EnvironmentObject var dataStore: DataStore
     let projects: [Project]
     var editingTask: GanttTask?
     var selectedProjectID: String?
@@ -19,6 +20,8 @@ struct GanttTaskEditSheet: View {
     @State private var notes = ""
     @State private var progress: Double = 0
     @State private var includesSaturdays = false
+    @State private var predecessorIDs: Set<UUID> = []
+    @State private var isPinned = false
 
     init(projects: [Project], selectedProjectID: String? = nil, editingTask: GanttTask? = nil,
          onSave: @escaping (GanttTask) -> Void, onDelete: (() -> Void)? = nil) {
@@ -27,6 +30,18 @@ struct GanttTaskEditSheet: View {
         self.selectedProjectID = selectedProjectID
         self.onSave = onSave
         self.onDelete = onDelete
+    }
+
+    /// Other tasks from the same project that could be predecessors (excluding self).
+    private var availablePredecessors: [GanttTask] {
+        dataStore.ganttTasks
+            .filter { $0.projectID == projectID && $0.id != editingTask?.id }
+            .sorted { $0.startDate < $1.startDate }
+    }
+
+    private var predecessorSummary: String {
+        if predecessorIDs.isEmpty { return "None" }
+        return "\(predecessorIDs.count) selected"
     }
 
     var isEditing: Bool { editingTask != nil }
@@ -108,6 +123,51 @@ struct GanttTaskEditSheet: View {
                     }
                 }
 
+                Section("Dependencies") {
+                    Menu {
+                        if availablePredecessors.isEmpty {
+                            Text("No other tasks in this project yet.")
+                        } else {
+                            ForEach(availablePredecessors, id: \.id) { other in
+                                Button {
+                                    if predecessorIDs.contains(other.id) {
+                                        predecessorIDs.remove(other.id)
+                                    } else {
+                                        predecessorIDs.insert(other.id)
+                                    }
+                                } label: {
+                                    if predecessorIDs.contains(other.id) {
+                                        Label("\(other.name) — \(other.startDate.shortDate)", systemImage: "checkmark")
+                                    } else {
+                                        Text("\(other.name) — \(other.startDate.shortDate)")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Label("Depends On", systemImage: "arrow.turn.down.right")
+                            Spacer()
+                            Text(predecessorSummary)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    if !predecessorIDs.isEmpty {
+                        Text("Finish-to-start: this task's earliest start is after its predecessors finish. Connector lines will be drawn in the chart.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Section("Protection") {
+                    Toggle(isOn: $isPinned) {
+                        Label("Pin Task", systemImage: "pin.fill")
+                    }
+                    Text("Pinned tasks cannot be dragged or resized in the chart. Use the context menu to unpin.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
                 Section("Additional") {
                     TextField("Assigned To", text: $assignedTo)
                     TextField("Notes", text: $notes, axis: .vertical)
@@ -126,6 +186,8 @@ struct GanttTaskEditSheet: View {
                 startDate = task.startDate; durationDays = task.durationDays
                 assignedTo = task.assignedTo; notes = task.notes
                 progress = task.progress; includesSaturdays = task.includesSaturdays
+                predecessorIDs = Set(task.predecessorIDs)
+                isPinned = task.isPinned
             } else if let pid = selectedProjectID {
                 projectID = pid
             } else if let first = projects.first {
@@ -141,13 +203,17 @@ struct GanttTaskEditSheet: View {
             task.startDate = startDate; task.durationDays = durationDays
             task.assignedTo = assignedTo; task.notes = notes
             task.progress = progress; task.includesSaturdays = includesSaturdays
+            task.predecessorIDs = Array(predecessorIDs)
+            task.isPinned = isPinned
             onSave(task)
         } else {
             let task = GanttTask(
                 projectID: projectID, name: name, category: category,
                 status: status, startDate: startDate, durationDays: durationDays,
                 assignedTo: assignedTo, notes: notes,
-                sortOrder: 999, progress: progress, includesSaturdays: includesSaturdays
+                sortOrder: 999, progress: progress, includesSaturdays: includesSaturdays,
+                predecessorIDs: Array(predecessorIDs),
+                isPinned: isPinned
             )
             onSave(task)
         }

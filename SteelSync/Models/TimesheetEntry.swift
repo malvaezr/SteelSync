@@ -69,8 +69,20 @@ struct TimesheetEntry: Identifiable, Codable, Hashable {
         mondayHours + tuesdayHours + wednesdayHours + thursdayHours + fridayHours + saturdayHours + sundayHours
     }
 
+    /// Number of days in the week that have any hours logged. Drives per-diem
+    /// calculation since `perDiem` is a per-day rate, not a weekly total.
+    var daysWorked: Int {
+        [mondayHours, tuesdayHours, wednesdayHours, thursdayHours, fridayHours, saturdayHours, sundayHours]
+            .reduce(0) { $0 + ($1 > 0 ? 1 : 0) }
+    }
+
+    /// Total per-diem for the week: `perDiem` (per-day rate) × `daysWorked`.
+    var totalPerDiem: Decimal {
+        perDiem * Decimal(daysWorked)
+    }
+
     var totalPay: Decimal {
-        (hourlyRate * totalHours) + perDiem
+        (hourlyRate * totalHours) + totalPerDiem
     }
 
     var displayName: String {

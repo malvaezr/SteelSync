@@ -1,5 +1,13 @@
 import SwiftUI
 
+private extension Notification.Name {
+    #if os(macOS)
+    static let willTerminate = NSApplication.willTerminateNotification
+    #else
+    static let willTerminate = UIApplication.willTerminateNotification
+    #endif
+}
+
 #if !STEELSYNC_IPHONE && !STEELSYNC_PHONE
 @main
 #endif
@@ -7,6 +15,7 @@ struct SteelSyncApp: App {
     @StateObject private var dataStore = DataStore()
     @StateObject private var navigationState = NavigationState()
     @ObservedObject private var themeManager = ThemeManager.shared
+    @ObservedObject private var notificationService = NotificationService.shared
 
     var body: some Scene {
         WindowGroup {
@@ -17,6 +26,13 @@ struct SteelSyncApp: App {
                 .tint(themeManager.current.accent)
                 .background(themeManager.current.background(dark: themeManager.isDarkMode))
                 .preferredColorScheme(themeManager.colorScheme)
+                .onReceive(NotificationCenter.default.publisher(for: .willTerminate)) { _ in
+                    dataStore.persistNow()
+                }
+                .task {
+                    notificationService.requestPermission()
+                    notificationService.scheduleMorningBatch(from: dataStore)
+                }
                 #if os(macOS)
                 .frame(minWidth: 900, minHeight: 600)
                 #endif
@@ -42,40 +58,49 @@ struct SteelSyncApp: App {
                     }
                     .keyboardShortcut("b", modifiers: [.command, .shift])
 
-                    Button("New Employee") {
-                        navigationState.selectedSection = .timekeeping
+                    Button("New RFI") {
+                        navigationState.selectedSection = .rfis
                     }
+                    .keyboardShortcut("r", modifiers: [.command, .shift])
 
-                    Button("New Todo") {
+                    Button("New Task") {
                         navigationState.selectedSection = .todo
                     }
                     .keyboardShortcut("t", modifiers: [.command, .shift])
 
-                    Button("New Task (Gantt)") {
+                    Button("New Schedule Item") {
                         navigationState.selectedSection = .schedule
+                    }
+
+                    Button("New Employee") {
+                        navigationState.selectedSection = .timekeeping
                     }
                 }
             }
 
+            // Jump-to-section shortcuts, ordered to match the new sidebar IA.
+            // (TODAY first, PROJECTS, OPERATIONS, PIPELINE.)
             CommandGroup(after: .sidebar) {
-                Button("Dashboard") { navigationState.selectedSection = .dashboard }
+                Button("Today") { navigationState.selectedSection = .today }
                     .keyboardShortcut("1", modifiers: .command)
-                Button("Clients") { navigationState.selectedSection = .clients }
-                    .keyboardShortcut("2", modifiers: .command)
-                Button("Bidding") { navigationState.selectedSection = .bidding }
-                    .keyboardShortcut("3", modifiers: .command)
-                Button("Timekeeping") { navigationState.selectedSection = .timekeeping }
-                    .keyboardShortcut("4", modifiers: .command)
                 Button("Schedule") { navigationState.selectedSection = .schedule }
+                    .keyboardShortcut("2", modifiers: .command)
+                Button("Tasks") { navigationState.selectedSection = .todo }
+                    .keyboardShortcut("3", modifiers: .command)
+                Button("Active Projects") { navigationState.selectedSection = .dashboard }
+                    .keyboardShortcut("4", modifiers: .command)
+                Button("RFIs") { navigationState.selectedSection = .rfis }
                     .keyboardShortcut("5", modifiers: .command)
-                Button("Equipment") { navigationState.selectedSection = .equipment }
-                    .keyboardShortcut("6", modifiers: .command)
-                Button("To-Do") { navigationState.selectedSection = .todo }
-                    .keyboardShortcut("7", modifiers: .command)
                 Button("Reports") { navigationState.selectedSection = .reports }
+                    .keyboardShortcut("6", modifiers: .command)
+                Button("Crew & Timesheets") { navigationState.selectedSection = .timekeeping }
+                    .keyboardShortcut("7", modifiers: .command)
+                Button("Equipment") { navigationState.selectedSection = .equipment }
                     .keyboardShortcut("8", modifiers: .command)
-                Button("Activity") { navigationState.selectedSection = .activity }
+                Button("Bidding") { navigationState.selectedSection = .bidding }
                     .keyboardShortcut("9", modifiers: .command)
+                Button("Clients") { navigationState.selectedSection = .clients }
+                    .keyboardShortcut("0", modifiers: .command)
             }
         }
     }

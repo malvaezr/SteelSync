@@ -232,6 +232,7 @@ class CloudKitService {
             store.ganttTasks = (byType[GanttTask.ckRecordType] ?? []).compactMap { GanttTask.from($0) }
             store.auditLog = (byType[AuditEntry.ckRecordType] ?? []).compactMap { AuditEntry.from($0) }
             store.timesheetEntries = (byType[TimesheetEntry.ckRecordType] ?? []).compactMap { TimesheetEntry.from($0) }
+            store.crewPresets = (byType[CrewPreset.ckRecordType] ?? []).compactMap { CrewPreset.from($0) }
 
             // Child records — extract projectRef and group by parent
             store.changeOrders = groupChildRecords(byType[ChangeOrder.ckRecordType] ?? [], as: ChangeOrder.self)
@@ -240,6 +241,8 @@ class CloudKitService {
             store.costs = groupChildRecords(byType[Cost.ckRecordType] ?? [], as: Cost.self)
             store.equipmentRentals = groupChildRecords(byType[EquipmentRental.ckRecordType] ?? [], as: EquipmentRental.self)
             store.rfis = groupChildRecords(byType[RFI.ckRecordType] ?? [], as: RFI.self)
+            store.payApplications = groupChildRecords(byType[PayApplication.ckRecordType] ?? [], as: PayApplication.self)
+            store.invoices = groupChildRecords(byType[Invoice.ckRecordType] ?? [], as: Invoice.self)
 
             // Persist locally as cache
             PersistenceService.saveAll(from: store)
@@ -313,9 +316,18 @@ class CloudKitService {
         // Audit entries (last 100)
         for a in store.auditLog.prefix(100) { allRecords.append(a.toCKRecord(in: zoneID)) }
         for ts in store.timesheetEntries { allRecords.append(ts.toCKRecord(in: zoneID)) }
+        for cp in store.crewPresets { allRecords.append(cp.toCKRecord(in: zoneID)) }
         for (projectID, items) in store.rfis {
             let ref = CKRecord.Reference(recordID: CKRecord.ID(recordName: projectID.recordName, zoneID: zoneID), action: .none)
             for rfi in items { let r = rfi.toCKRecord(in: zoneID); r["projectRef"] = ref; allRecords.append(r) }
+        }
+        for (projectID, items) in store.payApplications {
+            let ref = CKRecord.Reference(recordID: CKRecord.ID(recordName: projectID.recordName, zoneID: zoneID), action: .none)
+            for pa in items { let r = pa.toCKRecord(in: zoneID); r["projectRef"] = ref; allRecords.append(r) }
+        }
+        for (projectID, items) in store.invoices {
+            let ref = CKRecord.Reference(recordID: CKRecord.ID(recordName: projectID.recordName, zoneID: zoneID), action: .none)
+            for inv in items { let r = inv.toCKRecord(in: zoneID); r["projectRef"] = ref; allRecords.append(r) }
         }
 
         print("[CloudKit] Uploading \(allRecords.count) records in batches...")
@@ -448,7 +460,13 @@ class CloudKitService {
     // MARK: - Orphan Cleanup (delete cloud records not present locally)
 
     /// After uploading, delete any cloud records whose IDs are not in the local set.
-    func deleteOrphanedRecords(localIDs: Set<String>) async -> Int {
+    /// Deletes cloud records that don't appear in `localIDs`.
+    /// `protectedTypes` is a defensive whitelist: any record whose `recordType`
+    /// is in this set is spared from deletion regardless of whether its ID is
+    /// in `localIDs`. The push path uses this to protect record types where
+    /// the local store has zero entries — otherwise a fresh device that never
+    /// pulled would sweep cloud data of that type for every other device.
+    func deleteOrphanedRecords(localIDs: Set<String>, protectedTypes: Set<String> = []) async -> Int {
         guard let db = privateDB else { return 0 }
         do {
             let allRecords = try await fetchAllRecordsInZone()
@@ -456,6 +474,9 @@ class CloudKitService {
             for record in allRecords {
                 // Skip CKShare records and zone-level records
                 guard record.recordType != "cloudkit.share" else { continue }
+                if protectedTypes.contains(record.recordType) {
+                    continue
+                }
                 if !localIDs.contains(record.recordID.recordName) {
                     do {
                         try await db.deleteRecord(withID: record.recordID)

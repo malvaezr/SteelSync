@@ -3,6 +3,9 @@ import SwiftUI
 struct PhoneTasksView: View {
     @EnvironmentObject var dataStore: DataStore
 
+    /// Optional filter set at launch by a widget deep-link or Today attention card.
+    var initialFilter: String? = nil
+
     @State private var selectedFilter = "Active"
     @State private var showAddTodo = false
     @State private var editingTodo: TodoItem?
@@ -124,6 +127,12 @@ struct PhoneTasksView: View {
             .refreshable {
                 if dataStore.cloudKitAvailable {
                     await dataStore.pullFromCloud()
+                }
+            }
+            .onAppear {
+                // Apply a widget/deep-link-supplied filter once on first load.
+                if let initial = initialFilter, filters.contains(initial) {
+                    selectedFilter = initial
                 }
             }
         }

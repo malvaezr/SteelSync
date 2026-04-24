@@ -8,31 +8,38 @@ struct SidebarView: View {
     var body: some View {
         VStack(spacing: 0) {
             List(selection: $navigationState.selectedSection) {
-                Section("PROJECT MANAGEMENT") {
+                Section("TODAY") {
+                    sidebarRow(.today, badge: todayBadgeCount)
+                    sidebarRow(.schedule)
+                    sidebarRow(.todo, badge: dataStore.overdueTodos.count)
+                }
+
+                Section("PROJECTS") {
                     sidebarRow(.dashboard, badge: dataStore.activeProjects.count)
-                    sidebarRow(.clients, badge: dataStore.clients.count)
-                    sidebarRow(.bidding, badge: dataStore.pendingBids.count + dataStore.bids.filter { $0.status == .readyToSubmit }.count)
+                    sidebarRow(.rfis, badge: openRFICount)
+                    sidebarRow(.invoices, badge: outstandingInvoiceCount)
+                    sidebarRow(.reports)
                 }
 
                 Section("OPERATIONS") {
                     sidebarRow(.timekeeping, badge: dataStore.activeEmployees.count)
-                    sidebarRow(.schedule)
                     sidebarRow(.equipment, badge: dataStore.allActiveRentalCount)
-                }
-
-                Section("TRACKING") {
-                    sidebarRow(.todo, badge: dataStore.overdueTodos.count)
+                    sidebarRow(.calendar)
                     #if os(iOS)
                     if UIDevice.current.userInterfaceIdiom == .pad {
                         sidebarRow(.planningPad)
                     }
                     #endif
-                    sidebarRow(.reports)
-                    sidebarRow(.activity)
+                }
+
+                Section("PIPELINE") {
+                    sidebarRow(.bidding, badge: dataStore.pendingBids.count + dataStore.bids.filter { $0.status == .readyToSubmit }.count)
+                    sidebarRow(.clients, badge: dataStore.clients.count)
                 }
 
                 Section("TOOLS") {
                     sidebarRow(.assistant)
+                    sidebarRow(.activity)
                     sidebarRow(.settings)
                 }
             }
@@ -156,5 +163,35 @@ struct SidebarView: View {
         case .synced: return .green
         case .error: return .red
         }
+    }
+
+    /// Aggregate count of items needing attention today: overdue todos + overdue
+    /// gantt tasks + overdue RFIs across all projects. Drives the Today badge.
+    private var todayBadgeCount: Int {
+        let overdueTasks = dataStore.overdueTodos.count
+        let now = Date()
+        let overdueGantt = dataStore.ganttTasks.filter { $0.endDate < now && $0.status != .completed }.count
+        var overdueRFIs = 0
+        for project in dataStore.projects {
+            overdueRFIs += dataStore.rfis(for: project.id).filter { $0.isOverdue }.count
+        }
+        return overdueTasks + overdueGantt + overdueRFIs
+    }
+
+    /// Count of open (non-closed) RFIs across all projects for the RFI sidebar badge.
+    private var openRFICount: Int {
+        var count = 0
+        for project in dataStore.projects {
+            count += dataStore.rfis(for: project.id).filter { $0.status != .closed }.count
+        }
+        return count
+    }
+
+    /// Count of invoices currently outstanding (sent/pendingPayment/partiallyPaid/overdue).
+    /// Drives the Invoices sidebar badge.
+    private var outstandingInvoiceCount: Int {
+        dataStore.allInvoices
+            .filter { InvoiceStatus.outstandingCases.contains($0.invoice.status) || $0.invoice.isOverdue }
+            .count
     }
 }

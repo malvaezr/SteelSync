@@ -93,6 +93,7 @@ extension BidProject: CloudKitConvertible {
         if let s = awardedProjectID { r["awardedProjectID"] = s as CKRecordValue }
         CKField.setBool(r, "isReadyToSubmit", isReadyToSubmit)
         CKField.setBool(r, "isLost", isLost)
+        CKField.setBool(r, "isWorkingOn", isWorkingOn)
         r["squareFeet"] = squareFeet as CKRecordValue; r["numberOfBeams"] = numberOfBeams as CKRecordValue
         r["numberOfColumns"] = numberOfColumns as CKRecordValue; r["numberOfJoists"] = numberOfJoists as CKRecordValue
         r["numberOfWallPanels"] = numberOfWallPanels as CKRecordValue
@@ -158,6 +159,7 @@ extension BidProject: CloudKitConvertible {
             awardedProjectID: CKField.optString(record, "awardedProjectID"),
             isReadyToSubmit: CKField.bool(record, "isReadyToSubmit"),
             isLost: CKField.bool(record, "isLost"),
+            isWorkingOn: CKField.bool(record, "isWorkingOn"),
             squareFeet: CKField.int(record, "squareFeet"),
             numberOfBeams: CKField.int(record, "numberOfBeams"),
             numberOfColumns: CKField.int(record, "numberOfColumns"),
@@ -256,6 +258,14 @@ extension Payment: CloudKitConvertible {
         CKField.setDecimal(r, "amount", amount)
         r["date"] = date as CKRecordValue; r["notes"] = notes as CKRecordValue
         if let coID = appliedToChangeOrder { r["appliedToChangeOrder"] = coID.uuidString as CKRecordValue }
+        // Payment ↔ Invoice link plus the proof/method fields. Without these
+        // round-tripping, an iPad pulling from cloud would lose the invoice
+        // application and "Remaining" balances would compute incorrectly.
+        if let invID = appliedToInvoiceID { r["appliedToInvoiceID"] = invID.uuidString as CKRecordValue }
+        r["paymentMethod"] = paymentMethod.rawValue as CKRecordValue
+        r["referenceNumber"] = referenceNumber as CKRecordValue
+        r["proofReason"] = proofReason as CKRecordValue
+        r["attachmentsJSON"] = CKField.encodeJSON(attachments) as CKRecordValue
         return r
     }
 
@@ -264,7 +274,123 @@ extension Payment: CloudKitConvertible {
             id: CKField.uuid(record, "uuid"), amount: CKField.decimal(record, "amount"),
             date: CKField.date(record, "date"),
             appliedToChangeOrder: CKField.optUUID(record, "appliedToChangeOrder"),
-            notes: CKField.string(record, "notes")
+            appliedToInvoiceID: CKField.optUUID(record, "appliedToInvoiceID"),
+            paymentMethod: PaymentMethod(rawValue: CKField.string(record, "paymentMethod")) ?? .check,
+            referenceNumber: CKField.string(record, "referenceNumber"),
+            proofReason: CKField.string(record, "proofReason"),
+            notes: CKField.string(record, "notes"),
+            attachments: CKField.decodeJSON(record, "attachmentsJSON", as: [Attachment].self) ?? []
+        )
+    }
+}
+
+// MARK: - CrewPreset (standalone)
+
+extension CrewPreset: CloudKitConvertible {
+    static let ckRecordType = "SS_CrewPreset"
+    var ckRecordName: String { id.uuidString }
+
+    func toCKRecord(in zoneID: CKRecordZone.ID) -> CKRecord {
+        let r = CKRecord(recordType: Self.ckRecordType, recordID: CKRecord.ID(recordName: ckRecordName, zoneID: zoneID))
+        r["uuid"] = id.uuidString as CKRecordValue
+        r["name"] = name as CKRecordValue
+        r["createdDate"] = createdDate as CKRecordValue
+        r["membersJSON"] = CKField.encodeJSON(members) as CKRecordValue
+        return r
+    }
+
+    static func from(_ record: CKRecord) -> CrewPreset? {
+        CrewPreset(
+            id: CKField.uuid(record, "uuid"),
+            name: CKField.string(record, "name"),
+            members: CKField.decodeJSON(record, "membersJSON", as: [CrewPresetMember].self) ?? [],
+            createdDate: CKField.date(record, "createdDate")
+        )
+    }
+}
+
+// MARK: - PayApplication (child of Project)
+
+extension PayApplication: CloudKitConvertible {
+    static let ckRecordType = "SS_PayApplication"
+    var ckRecordName: String { id.uuidString }
+
+    func toCKRecord(in zoneID: CKRecordZone.ID) -> CKRecord {
+        let r = CKRecord(recordType: Self.ckRecordType, recordID: CKRecord.ID(recordName: ckRecordName, zoneID: zoneID))
+        r["uuid"] = id.uuidString as CKRecordValue
+        r["applicationNumber"] = applicationNumber as CKRecordValue
+        r["applicationDate"] = applicationDate as CKRecordValue
+        r["periodTo"] = periodTo as CKRecordValue
+        r["projectIDString"] = projectID as CKRecordValue
+        CKField.setDecimal(r, "retainageRate", retainageRate)
+        r["lineItemsJSON"] = CKField.encodeJSON(lineItems) as CKRecordValue
+        r["notes"] = notes as CKRecordValue
+        CKField.setBool(r, "isRetainageRelease", isRetainageRelease)
+        if let invID = linkedInvoiceID { r["linkedInvoiceID"] = invID.uuidString as CKRecordValue }
+        return r
+    }
+
+    static func from(_ record: CKRecord) -> PayApplication? {
+        PayApplication(
+            id: CKField.uuid(record, "uuid"),
+            applicationNumber: CKField.int(record, "applicationNumber"),
+            applicationDate: CKField.date(record, "applicationDate"),
+            periodTo: CKField.date(record, "periodTo"),
+            projectID: CKField.string(record, "projectIDString"),
+            retainageRate: CKField.decimal(record, "retainageRate"),
+            lineItems: CKField.decodeJSON(record, "lineItemsJSON", as: [SOVLineItem].self) ?? [],
+            notes: CKField.string(record, "notes"),
+            isRetainageRelease: CKField.bool(record, "isRetainageRelease"),
+            linkedInvoiceID: CKField.optUUID(record, "linkedInvoiceID")
+        )
+    }
+}
+
+// MARK: - Invoice (child of Project)
+
+extension Invoice: CloudKitConvertible {
+    static let ckRecordType = "SS_Invoice"
+    var ckRecordName: String { id.uuidString }
+
+    func toCKRecord(in zoneID: CKRecordZone.ID) -> CKRecord {
+        let r = CKRecord(recordType: Self.ckRecordType, recordID: CKRecord.ID(recordName: ckRecordName, zoneID: zoneID))
+        r["uuid"] = id.uuidString as CKRecordValue
+        r["invoiceNumber"] = invoiceNumber as CKRecordValue
+        r["invType"] = type.rawValue as CKRecordValue
+        r["status"] = status.rawValue as CKRecordValue
+        CKField.setDecimal(r, "amount", amount)
+        CKField.setDecimal(r, "retainageHeld", retainageHeld)
+        if let s = sentDate { r["sentDate"] = s as CKRecordValue }
+        if let d = dueDate { r["dueDate"] = d as CKRecordValue }
+        if let p = paidDate { r["paidDate"] = p as CKRecordValue }
+        r["paymentTermsDays"] = paymentTermsDays as CKRecordValue
+        if let pa = linkedPayAppID { r["linkedPayAppID"] = pa.uuidString as CKRecordValue }
+        r["projectIDString"] = projectID as CKRecordValue
+        r["clientName"] = clientName as CKRecordValue
+        if let bt = billToClientID { r["billToClientID"] = bt as CKRecordValue }
+        r["notes"] = notes as CKRecordValue
+        r["attachmentsJSON"] = CKField.encodeJSON(attachments) as CKRecordValue
+        return r
+    }
+
+    static func from(_ record: CKRecord) -> Invoice? {
+        Invoice(
+            id: CKField.uuid(record, "uuid"),
+            invoiceNumber: CKField.string(record, "invoiceNumber"),
+            type: InvoiceType(rawValue: CKField.string(record, "invType")) ?? .payApplication,
+            status: InvoiceStatus(rawValue: CKField.string(record, "status")) ?? .draft,
+            amount: CKField.decimal(record, "amount"),
+            retainageHeld: CKField.decimal(record, "retainageHeld"),
+            sentDate: CKField.optDate(record, "sentDate"),
+            dueDate: CKField.optDate(record, "dueDate"),
+            paidDate: CKField.optDate(record, "paidDate"),
+            paymentTermsDays: CKField.int(record, "paymentTermsDays"),
+            linkedPayAppID: CKField.optUUID(record, "linkedPayAppID"),
+            projectID: CKField.string(record, "projectIDString"),
+            clientName: CKField.string(record, "clientName"),
+            billToClientID: CKField.optString(record, "billToClientID"),
+            notes: CKField.string(record, "notes"),
+            attachments: CKField.decodeJSON(record, "attachmentsJSON", as: [Attachment].self) ?? []
         )
     }
 }

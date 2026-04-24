@@ -19,6 +19,19 @@ struct TodoView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            #if os(macOS)
+            ScreenHeader(
+                title: "Tasks",
+                subtitle: "\(dataStore.activeTodos.count) active · \(dataStore.overdueTodos.count) overdue",
+                icon: "checklist"
+            ) {
+                Button { showAddTodo = true } label: {
+                    Label("New Task", systemImage: AppIcons.add)
+                }
+                .buttonStyle(.appPrimary)
+            }
+            #endif
+
             // Stats & filters
             #if os(macOS)
             HStack(spacing: AppTheme.Spacing.sm) {

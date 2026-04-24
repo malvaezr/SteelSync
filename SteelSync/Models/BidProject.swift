@@ -17,6 +17,7 @@ struct BidProject: Identifiable, Hashable {
     var awardedProjectID: String?
     var isReadyToSubmit: Bool
     var isLost: Bool
+    var isWorkingOn: Bool
 
     var squareFeet: Int
     var numberOfBeams: Int
@@ -37,6 +38,7 @@ struct BidProject: Identifiable, Hashable {
         bidAmount: Decimal = 0, bidDueDate: Date = Date(), createdDate: Date = Date(),
         isSubmitted: Bool = false, submittedDate: Date? = nil,
         awardedProjectID: String? = nil, isReadyToSubmit: Bool = false, isLost: Bool = false,
+        isWorkingOn: Bool = false,
         squareFeet: Int = 0, numberOfBeams: Int = 0, numberOfColumns: Int = 0,
         numberOfJoists: Int = 0, numberOfWallPanels: Int = 0, estimatedTons: Double = 0,
         touchpoints: [Touchpoint] = [], nextFollowUp: Date? = nil, reminderDate: Date? = nil,
@@ -46,6 +48,7 @@ struct BidProject: Identifiable, Hashable {
         self.clientRef = clientRef; self.address = address; self.bidAmount = bidAmount; self.bidDueDate = bidDueDate
         self.createdDate = createdDate; self.isSubmitted = isSubmitted; self.submittedDate = submittedDate
         self.awardedProjectID = awardedProjectID; self.isReadyToSubmit = isReadyToSubmit; self.isLost = isLost
+        self.isWorkingOn = isWorkingOn
         self.squareFeet = squareFeet; self.numberOfBeams = numberOfBeams
         self.numberOfColumns = numberOfColumns; self.numberOfJoists = numberOfJoists
         self.numberOfWallPanels = numberOfWallPanels; self.estimatedTons = estimatedTons
@@ -60,11 +63,13 @@ struct BidProject: Identifiable, Hashable {
         else if isAwarded { return .awarded }
         else if isSubmitted { return .submitted }
         else if isReadyToSubmit { return .readyToSubmit }
+        else if isWorkingOn { return .workingOn }
         else { return .pending }
     }
 
     enum BidStatus: String {
         case pending = "Pending"
+        case workingOn = "Working On"
         case readyToSubmit = "Ready to Submit"
         case submitted = "Submitted"
         case awarded = "Awarded"

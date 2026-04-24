@@ -25,3 +25,8 @@ xcuserdata/
 # Environment
 .env
 .env.local
+
+# Large vendor binaries (llama.cpp XCFramework, on-device model files)
+Frameworks/
+*.xcframework/
+*.gguf

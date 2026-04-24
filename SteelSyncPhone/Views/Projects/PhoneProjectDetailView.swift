@@ -3,6 +3,7 @@ import SwiftUI
 struct PhoneProjectDetailView: View {
     @EnvironmentObject var dataStore: DataStore
     let project: Project
+    @State private var costToDelete: Cost?
 
     private var liveProject: Project {
         dataStore.projects.first(where: { $0.id == project.id }) ?? project
@@ -142,6 +143,37 @@ struct PhoneProjectDetailView: View {
                         .fontWeight(.medium)
                         .foregroundColor(.red)
                 }
+                // Per-cost rows with swipe-to-delete (confirmed via dialog).
+                // Lets a PM remove a mis-entered cost from the field.
+                ForEach(costList) { cost in
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text(cost.category.displayName)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(cost.amount.currencyFormatted)
+                                .font(.callout.monospacedDigit())
+                                .fontWeight(.semibold)
+                        }
+                        if !cost.description.isEmpty {
+                            Text(cost.description)
+                                .font(.callout)
+                                .lineLimit(2)
+                        }
+                        Text(cost.date.shortDate)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 3)
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            costToDelete = cost
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                }
             } header: {
                 Text("Costs")
             }
@@ -158,5 +190,21 @@ struct PhoneProjectDetailView: View {
         .listStyle(.insetGrouped)
         .navigationTitle(liveProject.title)
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog(
+            "Delete this cost?",
+            isPresented: Binding(
+                get: { costToDelete != nil },
+                set: { if !$0 { costToDelete = nil } }
+            ),
+            presenting: costToDelete
+        ) { cost in
+            Button("Delete", role: .destructive) {
+                dataStore.deleteCost(cost, from: liveProject.id)
+                costToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { costToDelete = nil }
+        } message: { cost in
+            Text("\"\(cost.description.isEmpty ? cost.category.displayName : cost.description)\" — \(cost.amount.currencyFormatted)\nThis cannot be undone.")
+        }
     }
 }

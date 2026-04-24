@@ -103,7 +103,7 @@ struct AddChangeOrderView: View {
                             Divider()
                             InfoRow(label: "Project", value: project.title, icon: "building.2")
                             if !project.location.isEmpty {
-                                InfoRow(label: "Location", value: project.location, icon: "mappin")
+                                InfoRow(label: "Location", value: project.location, icon: AppIcons.location)
                             }
                         }
                     } header: {
@@ -408,6 +408,12 @@ struct AddPaymentView: View {
     @State private var date = Date()
     @State private var notes = ""
     @State private var appliedToCO: UUID?
+    @State private var appliedToInvoiceID: UUID?
+    @State private var paymentMethod: PaymentMethod = .check
+    @State private var referenceNumber = ""
+    @State private var proofReason = ""
+    @State private var attachments: [Attachment] = []
+    @State private var showFilePicker = false
 
     private var project: Project? {
         dataStore.projects.first { $0.id == projectID }
@@ -417,8 +423,22 @@ struct AddPaymentView: View {
         dataStore.changeOrders(for: projectID)
     }
 
+    private var outstandingInvoices: [Invoice] {
+        dataStore.invoices(for: projectID)
+            .filter { $0.status != .paid && $0.status != .draft }
+            .sorted { ($0.sentDate ?? .distantPast) > ($1.sentDate ?? .distantPast) }
+    }
+
     private var parsedAmount: Decimal {
         Decimal(string: amount.replacingOccurrences(of: ",", with: "")) ?? 0
+    }
+
+    private var hasProofOrReason: Bool {
+        !attachments.isEmpty || !proofReason.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var canSave: Bool {
+        parsedAmount > 0 && hasProofOrReason
     }
 
     var body: some View {
@@ -430,7 +450,7 @@ struct AddPaymentView: View {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
-                    .disabled(parsedAmount == 0)
+                    .disabled(!canSave)
                     .buttonStyle(.borderedProminent)
                     .tint(AppTheme.primaryOrange)
             }
@@ -507,8 +527,28 @@ struct AddPaymentView: View {
 
                     DatePicker("Date Received", selection: $date, displayedComponents: .date)
 
-                    Picker("Applied To", selection: $appliedToCO) {
-                        Text("Contract").tag(nil as UUID?)
+                    Picker("Method", selection: $paymentMethod) {
+                        ForEach(PaymentMethod.allCases) { m in
+                            Label(m.rawValue, systemImage: m.icon).tag(m)
+                        }
+                    }
+
+                    TextField("Reference Number", text: $referenceNumber, prompt: Text("Check #, wire confirmation, ACH ref"))
+
+                    if !outstandingInvoices.isEmpty {
+                        Picker("Apply to Invoice", selection: $appliedToInvoiceID) {
+                            Text("None (contract payment)").tag(nil as UUID?)
+                            Divider()
+                            ForEach(outstandingInvoices) { invoice in
+                                let remaining = dataStore.balanceRemaining(for: invoice)
+                                Text("\(invoice.invoiceNumber) — \(remaining.currencyFormatted) due")
+                                    .tag(invoice.id as UUID?)
+                            }
+                        }
+                    }
+
+                    Picker("Apply to Change Order", selection: $appliedToCO) {
+                        Text("None").tag(nil as UUID?)
                         if !changeOrders.isEmpty {
                             Divider()
                             ForEach(changeOrders) { co in
@@ -521,6 +561,74 @@ struct AddPaymentView: View {
                     Label("Payment Details", systemImage: "banknote")
                 }
 
+                // Proof of Payment (required — image or reason)
+                Section {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                        if attachments.isEmpty {
+                            VStack(spacing: 8) {
+                                Image(systemName: "arrow.down.doc.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.secondary)
+                                Text("Drag a check image or PDF here")
+                                    .font(.callout)
+                                    .foregroundColor(.secondary)
+                                Button {
+                                    showFilePicker = true
+                                } label: {
+                                    Label("Or choose a file…", systemImage: "paperclip")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.gray.opacity(0.06))
+                            )
+                            .fileDrop(folderID: "payment-\(projectID.recordName)") { attachment in
+                                attachments.append(attachment)
+                            }
+
+                            TextField(
+                                "",
+                                text: $proofReason,
+                                prompt: Text("Or explain why no proof is attached (required if no file)"),
+                                axis: .vertical
+                            )
+                            .lineLimit(2...4)
+                        } else {
+                            ForEach(attachments, id: \.id) { att in
+                                HStack {
+                                    Image(systemName: "doc.fill")
+                                        .foregroundColor(.green)
+                                    Text(att.filename)
+                                        .font(.callout)
+                                    Spacer()
+                                    Button(role: .destructive) {
+                                        attachments.removeAll { $0.id == att.id }
+                                    } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            Button {
+                                showFilePicker = true
+                            } label: {
+                                Label("Add Another", systemImage: "plus")
+                            }
+                        }
+                    }
+                } header: {
+                    Label("Proof of Payment", systemImage: "checkmark.shield")
+                } footer: {
+                    if !hasProofOrReason {
+                        Text("⚠️ Attach a check image/receipt, OR type a reason to save without proof.")
+                            .foregroundColor(.orange)
+                    }
+                }
+
                 // Notes
                 Section {
                     TextEditor(text: $notes)
@@ -528,7 +636,7 @@ struct AddPaymentView: View {
                         .overlay(
                             Group {
                                 if notes.isEmpty {
-                                    Text("Check number, wire reference, notes...")
+                                    Text("Optional notes...")
                                         .foregroundColor(AppTheme.tertiaryText)
                                         .padding(.leading, 4)
                                         .padding(.top, 8)
@@ -541,10 +649,28 @@ struct AddPaymentView: View {
                 }
             }
             .formStyle(.grouped)
+            .fileImporter(
+                isPresented: $showFilePicker,
+                allowedContentTypes: [.image, .pdf],
+                allowsMultipleSelection: false
+            ) { result in
+                handleFilePick(result)
+            }
         }
         #if os(macOS)
-        .frame(width: 520, height: 560)
+        .frame(width: 560, height: 720)
         #endif
+    }
+
+    private func handleFilePick(_ result: Result<[URL], Error>) {
+        guard case .success(let urls) = result, let url = urls.first else { return }
+        let folderID = "payment-\(UUID().uuidString)"
+        switch FileStorageService.importFile(from: url, bidID: folderID) {
+        case .success(let attachment):
+            attachments.append(attachment)
+        case .failure:
+            break
+        }
     }
 
     private func save() {
@@ -552,9 +678,19 @@ struct AddPaymentView: View {
             amount: parsedAmount,
             date: date,
             appliedToChangeOrder: appliedToCO,
-            notes: notes
+            appliedToInvoiceID: appliedToInvoiceID,
+            paymentMethod: paymentMethod,
+            referenceNumber: referenceNumber,
+            proofReason: proofReason,
+            notes: notes,
+            attachments: attachments
         )
         dataStore.addPayment(payment, to: projectID)
+        // If this payment satisfies an invoice, refresh its status
+        if let invoiceID = appliedToInvoiceID,
+           let invoice = dataStore.invoices(for: projectID).first(where: { $0.id == invoiceID }) {
+            dataStore.refreshInvoiceStatus(invoice, in: projectID)
+        }
         dismiss()
     }
 }
@@ -565,14 +701,33 @@ private struct PayrollLine: Identifiable {
     var employeeUUID: UUID?
     var employeeName: String = ""
     var hourlyRate: Decimal = 0
+    /// Single-total hours entry (used when useDailyBreakdown == false)
     var hoursWorked: String = ""
+    /// Per-day hours (7 entries, week-start-first) used when useDailyBreakdown == true
+    var dailyHours: [String] = Array(repeating: "", count: 7)
+    /// Per diem paid for the week (flat dollar amount)
+    var perDiem: String = ""
+    /// UI toggle between total-hours entry and per-day grid
+    var useDailyBreakdown: Bool = false
 
     var parsedHours: Decimal {
-        Decimal(string: hoursWorked) ?? 0
+        if useDailyBreakdown {
+            return dailyHours.reduce(Decimal(0)) { $0 + (Decimal(string: $1) ?? 0) }
+        }
+        return Decimal(string: hoursWorked) ?? 0
+    }
+
+    var parsedPerDiem: Decimal {
+        Decimal(string: perDiem) ?? 0
+    }
+
+    var dailyHoursDecimal: [Decimal]? {
+        guard useDailyBreakdown else { return nil }
+        return dailyHours.map { Decimal(string: $0) ?? 0 }
     }
 
     var pay: Decimal {
-        hourlyRate * parsedHours
+        hourlyRate * parsedHours + parsedPerDiem
     }
 }
 
@@ -651,43 +806,8 @@ struct AddPayrollView: View {
                     }
 
                     ForEach(Array(crewLines.enumerated()), id: \.element.id) { index, line in
-                        VStack(spacing: AppTheme.Spacing.sm) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(line.employeeName)
-                                        .fontWeight(.medium)
-                                    Text("\(line.hourlyRate.currencyFormatted)/hr")
-                                        .font(.caption)
-                                        .foregroundColor(AppTheme.primaryOrange)
-                                }
-                                Spacer()
-                                Button { crewLines.remove(at: index) } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundColor(.red.opacity(0.6))
-                                }
-                                .buttonStyle(.plain)
-                            }
-
-                            HStack {
-                                Text("Hours:")
-                                    .font(.callout)
-                                    .foregroundColor(.secondary)
-                                TextField("0", text: $crewLines[index].hoursWorked)
-                                    #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 60)
-                                Spacer()
-                                Text("Pay:")
-                                    .font(.callout)
-                                    .foregroundColor(.secondary)
-                                Text(line.pay.currencyFormatted)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.green)
-                            }
-                        }
-                        .padding(.vertical, 4)
+                        crewLineRow(index: index, line: line)
+                            .padding(.vertical, 4)
                     }
 
                     if !availableEmployees.isEmpty {
@@ -767,6 +887,120 @@ struct AddPayrollView: View {
         ))
     }
 
+    /// Seven short day labels + numeric day-of-month based on the picked week
+    /// start. Updates when `weekStart` changes so the header always matches
+    /// the actual dates of the pay week.
+    private var dayHeaders: [(short: String, dayNumber: String)] {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEEE"  // single-letter day (M, T, W…)
+        let calendar = Calendar.current
+        return (0..<7).map { offset in
+            let date = calendar.date(byAdding: .day, value: offset, to: weekStart) ?? weekStart
+            let day = calendar.component(.day, from: date)
+            return (short: formatter.string(from: date), dayNumber: "\(day)")
+        }
+    }
+
+    // MARK: - Crew row UI
+
+    @ViewBuilder
+    private func crewLineRow(index: Int, line: PayrollLine) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            // Header row: name + rate + mode toggle + remove button
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(line.employeeName)
+                        .fontWeight(.medium)
+                    Text("\(line.hourlyRate.currencyFormatted)/hr")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.primaryOrange)
+                }
+                Spacer()
+                // Toggle between total-hours and per-day entry
+                Picker("", selection: $crewLines[index].useDailyBreakdown) {
+                    Text("Total").tag(false)
+                    Text("By Day").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 140)
+                Button { crewLines.remove(at: index) } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.red.opacity(0.6))
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Hours entry (switches based on mode)
+            if line.useDailyBreakdown {
+                // Per-day grid: 7 small textfields with short day labels
+                HStack(spacing: 4) {
+                    ForEach(Array(dayHeaders.enumerated()), id: \.offset) { dayIndex, header in
+                        VStack(spacing: 2) {
+                            Text(header.short)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text(header.dayNumber)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            TextField("0", text: $crewLines[index].dailyHours[dayIndex])
+                                #if !os(macOS)
+                                .keyboardType(.decimalPad)
+                                #endif
+                                .textFieldStyle(.roundedBorder)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                HStack {
+                    Text("Total:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(line.parsedHours.decimalFormatted)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                    Text("hrs")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+            } else {
+                HStack {
+                    Text("Hours:")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                    TextField("0", text: $crewLines[index].hoursWorked)
+                        #if !os(macOS)
+                        .keyboardType(.decimalPad)
+                        #endif
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 70)
+                    Spacer()
+                }
+            }
+
+            // Per diem + pay display
+            HStack {
+                Text("Per Diem:")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                TextField("0", text: $crewLines[index].perDiem)
+                    #if !os(macOS)
+                    .keyboardType(.decimalPad)
+                    #endif
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 80)
+                Spacer()
+                Text("Pay:")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                Text(line.pay.currencyFormatted)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.green)
+            }
+        }
+    }
+
     private func save() {
         let weekNum = Calendar.current.component(.weekOfYear, from: weekStart)
         let year = Calendar.current.component(.yearForWeekOfYear, from: weekStart)
@@ -777,7 +1011,9 @@ struct AddPayrollView: View {
                 employeeName: line.employeeName,
                 hourlyRate: line.hourlyRate,
                 hoursWorked: line.parsedHours,
-                projectName: projectName
+                projectName: projectName,
+                dailyHours: line.dailyHoursDecimal,
+                perDiem: line.parsedPerDiem
             )
         }
 

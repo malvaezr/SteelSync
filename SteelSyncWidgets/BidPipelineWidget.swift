@@ -283,12 +283,15 @@ struct BidPipelineWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
     let entry: BidPipelineEntry
     var body: some View {
-        switch family {
-        case .systemSmall: BidSmallView(entry: entry)
-        case .systemMedium: BidMediumView(entry: entry)
-        case .systemLarge: BidLargeView(entry: entry)
-        default: BidSmallView(entry: entry)
+        Group {
+            switch family {
+            case .systemSmall: BidSmallView(entry: entry)
+            case .systemMedium: BidMediumView(entry: entry)
+            case .systemLarge: BidLargeView(entry: entry)
+            default: BidSmallView(entry: entry)
+            }
         }
+        .widgetURL(URL(string: "steelsync://projects"))
     }
 }
 

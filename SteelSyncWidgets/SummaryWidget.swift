@@ -233,12 +233,15 @@ struct SummaryWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
     let entry: SummaryEntry
     var body: some View {
-        switch family {
-        case .systemSmall: SummarySmallView(entry: entry)
-        case .systemMedium: SummaryMediumView(entry: entry)
-        case .systemLarge: SummaryLargeView(entry: entry)
-        default: SummarySmallView(entry: entry)
+        Group {
+            switch family {
+            case .systemSmall: SummarySmallView(entry: entry)
+            case .systemMedium: SummaryMediumView(entry: entry)
+            case .systemLarge: SummaryLargeView(entry: entry)
+            default: SummarySmallView(entry: entry)
+            }
         }
+        .widgetURL(URL(string: "steelsync://today"))
     }
 }
 

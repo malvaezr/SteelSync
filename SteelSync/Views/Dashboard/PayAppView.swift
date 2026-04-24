@@ -1,21 +1,80 @@
 import SwiftUI
 import CloudKit
 
-// MARK: - Pay Apps Tab (AIA G703 Schedule of Values)
+// MARK: - Pay Apps Tab (AIA G703 Schedule of Values + Invoice Tracking)
 
 struct PayAppsTab: View {
     let project: Project
     @EnvironmentObject var dataStore: DataStore
     @State private var showCreatePayApp = false
     @State private var editingPayApp: PayApplication?
+    @State private var markingSentPayApp: PayApplication?
+    @State private var addingPaymentForInvoice: InvoiceContext?
+    @State private var exportingPayApp: PayApplication?
+    @State private var showRetainageRelease = false
+    @State private var payAppToDelete: PayApplication?
+
+    /// Wrapper so `sheet(item:)` can carry both an Invoice and the project ID
+    /// to the payment logging sheet.
+    struct InvoiceContext: Identifiable {
+        let invoice: Invoice
+        var id: UUID { invoice.id }
+    }
 
     private var payApps: [PayApplication] {
         dataStore.payApps(for: project.id)
     }
 
+    private var projectInvoices: [Invoice] {
+        dataStore.invoices(for: project.id)
+    }
+
+    private var totalInvoiced: Decimal {
+        projectInvoices.reduce(Decimal(0)) { $0 + $1.netAmountDue }
+    }
+
+    private var totalPaid: Decimal {
+        projectInvoices.reduce(Decimal(0)) { $0 + dataStore.totalPaid(for: $1.id) }
+    }
+
+    private var totalOutstanding: Decimal {
+        totalInvoiced - totalPaid
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionHeaderView(title: "Pay Applications (G703)", action: { showCreatePayApp = true })
+            // Header + actions
+            HStack {
+                Text("Pay Applications & Invoices")
+                    .font(AppTheme.Typography.headline)
+                Spacer()
+                if !payApps.isEmpty {
+                    Button {
+                        showRetainageRelease = true
+                    } label: {
+                        Label("Retainage Release", systemImage: "lock.open.fill")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                }
+                Button {
+                    showCreatePayApp = true
+                } label: {
+                    Label("New Pay App", systemImage: "plus")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.primaryOrange)
+            }
+
+            // Invoice summary strip
+            if !projectInvoices.isEmpty {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    payAppSummaryCard("Total Invoiced", value: totalInvoiced.currencyFormatted, color: .blue, icon: "doc.text.fill")
+                    payAppSummaryCard("Total Paid", value: totalPaid.currencyFormatted, color: .green, icon: "checkmark.circle.fill")
+                    payAppSummaryCard("Outstanding", value: totalOutstanding.currencyFormatted, color: totalOutstanding > 0 ? .orange : .green, icon: "clock.fill")
+                }
+            }
 
             if payApps.isEmpty {
                 EmptyStateView(
@@ -26,22 +85,26 @@ struct PayAppsTab: View {
                 ) { showCreatePayApp = true }
                 .frame(height: 200)
             } else {
-                List {
+                VStack(spacing: 4) {
                     ForEach(payApps) { payApp in
-                        PayAppRow(payApp: payApp)
-                            .contentShape(Rectangle())
-                            .onTapGesture { editingPayApp = payApp }
-                            .contextMenu {
-                                Button("Edit") { editingPayApp = payApp }
-                                Divider()
-                                Button("Delete", role: .destructive) {
-                                    dataStore.deletePayApplication(payApp, from: project.id)
-                                }
-                            }
+                        PayAppRow(
+                            payApp: payApp,
+                            invoice: dataStore.invoice(for: payApp.id, in: project.id),
+                            paid: payApp.linkedInvoiceID.map { dataStore.totalPaid(for: $0) } ?? 0
+                        )
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(AppTheme.secondaryBackground)
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture { editingPayApp = payApp }
+                        .contextMenu {
+                            payAppContextMenu(for: payApp)
+                        }
                     }
                 }
-                .listStyle(.inset)
-                .frame(minHeight: 200)
             }
         }
         .sheet(isPresented: $showCreatePayApp) {
@@ -50,59 +113,186 @@ struct PayAppsTab: View {
         .sheet(item: $editingPayApp) { payApp in
             EditPayAppSheet(payApp: payApp, project: project)
         }
+        .sheet(item: $markingSentPayApp) { payApp in
+            MarkAsSentSheet(payApp: payApp, project: project)
+        }
+        .sheet(item: $addingPaymentForInvoice) { ctx in
+            LogPaymentSheet(invoice: ctx.invoice, project: project)
+        }
+        .sheet(item: $exportingPayApp) { payApp in
+            ExportPayAppSheet(payApp: payApp, project: project)
+        }
+        .sheet(isPresented: $showRetainageRelease) {
+            RetainageReleaseSheet(project: project)
+        }
+        .confirmationDialog(
+            "Delete pay application?",
+            isPresented: Binding(
+                get: { payAppToDelete != nil },
+                set: { if !$0 { payAppToDelete = nil } }
+            ),
+            presenting: payAppToDelete
+        ) { payApp in
+            Button("Delete", role: .destructive) {
+                dataStore.deletePayApplication(payApp, from: project.id)
+                payAppToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { payAppToDelete = nil }
+        } message: { payApp in
+            Text("Application #\(payApp.applicationNumber) will be removed. If a linked invoice exists, it will be removed too. This cannot be undone.")
+        }
+    }
+
+    // MARK: - Helpers
+
+    @ViewBuilder
+    private func payAppContextMenu(for payApp: PayApplication) -> some View {
+        Button("Edit SOV") { editingPayApp = payApp }
+        Button("Export as PDF…") { exportingPayApp = payApp }
+        Divider()
+        if payApp.linkedInvoiceID == nil {
+            Button("Mark as Sent…") { markingSentPayApp = payApp }
+        }
+        if let invoice = dataStore.invoice(for: payApp.id, in: project.id),
+           invoice.status != .paid {
+            Button("Log Payment…") { addingPaymentForInvoice = InvoiceContext(invoice: invoice) }
+        }
+        Divider()
+        Button("Delete…", role: .destructive) { payAppToDelete = payApp }
+    }
+
+    private func payAppSummaryCard(_ title: String, value: String, color: Color, icon: String) -> some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(color)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(value)
+                    .font(.title3.monospacedDigit())
+                    .fontWeight(.bold)
+                    .foregroundColor(color)
+            }
+            Spacer()
+        }
+        .padding(AppTheme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(AppTheme.secondaryBackground)
+        )
     }
 }
 
-// MARK: - Pay App Row
+// MARK: - Pay App Row (now shows invoice status + balances)
 
 private struct PayAppRow: View {
     let payApp: PayApplication
+    let invoice: Invoice?
+    let paid: Decimal
+
+    private var balanceDue: Decimal {
+        guard let invoice = invoice else { return 0 }
+        return invoice.netAmountDue - paid
+    }
+
+    /// Net amount billed — gross work minus retainage withheld this period.
+    /// Matches what an Invoice's netAmountDue would be once sent.
+    private var displayInvoicedAmount: Decimal {
+        if let invoice = invoice {
+            return invoice.netAmountDue
+        }
+        return payApp.netAmountThisPeriod - payApp.totalRetainage
+    }
+
+    private var statusColor: Color {
+        if payApp.isRetainageRelease { return .purple }
+        guard let invoice = invoice else { return .gray }
+        if invoice.isOverdue { return .red }
+        switch invoice.status {
+        case .draft: return .gray
+        case .sent: return .blue
+        case .pendingPayment: return .orange
+        case .partiallyPaid: return .yellow
+        case .paid: return .green
+        case .overdue: return .red
+        }
+    }
+
+    private var statusText: String {
+        if payApp.isRetainageRelease { return "Retainage Release" }
+        guard let invoice = invoice else { return "Draft" }
+        if invoice.isOverdue { return "Overdue" }
+        return invoice.status.rawValue
+    }
 
     var body: some View {
-        HStack {
+        HStack(spacing: AppTheme.Spacing.md) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
-                    Text("Application #\(payApp.applicationNumber)")
+                    Text("App #\(payApp.applicationNumber)")
                         .font(.headline)
-                    StatusBadge(
-                        text: String(format: "%.0f%%", payApp.overallPercentComplete),
-                        color: payApp.overallPercentComplete >= 100 ? .green : AppTheme.primaryOrange
-                    )
+                    StatusBadge(text: statusText, color: statusColor)
+                    if let invoice = invoice, invoice.isOverdue {
+                        Text("\(invoice.daysOverdue)d late")
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.red.opacity(0.12)))
+                    }
                 }
-                Text("Period to: \(payApp.periodTo.shortDate)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                if let invoice = invoice {
+                    Text("\(invoice.invoiceNumber) · Period to \(payApp.periodTo.shortDate)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("No invoice yet · Period to \(payApp.periodTo.shortDate)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("This Period")
+            Spacer(minLength: AppTheme.Spacing.md)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("Invoiced")
                     .font(.caption2)
                     .foregroundColor(.secondary)
-                Text(payApp.totalThisPeriod.currencyFormatted)
-                    .font(.callout)
+                // Display NET of retainage. For a linked invoice we use its
+                // netAmountDue (which already subtracts retainage). For a draft
+                // pay app we compute netAmountThisPeriod - totalRetainage so
+                // the shown value matches what the GC will actually be billed.
+                // Without this, summing pay apps appears to exceed contract
+                // because retainage would be double-counted.
+                Text(displayInvoicedAmount.currencyFormatted)
+                    .font(.callout.monospacedDigit())
                     .fontWeight(.bold)
-                    .foregroundColor(AppTheme.primaryOrange)
+                    .foregroundColor(.blue)
             }
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("Total Completed")
+            .frame(width: 100, alignment: .trailing)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("Paid")
                     .font(.caption2)
                     .foregroundColor(.secondary)
-                Text(payApp.totalCompletedToDate.currencyFormatted)
-                    .font(.callout)
+                Text(paid.currencyFormatted)
+                    .font(.callout.monospacedDigit())
                     .fontWeight(.bold)
                     .foregroundColor(.green)
             }
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("Retainage")
+            .frame(width: 100, alignment: .trailing)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("Remaining")
                     .font(.caption2)
                     .foregroundColor(.secondary)
-                Text(payApp.totalRetainage.currencyFormatted)
-                    .font(.callout)
-                    .fontWeight(.medium)
-                    .foregroundColor(.orange)
+                Text(balanceDue.currencyFormatted)
+                    .font(.callout.monospacedDigit())
+                    .fontWeight(.bold)
+                    .foregroundColor(balanceDue > 0 ? .orange : .green)
             }
+            .frame(width: 100, alignment: .trailing)
         }
-        .padding(.vertical, 4)
     }
 }
 
@@ -364,5 +554,512 @@ extension Text {
         self.frame(width: width, alignment: alignment)
             .padding(.vertical, 8)
             .padding(.horizontal, 2)
+    }
+}
+
+// MARK: - Mark As Sent Sheet
+
+/// Small sheet that asks for the sent date + payment terms + invoice number,
+/// then creates a linked Invoice via DataStore.createInvoiceFromPayApp.
+struct MarkAsSentSheet: View {
+    let payApp: PayApplication
+    let project: Project
+    @EnvironmentObject var dataStore: DataStore
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var sentDate = Date()
+    @State private var termsDays = 30
+    @State private var invoiceNumber = ""
+    @State private var billToClientID: String?
+
+    private var billToCandidates: [Client] {
+        dataStore.billToCandidates(for: project)
+    }
+
+    private var selectedBillTo: Client? {
+        guard let id = billToClientID else { return nil }
+        return billToCandidates.first { $0.id.recordName == id }
+    }
+
+    private func roleLabel(for client: Client) -> String {
+        if client.id == project.subClientRef?.recordID { return "Sub" }
+        if client.id == project.gcClientRef?.recordID { return "GC" }
+        return client.preferredRateType.displayName
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Invoice Details") {
+                    HStack {
+                        Text("Invoice Number")
+                        Spacer()
+                        TextField("Auto-suggested", text: $invoiceNumber)
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 180)
+                    }
+                    DatePicker("Sent Date", selection: $sentDate, displayedComponents: .date)
+                    Stepper("Payment Terms: Net \(termsDays)", value: $termsDays, in: 7...120, step: 1)
+                    HStack {
+                        Text("Due Date")
+                        Spacer()
+                        Text((Calendar.current.date(byAdding: .day, value: termsDays, to: sentDate) ?? sentDate).shortDate)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Section {
+                    if billToCandidates.isEmpty {
+                        Text("No client linked to this project. Add a GC or Sub on the project to set a bill-to.")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    } else if billToCandidates.count == 1, let only = billToCandidates.first {
+                        InfoRow(label: only.name, value: roleLabel(for: only))
+                    } else {
+                        Picker("Bill To", selection: Binding(
+                            get: { billToClientID ?? billToCandidates.first?.id.recordName ?? "" },
+                            set: { billToClientID = $0 }
+                        )) {
+                            ForEach(billToCandidates, id: \.id.recordName) { c in
+                                Text("\(c.name) — \(roleLabel(for: c))").tag(c.id.recordName)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Bill To")
+                } footer: {
+                    if billToCandidates.count > 1 {
+                        Text("Defaults to the subcontractor when both a GC and a Sub are linked. Change if billing the GC directly.")
+                    }
+                }
+
+                Section("Summary") {
+                    InfoRow(label: "Application #", value: "\(payApp.applicationNumber)")
+                    InfoRow(label: "Amount This Period", value: payApp.netAmountThisPeriod.currencyFormatted)
+                    InfoRow(label: "Retainage Withheld", value: payApp.totalRetainage.currencyFormatted)
+                    InfoRow(label: "Net Invoice Amount", value: (payApp.netAmountThisPeriod - payApp.totalRetainage).currencyFormatted)
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("Mark as Sent")
+            #if !os(macOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create Invoice") { markSent() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(AppTheme.primaryOrange)
+                }
+            }
+            .onAppear {
+                if invoiceNumber.isEmpty {
+                    invoiceNumber = dataStore.suggestedInvoiceNumber(
+                        for: project.id,
+                        type: payApp.isRetainageRelease ? .retainageRelease : .payApplication
+                    )
+                }
+                if billToClientID == nil {
+                    billToClientID = dataStore.defaultBillToClient(for: project)?.id.recordName
+                }
+            }
+        }
+        #if os(macOS)
+        .frame(width: 500, height: 540)
+        #endif
+    }
+
+    private func markSent() {
+        var invoice = dataStore.createInvoiceFromPayApp(
+            payApp,
+            in: project.id,
+            sentDate: sentDate,
+            termsDays: termsDays,
+            billToClient: selectedBillTo ?? dataStore.defaultBillToClient(for: project)
+        )
+        if !invoiceNumber.isEmpty {
+            invoice.invoiceNumber = invoiceNumber
+            dataStore.updateInvoice(invoice, in: project.id)
+        }
+        dismiss()
+    }
+}
+
+// MARK: - Log Payment Sheet
+
+/// Dedicated sheet for logging a payment against a specific invoice.
+/// Gates save on `attachment OR proofReason` per user rule #5.
+struct LogPaymentSheet: View {
+    let invoice: Invoice
+    let project: Project
+    @EnvironmentObject var dataStore: DataStore
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var amount: Decimal = 0
+    @State private var date = Date()
+    @State private var method: PaymentMethod = .check
+    @State private var referenceNumber = ""
+    @State private var notes = ""
+    @State private var proofReason = ""
+    @State private var attachments: [Attachment] = []
+    @State private var showFilePicker = false
+    @State private var showMissingProofWarning = false
+
+    private var balanceDue: Decimal {
+        dataStore.balanceRemaining(for: invoice)
+    }
+
+    private var hasProofOrReason: Bool {
+        !attachments.isEmpty || !proofReason.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var canSave: Bool {
+        amount > 0 && hasProofOrReason
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Payment Details") {
+                    InfoRow(label: "Invoice", value: invoice.invoiceNumber)
+                    InfoRow(label: "Balance Due", value: balanceDue.currencyFormatted)
+                    HStack {
+                        Text("Amount")
+                        Spacer()
+                        TextField("0", value: $amount, format: .currency(code: "USD"))
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 140)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
+                    }
+                    DatePicker("Date Received", selection: $date, displayedComponents: .date)
+                    Picker("Method", selection: $method) {
+                        ForEach(PaymentMethod.allCases) { m in
+                            Label(m.rawValue, systemImage: m.icon).tag(m)
+                        }
+                    }
+                    TextField("Reference Number", text: $referenceNumber, prompt: Text("Check #, wire confirmation, ACH ref"))
+                }
+
+                Section {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                        if attachments.isEmpty {
+                            // Drop zone + click-to-attach
+                            VStack(spacing: 8) {
+                                Image(systemName: "arrow.down.doc.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.secondary)
+                                Text("Drag a check image or PDF here")
+                                    .font(.callout)
+                                    .foregroundColor(.secondary)
+                                Button {
+                                    showFilePicker = true
+                                } label: {
+                                    Label("Or choose a file…", systemImage: "paperclip")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.gray.opacity(0.06))
+                            )
+                            .fileDrop(folderID: "payment-\(invoice.id.uuidString)") { attachment in
+                                attachments.append(attachment)
+                            }
+
+                            TextField("", text: $proofReason, prompt: Text("Or explain why no proof is attached (required if no file)"), axis: .vertical)
+                                .lineLimit(2...4)
+                        } else {
+                            ForEach(attachments, id: \.id) { att in
+                                HStack {
+                                    Image(systemName: "doc.fill")
+                                        .foregroundColor(.green)
+                                    Text(att.filename)
+                                        .font(.callout)
+                                    Spacer()
+                                    Button(role: .destructive) {
+                                        attachments.removeAll { $0.id == att.id }
+                                    } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            Button {
+                                showFilePicker = true
+                            } label: {
+                                Label("Add Another", systemImage: "plus")
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Proof of Payment")
+                } footer: {
+                    if !hasProofOrReason {
+                        Text("⚠️ Attach a check image or payment receipt, OR type a reason to save without proof.")
+                            .foregroundColor(.orange)
+                    }
+                }
+
+                Section("Notes") {
+                    TextField("", text: $notes, prompt: Text("Optional notes"), axis: .vertical)
+                        .lineLimit(2...4)
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("Log Payment")
+            #if !os(macOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(AppTheme.primaryOrange)
+                        .disabled(!canSave)
+                }
+            }
+            .fileImporter(
+                isPresented: $showFilePicker,
+                allowedContentTypes: [.image, .pdf],
+                allowsMultipleSelection: false
+            ) { result in
+                handleFilePick(result)
+            }
+            .onAppear {
+                if amount == 0 { amount = balanceDue }
+            }
+        }
+        #if os(macOS)
+        .frame(width: 520, height: 620)
+        #endif
+    }
+
+    private func handleFilePick(_ result: Result<[URL], Error>) {
+        guard case .success(let urls) = result, let url = urls.first else { return }
+        // Route payment proofs through the same FileStorageService used for bid
+        // attachments. We use a `payment-{invoice.id}` folder identifier to keep
+        // them separate from bid docs.
+        let folderID = "payment-\(invoice.id.uuidString)"
+        switch FileStorageService.importFile(from: url, bidID: folderID) {
+        case .success(let attachment):
+            attachments.append(attachment)
+        case .failure:
+            break
+        }
+    }
+
+    private func save() {
+        var payment = Payment(
+            amount: amount,
+            date: date,
+            appliedToInvoiceID: invoice.id,
+            paymentMethod: method,
+            referenceNumber: referenceNumber,
+            proofReason: proofReason,
+            notes: notes,
+            attachments: attachments
+        )
+        payment.projectRef = CKRecord.Reference(recordID: project.id, action: .deleteSelf)
+        dataStore.addPayment(payment, to: project.id)
+        dataStore.refreshInvoiceStatus(invoice, in: project.id)
+        dismiss()
+    }
+}
+
+// MARK: - Export PDF Sheet (placeholder; full implementation in PDF export task)
+
+/// Format picker + export trigger. Falls back to a simple placeholder if the
+/// renderer isn't wired in yet.
+struct ExportPayAppSheet: View {
+    let payApp: PayApplication
+    let project: Project
+    @EnvironmentObject var dataStore: DataStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedFormat: PDFFormat = .steelSync
+    @State private var includeG702Cover: Bool = true
+    @State private var exportURL: URL?
+
+    private var billToClient: Client? {
+        // Honor the snapshot taken at invoice creation if a linked invoice
+        // exists — the user may have explicitly chosen GC vs Sub at that point.
+        if let invoice = dataStore.invoice(for: payApp.id, in: project.id),
+           let linked = dataStore.billToClient(for: invoice) {
+            return linked
+        }
+        return dataStore.defaultBillToClient(for: project)
+    }
+
+    enum PDFFormat: String, CaseIterable, Identifiable {
+        case g703 = "AIA G702 / G703"
+        case steelSync = "SteelSync Branded"
+        var id: String { rawValue }
+    }
+
+    private var formatBlurb: String {
+        switch selectedFormat {
+        case .g703:
+            return includeG702Cover
+                ? "Two-page PDF: G702 Application for Payment cover + G703 Schedule of Values continuation sheet. The form most GCs expect."
+                : "Single-page G703 Schedule of Values only. Useful for subcontractors that don't require the G702 cover."
+        case .steelSync:
+            return "Clean, modern invoice layout with SteelSync branding. Same data, more readable."
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Format") {
+                    Picker("PDF Format", selection: $selectedFormat) {
+                        ForEach(PDFFormat.allCases) { format in
+                            Text(format.rawValue).tag(format)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
+
+                    if selectedFormat == .g703 {
+                        Toggle("Include G702 cover sheet", isOn: $includeG702Cover)
+                    }
+
+                    Text(formatBlurb)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Section("Preview") {
+                    InfoRow(label: "Application #", value: "\(payApp.applicationNumber)")
+                    InfoRow(label: "Period", value: payApp.periodTo.shortDate)
+                    InfoRow(label: "Amount", value: payApp.netAmountThisPeriod.currencyFormatted)
+                    InfoRow(label: "Retainage", value: payApp.totalRetainage.currencyFormatted)
+                }
+
+                if let url = exportURL {
+                    Section("Exported") {
+                        Text(url.lastPathComponent)
+                            .font(.caption)
+                            .foregroundColor(.green)
+                        #if !os(macOS)
+                        ShareLink(item: url) {
+                            Label("Share PDF", systemImage: "square.and.arrow.up")
+                        }
+                        #endif
+                    }
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("Export PDF")
+            #if !os(macOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Export") { export() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(AppTheme.primaryOrange)
+                }
+            }
+        }
+        #if os(macOS)
+        .frame(width: 520, height: 480)
+        #endif
+    }
+
+    private func export() {
+        let renderer = PayAppPDFRenderer(
+            payApp: payApp,
+            project: project,
+            client: billToClient,
+            format: selectedFormat,
+            includeG702Cover: includeG702Cover
+        )
+        if let url = renderer.render() {
+            exportURL = url
+            #if os(macOS)
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+            dismiss()
+            #endif
+        }
+    }
+}
+
+// MARK: - Retainage Release Sheet
+
+struct RetainageReleaseSheet: View {
+    let project: Project
+    @EnvironmentObject var dataStore: DataStore
+    @Environment(\.dismiss) private var dismiss
+
+    private var totalRetainageHeld: Decimal {
+        dataStore.payApps(for: project.id)
+            .filter { !$0.isRetainageRelease }
+            .reduce(Decimal(0)) { $0 + $1.totalRetainage }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    InfoRow(label: "Project", value: project.title)
+                    InfoRow(label: "Total Retainage Held", value: totalRetainageHeld.currencyFormatted)
+                } header: {
+                    Text("Closeout Retainage Release")
+                } footer: {
+                    Text("This creates a new pay application marked as a retainage release. Use this only at project closeout when the GC is releasing withheld retainage.")
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("Retainage Release")
+            #if !os(macOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") { create() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(AppTheme.primaryOrange)
+                        .disabled(totalRetainageHeld <= 0)
+                }
+            }
+        }
+        #if os(macOS)
+        .frame(width: 500, height: 350)
+        #endif
+    }
+
+    private func create() {
+        let previousApps = dataStore.payApps(for: project.id)
+        let nextNumber = (previousApps.map(\.applicationNumber).max() ?? 0) + 1
+        let releaseItem = SOVLineItem(
+            itemNumber: 1,
+            description: "Retainage Release",
+            scheduledValue: totalRetainageHeld,
+            previousCompleted: 0,
+            thisPeriodCompleted: totalRetainageHeld,
+            materialsStored: 0,
+            isChangeOrder: false,
+            changeOrderID: nil
+        )
+        let payApp = PayApplication(
+            applicationNumber: nextNumber,
+            applicationDate: Date(),
+            periodTo: Date(),
+            projectID: project.id.recordName,
+            retainageRate: 0,
+            lineItems: [releaseItem],
+            notes: "Retainage release pay application",
+            isRetainageRelease: true
+        )
+        dataStore.addPayApplication(payApp, to: project.id)
+        dismiss()
     }
 }

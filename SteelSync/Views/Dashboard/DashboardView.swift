@@ -7,6 +7,7 @@ struct DashboardView: View {
     @State private var searchText = ""
     @State private var showAddProject = false
     @State private var selectedProject: Project?
+    @State private var projectToDelete: Project?
 
     private let filters = ["All", "Active", "Upcoming", "Completed"]
 
@@ -28,17 +29,30 @@ struct DashboardView: View {
         PlatformSplitView {
             // Left: Project list
             VStack(spacing: 0) {
+                ScreenHeader(
+                    title: "Active Projects",
+                    subtitle: "\(dataStore.activeProjects.count) active · \(dataStore.upcomingProjects.count) upcoming",
+                    icon: AppIcons.building
+                ) {
+                    Button {
+                        showAddProject = true
+                    } label: {
+                        Label("New Project", systemImage: AppIcons.add)
+                    }
+                    .buttonStyle(.appPrimary)
+                }
+
                 // Metrics row
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: AppTheme.Spacing.sm) {
                         MetricCard(title: "Active Projects", value: "\(dataStore.activeProjects.count)",
                                    icon: "hammer.fill", color: AppTheme.ProjectStatus.active)
                         MetricCard(title: "Total Revenue", value: dataStore.totalRevenue.currencyFormatted,
-                                   icon: "dollarsign.circle.fill", color: .green)
+                                   icon: AppIcons.money, color: .green)
                         MetricCard(title: "Total Profit", value: dataStore.totalProfit.currencyFormatted,
                                    icon: "chart.line.uptrend.xyaxis", color: AppTheme.primaryOrange)
                         MetricCard(title: "Remaining Balance", value: dataStore.totalRemainingBalance.currencyFormatted,
-                                   icon: "banknote.fill", color: .blue)
+                                   icon: AppIcons.money, color: .blue)
                     }
                     .padding(AppTheme.Spacing.md)
                 }
@@ -85,7 +99,7 @@ struct DashboardView: View {
                                     }
                                 }
                                 Divider()
-                                Button("Delete", role: .destructive) { dataStore.deleteProject(project) }
+                                Button("Delete…", role: .destructive) { projectToDelete = project }
                             }
                     }
                 }
@@ -120,6 +134,23 @@ struct DashboardView: View {
         }
         .sheet(isPresented: $showAddProject) {
             AddProjectView()
+        }
+        .confirmationDialog(
+            "Delete project?",
+            isPresented: Binding(
+                get: { projectToDelete != nil },
+                set: { if !$0 { projectToDelete = nil } }
+            ),
+            presenting: projectToDelete
+        ) { project in
+            Button("Delete", role: .destructive) {
+                dataStore.deleteProject(project)
+                if selectedProject?.id == project.id { selectedProject = nil }
+                projectToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { projectToDelete = nil }
+        } message: { project in
+            Text("\"\(project.title)\" and all its costs, payments, payroll, RFIs, change orders, and equipment rentals will be removed. This cannot be undone.")
         }
         .navigationTitle("Projects")
     }
@@ -176,7 +207,7 @@ struct ProjectRow: View {
 
             HStack {
                 if !project.location.isEmpty {
-                    Label(project.location, systemImage: "mappin")
+                    Label(project.location, systemImage: AppIcons.location)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)

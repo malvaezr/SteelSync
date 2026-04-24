@@ -16,10 +16,6 @@ schemes:
     build:
       targets:
         SteelSync-iPad: all
-  SteelSync-iPhone:
-    build:
-      targets:
-        SteelSync-iPhone: all
   SteelSync-Phone:
     build:
       targets:
@@ -44,6 +40,9 @@ targets:
     sources:
       - path: SteelSync
         type: group
+    dependencies:
+      - framework: Frameworks/llama.xcframework
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jrfv.SteelSync
@@ -88,6 +87,8 @@ targets:
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
+      - framework: Frameworks/llama.xcframework
+        embed: true
       - target: SteelSyncWidgets-iPad
         embed: true
 
@@ -116,38 +117,22 @@ targets:
         INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
     dependencies: []
 
-  SteelSync-iPhone:
-    type: application
-    platform: iOS
-    sources:
-      - path: SteelSync
-        type: group
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.jrfv.SteelSync.Go
-        PRODUCT_NAME: "SteelSync Go"
-        MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "1"
-        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
-        TARGETED_DEVICE_FAMILY: "1"
-        INFOPLIST_GENERATION_MODE: GeneratedFile
-        GENERATE_INFOPLIST_FILE: YES
-        SWIFT_EMIT_LOC_STRINGS: YES
-        CODE_SIGN_STYLE: Automatic
-        CODE_SIGN_IDENTITY: "Apple Development"
-        CODE_SIGNING_REQUIRED: "YES"
-        CODE_SIGNING_ALLOWED: "YES"
-        DEVELOPMENT_TEAM: "HN7D225STF"
-        CODE_SIGN_ENTITLEMENTS: SteelSync/SteelSync.entitlements
-        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "STEELSYNC_IPHONE"
-
   SteelSync-Phone:
     type: application
     platform: iOS
     sources:
       - path: SteelSync
         type: group
+        excludes:
+          # Phone target doesn't link llama.xcframework (too heavy for mobile).
+          # Exclude the LLM + Assistant chain and the Mac-specific root / settings
+          # (phone uses PhoneContentView + PhoneSyncStatusView instead).
+          - "Services/LLM/**"
+          - "Services/Assistant/**"
+          - "Views/Assistant/**"
+          - "Views/Settings/**"
+          - "Views/ContentView.swift"
+          - "SteelSyncApp.swift"
       - path: SteelSyncPhone
         type: group
     settings:
@@ -171,6 +156,13 @@ targets:
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "STEELSYNC_PHONE"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+    info:
+      path: SteelSyncPhone/Info.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLName: com.jrfv.SteelSync.Phone
+            CFBundleURLSchemes: [steelsync]
+        UILaunchScreen: {}
     dependencies:
       - target: SteelSyncWidgets
         embed: true

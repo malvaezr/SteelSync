@@ -7,6 +7,15 @@ class GanttViewModel: ObservableObject {
     @Published var showingAddTask = false
     @Published var showingEditTask = false
 
+    // MARK: - Filter / Search
+    @Published var searchText: String = ""
+    @Published var statusFilter: TaskStatus? = nil
+    @Published var showCriticalPathOnly: Bool = false
+
+    /// Latest observed width of the timeline pane — captured in GeometryReader so
+    /// the toolbar Fit button can call fitToWindow without needing a geometry handle.
+    @Published var availableWidth: CGFloat = 0
+
     // MARK: - Layout Constants
     let rowHeight: CGFloat = 36
     #if os(macOS)
@@ -132,5 +141,108 @@ class GanttViewModel: ObservableObject {
 
     func resizeTask(_ task: inout GanttTask, newDuration: Int) {
         task.durationDays = max(1, newDuration)
+    }
+
+    // MARK: - Critical Path (CPM)
+
+    /// Returns the set of task IDs that lie on the critical path. Only meaningful
+    /// when tasks have predecessor dependencies — if none do, returns an empty set.
+    /// Uses the classic forward/backward pass, with memoized recursion.
+    func criticalPathTaskIDs(tasks: [GanttTask]) -> Set<UUID> {
+        let hasAnyDependency = tasks.contains { !$0.predecessorIDs.isEmpty }
+        guard hasAnyDependency else { return [] }
+
+        let byID = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
+
+        // Earliest finish (EF) for each task.
+        var ef: [UUID: Date] = [:]
+        var visitingEF: Set<UUID> = []
+        func computeEF(_ id: UUID) -> Date {
+            if let cached = ef[id] { return cached }
+            if visitingEF.contains(id) { return .distantPast }  // cycle guard
+            visitingEF.insert(id)
+            defer { visitingEF.remove(id) }
+            guard let task = byID[id] else { return .distantPast }
+            let preds = task.predecessorIDs.compactMap { byID[$0] != nil ? computeEF($0) : nil }
+            let earliestStart = preds.max() ?? task.startDate
+            let duration = TimeInterval(task.durationDays) * 86_400
+            let finish = earliestStart.addingTimeInterval(duration)
+            ef[id] = finish
+            return finish
+        }
+        for t in tasks { _ = computeEF(t.id) }
+
+        guard let projectEnd = ef.values.max() else { return [] }
+
+        // Successor map (reverse adjacency).
+        var successors: [UUID: [UUID]] = [:]
+        for t in tasks {
+            for p in t.predecessorIDs {
+                successors[p, default: []].append(t.id)
+            }
+        }
+
+        // Latest finish (LF) for each task.
+        var lf: [UUID: Date] = [:]
+        var visitingLF: Set<UUID> = []
+        func computeLF(_ id: UUID) -> Date {
+            if let cached = lf[id] { return cached }
+            if visitingLF.contains(id) { return projectEnd }
+            visitingLF.insert(id)
+            defer { visitingLF.remove(id) }
+            guard let task = byID[id] else { return projectEnd }
+            let succIDs = successors[id] ?? []
+            if succIDs.isEmpty {
+                lf[id] = projectEnd
+                return projectEnd
+            }
+            let succLatestStarts: [Date] = succIDs.compactMap { sid in
+                guard let s = byID[sid] else { return nil }
+                let slf = computeLF(sid)
+                return slf.addingTimeInterval(-TimeInterval(s.durationDays) * 86_400)
+            }
+            let candidate = succLatestStarts.min() ?? projectEnd
+            let duration = TimeInterval(task.durationDays) * 86_400
+            let myLF = candidate.addingTimeInterval(duration)
+            lf[id] = myLF
+            return myLF
+        }
+        for t in tasks { _ = computeLF(t.id) }
+
+        // Zero-slack tasks are on the critical path.
+        var critical: Set<UUID> = []
+        for t in tasks {
+            guard let e = ef[t.id], let l = lf[t.id] else { continue }
+            if abs(e.timeIntervalSince(l)) < 60 {  // ±1 minute tolerance
+                critical.insert(t.id)
+            }
+        }
+        return critical
+    }
+
+    // MARK: - Crew Conflict Detection
+
+    /// Returns task IDs whose assignee (non-empty) is also assigned to another task
+    /// with overlapping dates. Compares across all projects so the user sees
+    /// double-bookings regardless of the project filter.
+    func crewConflictTaskIDs(tasks: [GanttTask]) -> Set<UUID> {
+        var conflicts: Set<UUID> = []
+        var byAssignee: [String: [GanttTask]] = [:]
+        for t in tasks where !t.assignedTo.trimmingCharacters(in: .whitespaces).isEmpty {
+            byAssignee[t.assignedTo.trimmingCharacters(in: .whitespaces), default: []].append(t)
+        }
+        for (_, group) in byAssignee where group.count > 1 {
+            let sorted = group.sorted { $0.startDate < $1.startDate }
+            for i in 0..<sorted.count {
+                for j in (i + 1)..<sorted.count {
+                    // Overlap if first ends after second starts.
+                    if sorted[i].endDate > sorted[j].startDate && sorted[i].startDate < sorted[j].endDate {
+                        conflicts.insert(sorted[i].id)
+                        conflicts.insert(sorted[j].id)
+                    }
+                }
+            }
+        }
+        return conflicts
     }
 }

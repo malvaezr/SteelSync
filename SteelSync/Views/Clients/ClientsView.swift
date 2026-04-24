@@ -7,6 +7,8 @@ struct ClientsView: View {
     @State private var searchText = ""
     @State private var showAddClient = false
     @State private var selectedClient: Client?
+    @State private var clientToDelete: Client?
+    @State private var showUnassigned: Bool = false
 
     private let filters = ["All", "GC", "Sub"]
 
@@ -30,6 +32,17 @@ struct ClientsView: View {
         PlatformSplitView {
             // Left: Client list
             VStack(spacing: 0) {
+                ScreenHeader(
+                    title: "Clients",
+                    subtitle: "\(dataStore.clients.count) total · \(dataStore.gcClients.count) GC · \(dataStore.subcontractorClients.count) Sub",
+                    icon: AppIcons.people
+                ) {
+                    Button { showAddClient = true } label: {
+                        Label("New Client", systemImage: AppIcons.add)
+                    }
+                    .buttonStyle(.appPrimary)
+                }
+
                 // Metrics
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: AppTheme.Spacing.sm) {
@@ -60,18 +73,39 @@ struct ClientsView: View {
 
                 // Client list
                 List(selection: $selectedClient) {
-                    ForEach(filteredClients) { client in
-                        ClientRow(client: client, projectCount: dataStore.projects(for: client).count)
-                            .tag(client)
-                            .contextMenu {
-                                Button("Edit") { selectedClient = client }
-                                Divider()
-                                Button("Delete", role: .destructive) { dataStore.deleteClient(client) }
+                    let unassignedCount = dataStore.unassignedInvoices().count
+                    if unassignedCount > 0 {
+                        Section {
+                            UnassignedInvoicesRow(
+                                count: unassignedCount,
+                                outstanding: dataStore.unassignedOutstandingBalance(),
+                                isSelected: showUnassigned
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                showUnassigned = true
+                                selectedClient = nil
                             }
+                        }
+                    }
+
+                    Section {
+                        ForEach(filteredClients) { client in
+                            ClientRow(client: client, projectCount: dataStore.projects(for: client).count)
+                                .tag(client)
+                                .contextMenu {
+                                    Button("Edit") { selectedClient = client }
+                                    Divider()
+                                    Button("Delete…", role: .destructive) { clientToDelete = client }
+                                }
+                        }
                     }
                 }
                 .listStyle(.inset)
                 .searchable(text: $searchText, prompt: "Search clients...")
+                .onChange(of: selectedClient) { _, newValue in
+                    if newValue != nil { showUnassigned = false }
+                }
             }
             #if os(macOS)
             .frame(minWidth: 220, idealWidth: 450)
@@ -84,8 +118,13 @@ struct ClientsView: View {
                 }
             }
 
-            // Right: Client detail
-            if let client = selectedClient {
+            // Right: Client detail (or unassigned invoices)
+            if showUnassigned {
+                UnassignedInvoicesDetailView()
+                    #if os(macOS)
+                    .frame(minWidth: 220, idealWidth: 450)
+                    #endif
+            } else if let client = selectedClient {
                 ClientDetailView(client: client)
                     #if os(macOS)
                     .frame(minWidth: 220, idealWidth: 450)
@@ -101,6 +140,23 @@ struct ClientsView: View {
         }
         .sheet(isPresented: $showAddClient) {
             AddClientView()
+        }
+        .confirmationDialog(
+            "Delete client?",
+            isPresented: Binding(
+                get: { clientToDelete != nil },
+                set: { if !$0 { clientToDelete = nil } }
+            ),
+            presenting: clientToDelete
+        ) { client in
+            Button("Delete", role: .destructive) {
+                dataStore.deleteClient(client)
+                if selectedClient?.id == client.id { selectedClient = nil }
+                clientToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { clientToDelete = nil }
+        } message: { client in
+            Text("\"\(client.name)\" will be removed. Linked projects will keep their references but may show as missing client. This cannot be undone.")
         }
         .navigationTitle("Clients")
     }
@@ -189,6 +245,22 @@ struct ClientDetailView: View {
         clientProjects.reduce(0) { $0 + $1.totalCosts }
     }
 
+    private var billedInvoices: [(invoice: Invoice, projectID: CKRecord.ID, projectTitle: String)] {
+        dataStore.invoices(billedTo: client)
+    }
+
+    private var totalInvoicedToClient: Decimal {
+        dataStore.totalInvoiced(billedTo: client)
+    }
+
+    private var totalPaidByClient: Decimal {
+        dataStore.totalPaid(billedTo: client)
+    }
+
+    private var outstandingFromClient: Decimal {
+        dataStore.outstandingBalance(billedTo: client)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
@@ -221,7 +293,7 @@ struct ClientDetailView: View {
                             Divider()
                         }
                         if !client.billingAddress.isEmpty {
-                            InfoRow(label: "Address", value: client.billingAddress, icon: "mappin")
+                            InfoRow(label: "Address", value: client.billingAddress, icon: AppIcons.location)
                             Divider()
                         }
                         InfoRow(label: "Type", value: client.preferredRateType.displayName, icon: "tag")
@@ -252,6 +324,32 @@ struct ClientDetailView: View {
                                 Divider()
                                 let margin = Double(truncating: (clientProfit / clientRevenue * 100) as NSDecimalNumber)
                                 InfoRow(label: "Margin", value: String(format: "%.1f%%", margin), icon: "percent")
+                            }
+                        }
+                        .padding(.vertical, AppTheme.Spacing.sm)
+                    }
+                }
+
+                // Invoicing (per-client AR)
+                if !billedInvoices.isEmpty {
+                    GroupBox("Invoicing") {
+                        VStack(spacing: AppTheme.Spacing.sm) {
+                            InfoRow(label: "Invoices Billed", value: "\(billedInvoices.count)", icon: "doc.text")
+                            Divider()
+                            InfoRow(label: "Total Invoiced", value: totalInvoicedToClient.currencyFormatted, icon: "dollarsign.circle")
+                            Divider()
+                            InfoRow(label: "Paid", value: totalPaidByClient.currencyFormatted, icon: "checkmark.circle")
+                            Divider()
+                            HStack {
+                                Image(systemName: "clock")
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 20)
+                                Text("Outstanding")
+                                    .foregroundColor(AppTheme.secondaryText)
+                                Spacer()
+                                Text(outstandingFromClient.currencyFormatted)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(outstandingFromClient > 0 ? .orange : .green)
                             }
                         }
                         .padding(.vertical, AppTheme.Spacing.sm)
@@ -320,7 +418,7 @@ struct ClientDetailView: View {
 
     private func bidStatusColor(_ bid: BidProject) -> Color {
         switch bid.status {
-        case .pending: return .blue; case .readyToSubmit: return .cyan
+        case .pending: return .blue; case .workingOn: return .yellow; case .readyToSubmit: return .cyan
         case .submitted: return .purple; case .awarded: return .green; case .lost: return .red
         }
     }
@@ -466,6 +564,232 @@ struct EditClientView: View {
         updated.billingAddress = billingAddress
         updated.preferredRateType = rateType
         dataStore.updateClient(updated)
+        dismiss()
+    }
+}
+
+// MARK: - Unassigned Invoices Row (pinned at top of client list)
+
+struct UnassignedInvoicesRow: View {
+    let count: Int
+    let outstanding: Decimal
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.md) {
+            Image(systemName: "questionmark.folder")
+                .font(.title3)
+                .foregroundColor(.orange)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Not Assigned")
+                    .font(.headline)
+                Text("\(count) invoice\(count == 1 ? "" : "s") with no client linked")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("Outstanding")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                Text(outstanding.currencyFormatted)
+                    .font(.callout.monospacedDigit())
+                    .fontWeight(.bold)
+                    .foregroundColor(outstanding > 0 ? .orange : .green)
+            }
+        }
+        .padding(.vertical, AppTheme.Spacing.xs)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isSelected ? Color.orange.opacity(0.12) : Color.clear)
+        )
+    }
+}
+
+// MARK: - Unassigned Invoices Detail
+
+struct UnassignedInvoicesDetailView: View {
+    @EnvironmentObject var dataStore: DataStore
+    @State private var assigningEntry: AssignmentContext?
+
+    struct AssignmentContext: Identifiable {
+        let invoice: Invoice
+        let projectID: CKRecord.ID
+        var id: UUID { invoice.id }
+    }
+
+    private var entries: [(invoice: Invoice, projectID: CKRecord.ID, projectTitle: String)] {
+        dataStore.unassignedInvoices()
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Not Assigned")
+                            .font(AppTheme.Typography.title2)
+                        StatusBadge(text: "Legacy / Unmapped", color: .orange)
+                    }
+                    Spacer()
+                }
+
+                Text("These invoices were created before per-client billing tracking was added, or had no client linked at the time. Assign each to a client to include it in that client's balance.")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+
+                GroupBox("Totals") {
+                    VStack(spacing: AppTheme.Spacing.sm) {
+                        InfoRow(label: "Invoices", value: "\(entries.count)", icon: "doc.text")
+                        Divider()
+                        InfoRow(label: "Total Invoiced", value: dataStore.totalUnassignedInvoiced().currencyFormatted, icon: "dollarsign.circle")
+                        Divider()
+                        InfoRow(label: "Paid", value: dataStore.totalUnassignedPaid().currencyFormatted, icon: "checkmark.circle")
+                        Divider()
+                        HStack {
+                            Image(systemName: "clock")
+                                .foregroundColor(.secondary)
+                                .frame(width: 20)
+                            Text("Outstanding")
+                                .foregroundColor(AppTheme.secondaryText)
+                            Spacer()
+                            Text(dataStore.unassignedOutstandingBalance().currencyFormatted)
+                                .fontWeight(.bold)
+                                .foregroundColor(dataStore.unassignedOutstandingBalance() > 0 ? .orange : .green)
+                        }
+                    }
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                }
+
+                GroupBox("Invoices (\(entries.count))") {
+                    if entries.isEmpty {
+                        Text("Nothing here — every invoice has a client.")
+                            .foregroundColor(.secondary)
+                            .padding(.vertical, AppTheme.Spacing.sm)
+                    } else {
+                        VStack(spacing: 0) {
+                            ForEach(Array(entries.enumerated()), id: \.element.invoice.id) { index, entry in
+                                HStack(spacing: AppTheme.Spacing.md) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(entry.invoice.invoiceNumber)
+                                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                            .foregroundColor(.secondary)
+                                        Text(entry.projectTitle)
+                                            .font(.callout)
+                                            .fontWeight(.semibold)
+                                            .lineLimit(1)
+                                        if let sent = entry.invoice.sentDate {
+                                            Text("Sent \(sent.shortDate)")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    Spacer()
+                                    VStack(alignment: .trailing, spacing: 2) {
+                                        Text("Net Due")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Text(entry.invoice.netAmountDue.currencyFormatted)
+                                            .font(.callout.monospacedDigit())
+                                            .fontWeight(.medium)
+                                    }
+                                    Button("Assign…") {
+                                        assigningEntry = AssignmentContext(invoice: entry.invoice, projectID: entry.projectID)
+                                    }
+                                    .buttonStyle(.bordered)
+                                }
+                                .padding(.vertical, AppTheme.Spacing.sm)
+                                if index < entries.count - 1 {
+                                    Divider()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(AppTheme.Spacing.lg)
+        }
+        .sheet(item: $assigningEntry) { ctx in
+            AssignBillToSheet(invoice: ctx.invoice, projectID: ctx.projectID)
+        }
+    }
+}
+
+// MARK: - Assign Bill-To Sheet
+
+struct AssignBillToSheet: View {
+    let invoice: Invoice
+    let projectID: CKRecord.ID
+    @EnvironmentObject var dataStore: DataStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedClientID: String = ""
+
+    private var project: Project? {
+        dataStore.projects.first { $0.id == projectID }
+    }
+
+    private var candidates: [Client] {
+        if let project = project {
+            let projectCandidates = dataStore.billToCandidates(for: project)
+            if !projectCandidates.isEmpty { return projectCandidates }
+        }
+        return dataStore.clients.sorted { $0.name < $1.name }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Invoice") {
+                    InfoRow(label: "Number", value: invoice.invoiceNumber)
+                    InfoRow(label: "Project", value: project?.title ?? "Unknown")
+                    InfoRow(label: "Net Due", value: invoice.netAmountDue.currencyFormatted)
+                }
+                Section {
+                    if candidates.isEmpty {
+                        Text("No clients exist yet. Add a client first.")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    } else {
+                        Picker("Bill To", selection: $selectedClientID) {
+                            Text("— Select —").tag("")
+                            ForEach(candidates, id: \.id.recordName) { c in
+                                Text(c.name).tag(c.id.recordName)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Assign To")
+                } footer: {
+                    Text("Linked clients on the invoice's project appear first. Pick any client to attribute this invoice to them in AR.")
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle("Assign Bill-To")
+            #if !os(macOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(AppTheme.primaryOrange)
+                        .disabled(selectedClientID.isEmpty)
+                }
+            }
+        }
+        #if os(macOS)
+        .frame(width: 480, height: 420)
+        #endif
+    }
+
+    private func save() {
+        guard let chosen = candidates.first(where: { $0.id.recordName == selectedClientID }) else { return }
+        var updated = invoice
+        updated.billToClientID = chosen.id.recordName
+        if updated.clientName.isEmpty { updated.clientName = chosen.name }
+        dataStore.updateInvoice(updated, in: projectID)
         dismiss()
     }
 }

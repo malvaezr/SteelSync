@@ -8,5 +8,6 @@ struct SteelSyncWidgetBundle: WidgetBundle {
         TodoOverviewWidget()
         BidPipelineWidget()
         GanttPreviewWidget()
+        InvoiceAgingWidget()
     }
 }

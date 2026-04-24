@@ -1,59 +1,82 @@
 import SwiftUI
 
 enum SidebarItem: String, CaseIterable, Identifiable {
-    case dashboard = "Dashboard"
-    case clients = "Clients"
-    case bidding = "Bidding"
-    case timekeeping = "Timekeeping"
+    // TODAY — what needs attention right now
+    case today = "Today"
     case schedule = "Schedule"
-    case equipment = "Equipment"
-    case todo = "To-Do"
-    case planningPad = "Planning Pad"
+    case todo = "Tasks"
+
+    // PROJECTS — the work itself
+    case dashboard = "Active Projects"
+    case rfis = "RFIs"
+    case invoices = "Invoices"
     case reports = "Reports"
-    case activity = "Activity"
+
+    // OPERATIONS — field execution
+    case timekeeping = "Crew & Timesheets"
+    case equipment = "Equipment"
+    case calendar = "Calendar"
+
+    // PIPELINE — money and relationships
+    case bidding = "Bidding"
+    case clients = "Clients"
+
+    // TOOLS — assistive
     case assistant = "Assistant"
+    case activity = "Activity"
     case settings = "Settings"
+
+    // iPad-only
+    case planningPad = "Planning Pad"
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
-        case .dashboard: return "building.2.fill"
-        case .clients: return "person.2.fill"
-        case .bidding: return "doc.text.fill"
-        case .timekeeping: return "clock.fill"
+        case .today: return "sun.max.fill"
         case .schedule: return "calendar.day.timeline.left"
-        case .equipment: return "shippingbox.fill"
         case .todo: return "checklist"
-        case .planningPad: return "pencil.and.outline"
+        case .dashboard: return "building.2.fill"
+        case .rfis: return "questionmark.bubble.fill"
+        case .invoices: return "doc.plaintext.fill"
         case .reports: return "chart.bar.fill"
-        case .activity: return "clock.arrow.circlepath"
+        case .timekeeping: return "person.3.fill"
+        case .equipment: return "shippingbox.fill"
+        case .calendar: return "calendar"
+        case .bidding: return "doc.text.fill"
+        case .clients: return "person.2.fill"
         case .assistant: return "bubble.left.and.text.bubble.right"
+        case .activity: return "clock.arrow.circlepath"
         case .settings: return "gearshape.fill"
+        case .planningPad: return "pencil.and.outline"
         }
     }
 
     var selectedIcon: String {
         switch self {
-        case .dashboard: return "building.2.fill"
-        case .clients: return "person.2.fill"
-        case .bidding: return "doc.text.fill"
-        case .timekeeping: return "clock.fill"
+        case .today: return "sun.max.fill"
         case .schedule: return "calendar.day.timeline.left"
-        case .equipment: return "shippingbox.fill"
         case .todo: return "checklist"
-        case .planningPad: return "pencil.and.outline"
+        case .dashboard: return "building.2.fill"
+        case .rfis: return "questionmark.bubble.fill"
+        case .invoices: return "doc.plaintext.fill"
         case .reports: return "chart.bar.fill"
-        case .activity: return "clock.arrow.circlepath"
+        case .timekeeping: return "person.3.fill"
+        case .equipment: return "shippingbox.fill"
+        case .calendar: return "calendar"
+        case .bidding: return "doc.text.fill"
+        case .clients: return "person.2.fill"
         case .assistant: return "bubble.left.and.text.bubble.right.fill"
+        case .activity: return "clock.arrow.circlepath"
         case .settings: return "gearshape.fill"
+        case .planningPad: return "pencil.and.outline"
         }
     }
 }
 
 @MainActor
 class NavigationState: ObservableObject {
-    @Published var selectedSection: SidebarItem? = .dashboard
+    @Published var selectedSection: SidebarItem? = .today
     @Published var selectedProjectID: CKRecordIDWrapper?
     @Published var selectedBidID: CKRecordIDWrapper?
     @Published var columnVisibility: NavigationSplitViewVisibility = .automatic

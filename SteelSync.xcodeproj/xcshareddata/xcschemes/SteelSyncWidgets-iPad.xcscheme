@@ -2,11 +2,10 @@
 <Scheme
    LastUpgradeVersion = "1500"
    wasCreatedForAppExtension = "YES"
-   version = "1.7">
+   version = "2.0">
    <BuildAction
       parallelizeBuildables = "YES"
-      buildImplicitDependencies = "YES"
-      runPostActionsOnFailure = "NO">
+      buildImplicitDependencies = "YES">
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -17,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "1953E2939BE5F2C9D82A992A"
-               BuildableName = "SteelSyncWidgets-iPad.appex"
+               BuildableName = "SteelSyncWidgets.appex"
                BlueprintName = "SteelSyncWidgets-iPad"
                ReferencedContainer = "container:SteelSync.xcodeproj">
             </BuildableReference>
@@ -28,13 +27,12 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "YES"
-      onlyGenerateCoverageForSpecifiedTargets = "NO">
+      shouldUseLaunchSchemeArgsEnv = "YES">
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "1953E2939BE5F2C9D82A992A"
-            BuildableName = "SteelSyncWidgets-iPad.appex"
+            BuildableName = "SteelSyncWidgets.appex"
             BlueprintName = "SteelSyncWidgets-iPad"
             ReferencedContainer = "container:SteelSync.xcodeproj">
          </BuildableReference>
@@ -47,6 +45,7 @@
       selectedDebuggerIdentifier = ""
       selectedLauncherIdentifier = "Xcode.IDEFoundation.Launcher.PosixSpawn"
       launchStyle = "0"
+      askForAppToLaunch = "Yes"
       useCustomWorkingDirectory = "NO"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
@@ -58,7 +57,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "1953E2939BE5F2C9D82A992A"
-            BuildableName = "SteelSyncWidgets-iPad.appex"
+            BuildableName = "SteelSyncWidgets.appex"
             BlueprintName = "SteelSyncWidgets-iPad"
             ReferencedContainer = "container:SteelSync.xcodeproj">
          </BuildableReference>
@@ -75,7 +74,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "1953E2939BE5F2C9D82A992A"
-            BuildableName = "SteelSyncWidgets-iPad.appex"
+            BuildableName = "SteelSyncWidgets.appex"
             BlueprintName = "SteelSyncWidgets-iPad"
             ReferencedContainer = "container:SteelSync.xcodeproj">
          </BuildableReference>

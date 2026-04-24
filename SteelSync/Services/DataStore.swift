@@ -18,7 +18,9 @@ class DataStore: ObservableObject {
     @Published var equipmentRentals: [CKRecord.ID: [EquipmentRental]] = [:]
     @Published var ganttTasks: [GanttTask] = []
     @Published var payApplications: [CKRecord.ID: [PayApplication]] = [:]
+    @Published var invoices: [CKRecord.ID: [Invoice]] = [:]
     @Published var timesheetEntries: [TimesheetEntry] = []
+    @Published var crewPresets: [CrewPreset] = []
     @Published var rfis: [CKRecord.ID: [RFI]] = [:]
     @Published var planningPads: [PlanningPad] = []
     @Published var assistantMessages: [AssistantMessage] = []
@@ -113,13 +115,44 @@ class DataStore: ObservableObject {
         for g in ganttTasks { localIDs.insert(g.ckRecordName) }
         for a in auditLog { localIDs.insert(a.ckRecordName) }
         for ts in timesheetEntries { localIDs.insert(ts.ckRecordName) }
+        for cp in crewPresets { localIDs.insert(cp.ckRecordName) }
         for (_, items) in changeOrders { for co in items { localIDs.insert(co.ckRecordName) } }
         for (_, items) in payments { for p in items { localIDs.insert(p.ckRecordName) } }
         for (_, items) in payrollEntries { for e in items { localIDs.insert(e.ckRecordName) } }
         for (_, items) in costs { for c in items { localIDs.insert(c.ckRecordName) } }
         for (_, items) in equipmentRentals { for r in items { localIDs.insert(r.ckRecordName) } }
+        // Pay apps + invoices: include so the orphan sweep doesn't delete the
+        // records we just uploaded for them. Missing these here was the cause
+        // of invoices never reaching the iPad.
+        for (_, items) in payApplications { for pa in items { localIDs.insert(pa.ckRecordName) } }
+        for (_, items) in invoices { for inv in items { localIDs.insert(inv.ckRecordName) } }
+        for (_, items) in rfis { for r in items { localIDs.insert(r.ckRecordName) } }
 
-        let orphansDeleted = await cloudKit.deleteOrphanedRecords(localIDs: localIDs)
+        // Defensive: if a collection is locally empty, protect that record
+        // type from the orphan sweep. This prevents a freshly installed device
+        // (e.g. iPad before its first successful pull) from wiping cloud data
+        // for that type. A genuine "delete the last one" still works because
+        // individual deletes go through `deleteFromCloud` directly.
+        var protectedTypes: Set<String> = []
+        if invoices.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(Invoice.ckRecordType) }
+        if payApplications.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(PayApplication.ckRecordType) }
+        if rfis.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(RFI.ckRecordType) }
+        if changeOrders.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(ChangeOrder.ckRecordType) }
+        if payments.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(Payment.ckRecordType) }
+        if payrollEntries.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(PayrollEntry.ckRecordType) }
+        if costs.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(Cost.ckRecordType) }
+        if equipmentRentals.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(EquipmentRental.ckRecordType) }
+        if projects.isEmpty { protectedTypes.insert(Project.ckRecordType) }
+        if clients.isEmpty { protectedTypes.insert(Client.ckRecordType) }
+        if bids.isEmpty { protectedTypes.insert(BidProject.ckRecordType) }
+        if employees.isEmpty { protectedTypes.insert(Employee.ckRecordType) }
+        if todos.isEmpty { protectedTypes.insert(TodoItem.ckRecordType) }
+        if calendarEvents.isEmpty { protectedTypes.insert(CalendarEvent.ckRecordType) }
+        if ganttTasks.isEmpty { protectedTypes.insert(GanttTask.ckRecordType) }
+        if timesheetEntries.isEmpty { protectedTypes.insert(TimesheetEntry.ckRecordType) }
+        if crewPresets.isEmpty { protectedTypes.insert(CrewPreset.ckRecordType) }
+
+        let orphansDeleted = await cloudKit.deleteOrphanedRecords(localIDs: localIDs, protectedTypes: protectedTypes)
         if orphansDeleted > 0 {
             print("[Sync] Deleted \(orphansDeleted) orphaned cloud records")
         }
@@ -181,6 +214,13 @@ class DataStore: ObservableObject {
         persistWorkItem?.cancel()
         PersistenceService.saveAll(from: self)
         WidgetBridge.updateWidgets(from: self)
+    }
+
+    /// Hot-reload all collections from the on-disk JSON files. Used by
+    /// SnapshotService after a restore to make the UI reflect the new state
+    /// without requiring an app restart.
+    func reloadFromDisk() {
+        _ = PersistenceService.loadAll(into: self)
     }
 
     // MARK: - CloudKit Sync Helpers
@@ -287,9 +327,78 @@ class DataStore: ObservableObject {
 
     func updateBid(_ bid: BidProject) {
         if let index = bids.firstIndex(where: { $0.id == bid.id }) {
+            let previous = bids[index]
             bids[index] = bid
             logAudit(.updated, type: "Bid", name: bid.projectName)
             syncRecord(bid)
+            // Auto-generate a follow-up task when the bid is submitted or a
+            // new touchpoint is logged. Runs on every update so we only need
+            // to wire it in one place.
+            autoCreateBidFollowUp(previous: previous, current: bid)
+        }
+    }
+
+    // MARK: - Bid Follow-up Automation
+
+    /// Creates (or updates) a To-Do item for following up on a bid.
+    /// Triggered when:
+    ///   - A bid transitions from unsubmitted to submitted
+    ///   - A new touchpoint is added
+    /// Uses `nextFollowUp` as the due date if set, otherwise defaults to 7 days
+    /// after the relevant action (submission or last touchpoint).
+    ///
+    /// Only one open follow-up task exists per bid at a time — if an existing
+    /// uncompleted task with category .bidFollowUp matches this bid, we update
+    /// its due date and notes in place instead of creating a duplicate.
+    private func autoCreateBidFollowUp(previous: BidProject, current: BidProject) {
+        // Case 1: bid just submitted
+        let wasJustSubmitted = !previous.isSubmitted && current.isSubmitted
+        if wasJustSubmitted {
+            let baseDate = current.submittedDate ?? Date()
+            let defaultFollowUp = Calendar.current.date(byAdding: .day, value: 7, to: baseDate) ?? baseDate
+            let dueDate = current.nextFollowUp ?? defaultFollowUp
+            let notes = "Bid submitted \(baseDate.shortDate) to \(current.clientName). Follow up on status."
+            upsertBidFollowUpTask(bid: current, dueDate: dueDate, notes: notes)
+            return
+        }
+
+        // Case 2: a new touchpoint was added (compare counts)
+        if current.touchpoints.count > previous.touchpoints.count {
+            // Use the newest touchpoint as the anchor
+            guard let latest = current.touchpoints.sorted(by: { $0.date > $1.date }).first else { return }
+            let defaultFollowUp = Calendar.current.date(byAdding: .day, value: 7, to: latest.date) ?? latest.date
+            let dueDate = current.nextFollowUp ?? defaultFollowUp
+            let summary = latest.notes.isEmpty
+                ? "After \(latest.type.rawValue) on \(latest.date.shortDate)."
+                : "After \(latest.type.rawValue) on \(latest.date.shortDate): \(latest.notes)"
+            let notes = "\(summary) Follow up on \(current.clientName)."
+            upsertBidFollowUpTask(bid: current, dueDate: dueDate, notes: notes)
+        }
+    }
+
+    /// Looks up an existing open follow-up task for this bid. If found, updates
+    /// its due date + notes. Otherwise creates a new one.
+    private func upsertBidFollowUpTask(bid: BidProject, dueDate: Date, notes: String) {
+        let bidIDString = bid.id.recordName
+        if let idx = todos.firstIndex(where: {
+            $0.relatedBidID == bidIDString
+                && $0.category == .bidFollowUp
+                && !$0.isCompleted
+        }) {
+            var updated = todos[idx]
+            updated.dueDate = dueDate
+            updated.notes = notes
+            updateTodo(updated)
+        } else {
+            let todo = TodoItem(
+                title: "Follow up on bid: \(bid.projectName)",
+                notes: notes,
+                dueDate: dueDate,
+                priority: .medium,
+                category: .bidFollowUp,
+                relatedBidID: bidIDString
+            )
+            addTodo(todo)
         }
     }
 
@@ -622,6 +731,92 @@ class DataStore: ObservableObject {
         (client(for: project.clientRef).flatMap { $0.preferredRateType == .subcontractor ? $0 : nil })
     }
 
+    /// Default bill-to for a project. When a project has both a GC and a Sub
+    /// (i.e. J&R is working under another sub on the GC's job), invoices go to
+    /// the sub by default — they're who's writing J&R the check. If only one
+    /// client is set, that one wins. Falls back to the legacy primary client.
+    func defaultBillToClient(for project: Project) -> Client? {
+        let sub = subClient(for: project)
+        let gc = gcClient(for: project)
+        if sub != nil && gc != nil { return sub }
+        return sub ?? gc ?? client(for: project.clientRef)
+    }
+
+    /// All clients eligible to be selected as the bill-to on a project's
+    /// invoice. De-duplicated; preserves Sub-then-GC order so the sub appears
+    /// first in pickers (matches the default).
+    func billToCandidates(for project: Project) -> [Client] {
+        let candidates: [Client?] = [
+            subClient(for: project),
+            gcClient(for: project),
+            client(for: project.clientRef)
+        ]
+        var seen = Set<CKRecord.ID>()
+        var result: [Client] = []
+        for candidate in candidates.compactMap({ $0 }) where seen.insert(candidate.id).inserted {
+            result.append(candidate)
+        }
+        return result
+    }
+
+    /// The client an invoice was billed to, looked up by its persisted ID.
+    /// Returns nil for legacy invoices that pre-date `billToClientID`.
+    func billToClient(for invoice: Invoice) -> Client? {
+        guard let recordName = invoice.billToClientID else { return nil }
+        return clients.first { $0.id.recordName == recordName }
+    }
+
+    // MARK: - Per-Client Billing Aggregates
+
+    /// All invoices billed to this client across every project, paired with the
+    /// project they belong to. Sorted newest-first by sent date.
+    func invoices(billedTo client: Client) -> [(invoice: Invoice, projectID: CKRecord.ID, projectTitle: String)] {
+        let recordName = client.id.recordName
+        return allInvoices
+            .filter { $0.invoice.billToClientID == recordName }
+            .sorted { ($0.invoice.sentDate ?? .distantFuture) > ($1.invoice.sentDate ?? .distantFuture) }
+    }
+
+    /// Total invoiced (net of retainage withheld) to this client.
+    func totalInvoiced(billedTo client: Client) -> Decimal {
+        invoices(billedTo: client).reduce(Decimal(0)) { $0 + $1.invoice.netAmountDue }
+    }
+
+    /// Total payments received against invoices billed to this client.
+    func totalPaid(billedTo client: Client) -> Decimal {
+        invoices(billedTo: client).reduce(Decimal(0)) { acc, entry in
+            acc + totalPaid(for: entry.invoice.id)
+        }
+    }
+
+    /// Outstanding balance owed by this client across all of their invoices.
+    func outstandingBalance(billedTo client: Client) -> Decimal {
+        totalInvoiced(billedTo: client) - totalPaid(billedTo: client)
+    }
+
+    /// Invoices with no persisted bill-to client. These are typically legacy
+    /// invoices created before per-client tracking landed; they're surfaced in
+    /// a dedicated "Not Assigned" bucket so AR doesn't lose them.
+    func unassignedInvoices() -> [(invoice: Invoice, projectID: CKRecord.ID, projectTitle: String)] {
+        allInvoices
+            .filter { $0.invoice.billToClientID == nil }
+            .sorted { ($0.invoice.sentDate ?? .distantFuture) > ($1.invoice.sentDate ?? .distantFuture) }
+    }
+
+    func totalUnassignedInvoiced() -> Decimal {
+        unassignedInvoices().reduce(Decimal(0)) { $0 + $1.invoice.netAmountDue }
+    }
+
+    func totalUnassignedPaid() -> Decimal {
+        unassignedInvoices().reduce(Decimal(0)) { acc, entry in
+            acc + totalPaid(for: entry.invoice.id)
+        }
+    }
+
+    func unassignedOutstandingBalance() -> Decimal {
+        totalUnassignedInvoiced() - totalUnassignedPaid()
+    }
+
     // MARK: - Equipment Rental Operations
 
     func rentals(for projectID: CKRecord.ID) -> [EquipmentRental] {
@@ -737,6 +932,7 @@ class DataStore: ObservableObject {
         list.append(payApp)
         payApplications[projectID] = list
         logAudit(.created, type: "Pay App", name: "Application #\(payApp.applicationNumber)", details: "Period to \(payApp.periodTo.shortDate)")
+        syncChild(payApp, projectID: projectID)
     }
 
     func updatePayApplication(_ payApp: PayApplication, in projectID: CKRecord.ID) {
@@ -745,11 +941,195 @@ class DataStore: ObservableObject {
         list[idx] = payApp
         payApplications[projectID] = list
         logAudit(.updated, type: "Pay App", name: "Application #\(payApp.applicationNumber)")
+        syncChild(payApp, projectID: projectID)
     }
 
     func deletePayApplication(_ payApp: PayApplication, from projectID: CKRecord.ID) {
         payApplications[projectID]?.removeAll { $0.id == payApp.id }
+        // Cascade: remove the linked invoice too if one exists
+        var linkedInvoice: Invoice?
+        if let invoiceID = payApp.linkedInvoiceID {
+            linkedInvoice = invoices[projectID]?.first { $0.id == invoiceID }
+            invoices[projectID]?.removeAll { $0.id == invoiceID }
+        }
         logAudit(.deleted, type: "Pay App", name: "Application #\(payApp.applicationNumber)")
+        deleteFromCloud(payApp)
+        if let inv = linkedInvoice { deleteFromCloud(inv) }
+    }
+
+    // MARK: - Invoice Operations
+
+    func invoices(for projectID: CKRecord.ID) -> [Invoice] {
+        (invoices[projectID] ?? []).sorted { $0.sentDate ?? .distantFuture > $1.sentDate ?? .distantFuture }
+    }
+
+    /// All invoices across every project. Drives the top-level InvoicesView.
+    var allInvoices: [(invoice: Invoice, projectID: CKRecord.ID, projectTitle: String)] {
+        var result: [(Invoice, CKRecord.ID, String)] = []
+        for project in projects {
+            for invoice in invoices[project.id] ?? [] {
+                result.append((invoice, project.id, project.title))
+            }
+        }
+        return result
+    }
+
+    func addInvoice(_ invoice: Invoice, to projectID: CKRecord.ID) {
+        var list = invoices[projectID] ?? []
+        list.append(invoice)
+        invoices[projectID] = list
+        logAudit(.created, type: "Invoice", name: invoice.invoiceNumber, details: "Amount: \(invoice.amount)")
+        syncChild(invoice, projectID: projectID)
+    }
+
+    func updateInvoice(_ invoice: Invoice, in projectID: CKRecord.ID) {
+        guard var list = invoices[projectID],
+              let idx = list.firstIndex(where: { $0.id == invoice.id }) else { return }
+        list[idx] = invoice
+        invoices[projectID] = list
+        logAudit(.updated, type: "Invoice", name: invoice.invoiceNumber)
+        syncChild(invoice, projectID: projectID)
+    }
+
+    func deleteInvoice(_ invoice: Invoice, from projectID: CKRecord.ID) {
+        invoices[projectID]?.removeAll { $0.id == invoice.id }
+        // Unlink from pay app if this was a pay-app-generated invoice
+        var updatedPayApp: PayApplication?
+        if let payAppID = invoice.linkedPayAppID {
+            if var payApps = payApplications[projectID],
+               let idx = payApps.firstIndex(where: { $0.id == payAppID }) {
+                payApps[idx].linkedInvoiceID = nil
+                updatedPayApp = payApps[idx]
+                payApplications[projectID] = payApps
+            }
+        }
+        // Cascade: remove Payment records linked to this invoice across every
+        // project so they don't orphan. We also remove the files-on-disk because
+        // FileStorageService stores them in a folder keyed by invoice ID.
+        var removedPaymentCount = 0
+        var removedPayments: [Payment] = []
+        for (pid, list) in payments {
+            let kept = list.filter { payment in
+                if payment.appliedToInvoiceID == invoice.id {
+                    // Clean up attached files too
+                    for att in payment.attachments {
+                        FileStorageService.deleteFile(att)
+                    }
+                    removedPaymentCount += 1
+                    removedPayments.append(payment)
+                    return false
+                }
+                return true
+            }
+            payments[pid] = kept
+        }
+        logAudit(
+            .deleted,
+            type: "Invoice",
+            name: invoice.invoiceNumber,
+            details: removedPaymentCount > 0 ? "Cascaded \(removedPaymentCount) linked payment(s)" : ""
+        )
+        deleteFromCloud(invoice)
+        if let pa = updatedPayApp { syncChild(pa, projectID: projectID) }
+        for p in removedPayments { deleteFromCloud(p) }
+    }
+
+    func invoice(for payAppID: UUID, in projectID: CKRecord.ID) -> Invoice? {
+        (invoices[projectID] ?? []).first { $0.linkedPayAppID == payAppID }
+    }
+
+    /// All payments that were applied to the given invoice across any project.
+    func payments(for invoiceID: UUID) -> [Payment] {
+        var result: [Payment] = []
+        for (_, list) in payments {
+            result.append(contentsOf: list.filter { $0.appliedToInvoiceID == invoiceID })
+        }
+        return result.sorted { $0.date < $1.date }
+    }
+
+    func totalPaid(for invoiceID: UUID) -> Decimal {
+        payments(for: invoiceID).reduce(Decimal(0)) { $0 + $1.amount }
+    }
+
+    func balanceRemaining(for invoice: Invoice) -> Decimal {
+        invoice.netAmountDue - totalPaid(for: invoice.id)
+    }
+
+    /// Auto-generates an invoice number in the format "{PROJECT-PREFIX}-PA-{###}"
+    /// where project prefix = uppercased first word of the project title.
+    func suggestedInvoiceNumber(for projectID: CKRecord.ID, type: InvoiceType = .payApplication) -> String {
+        let project = projects.first { $0.id == projectID }
+        let title = project?.title ?? "INV"
+        let prefix = title.components(separatedBy: .whitespaces).first?.uppercased() ?? "INV"
+        let typeCode: String
+        switch type {
+        case .payApplication: typeCode = "PA"
+        case .standalone: typeCode = "INV"
+        case .retainageRelease: typeCode = "RET"
+        }
+        let existing = invoices[projectID] ?? []
+        let sequence = existing.count + 1
+        return String(format: "%@-%@-%03d", prefix, typeCode, sequence)
+    }
+
+    /// Creates an Invoice from a PayApplication and links them.
+    /// Called from "Mark as Sent" on the pay app row.
+    @discardableResult
+    func createInvoiceFromPayApp(
+        _ payApp: PayApplication,
+        in projectID: CKRecord.ID,
+        sentDate: Date = Date(),
+        termsDays: Int = 30,
+        billToClient: Client? = nil
+    ) -> Invoice {
+        let project = projects.first { $0.id == projectID }
+        let resolvedBillTo = billToClient ?? project.flatMap { defaultBillToClient(for: $0) }
+        let clientName = resolvedBillTo?.name ?? ""
+        let dueDate = Calendar.current.date(byAdding: .day, value: termsDays, to: sentDate)
+        let number = suggestedInvoiceNumber(for: projectID, type: payApp.isRetainageRelease ? .retainageRelease : .payApplication)
+
+        let invoice = Invoice(
+            invoiceNumber: number,
+            type: payApp.isRetainageRelease ? .retainageRelease : .payApplication,
+            status: .sent,
+            amount: payApp.netAmountThisPeriod,
+            retainageHeld: payApp.totalRetainage,
+            sentDate: sentDate,
+            dueDate: dueDate,
+            paymentTermsDays: termsDays,
+            linkedPayAppID: payApp.id,
+            projectID: projectID.recordName,
+            clientName: clientName,
+            billToClientID: resolvedBillTo?.id.recordName
+        )
+        addInvoice(invoice, to: projectID)
+
+        // Back-link the invoice on the pay app, and push the updated pay app
+        // to cloud so the iPad sees the linkage too.
+        if var list = payApplications[projectID],
+           let idx = list.firstIndex(where: { $0.id == payApp.id }) {
+            list[idx].linkedInvoiceID = invoice.id
+            payApplications[projectID] = list
+            syncChild(list[idx], projectID: projectID)
+        }
+        return invoice
+    }
+
+    /// Re-evaluates an invoice's status based on its payment history. Called
+    /// after a payment is added/removed. Transitions draft → sent → pendingPayment
+    /// → partiallyPaid → paid automatically.
+    func refreshInvoiceStatus(_ invoice: Invoice, in projectID: CKRecord.ID) {
+        let paid = totalPaid(for: invoice.id)
+        var updated = invoice
+        if paid >= invoice.netAmountDue && invoice.netAmountDue > 0 {
+            updated.status = .paid
+            if updated.paidDate == nil { updated.paidDate = Date() }
+        } else if paid > 0 {
+            updated.status = .partiallyPaid
+        } else if invoice.sentDate != nil {
+            updated.status = .pendingPayment
+        }
+        updateInvoice(updated, in: projectID)
     }
 
     /// Build a new pay application, auto-populating from previous pay apps and change orders
@@ -926,10 +1306,84 @@ class DataStore: ObservableObject {
         }
     }
 
+    // MARK: - Crew Preset Operations
+
+    func addCrewPreset(_ preset: CrewPreset) {
+        crewPresets.append(preset)
+        logAudit(.created, type: "Crew Preset", name: preset.name, details: "\(preset.members.count) member(s)")
+        syncRecord(preset)
+        persistData()
+    }
+
+    func updateCrewPreset(_ preset: CrewPreset) {
+        guard let idx = crewPresets.firstIndex(where: { $0.id == preset.id }) else { return }
+        crewPresets[idx] = preset
+        logAudit(.updated, type: "Crew Preset", name: preset.name)
+        syncRecord(preset)
+        persistData()
+    }
+
+    func deleteCrewPreset(_ preset: CrewPreset) {
+        crewPresets.removeAll { $0.id == preset.id }
+        logAudit(.deleted, type: "Crew Preset", name: preset.name)
+        deleteFromCloud(preset)
+        persistData()
+    }
+
+    /// Drops one TimesheetEntry per preset member into the given week. Members
+    /// whose linked employee already has a row that week are skipped (no
+    /// duplicate rows). Returns the number of rows actually added so the UI
+    /// can confirm. If `defaultProject` is nil the rows go in with a blank
+    /// project — the user fills it in per row.
+    @discardableResult
+    func applyCrewPreset(
+        _ preset: CrewPreset,
+        to weekStart: Date,
+        defaultProject: Project? = nil
+    ) -> Int {
+        let existing = timesheetEntries(for: weekStart)
+        var added = 0
+        for member in preset.members {
+            // Skip if this employee is already on the week's roster.
+            if let ref = member.employeeRef,
+               existing.contains(where: { $0.employeeRef == ref }) {
+                continue
+            }
+            let employee = member.employeeRef.flatMap { ref in
+                employees.first { $0.id.uuidString == ref }
+            }
+            let resolvedName = employee?.fullName ?? member.employeeName
+            let resolvedType = employee?.employeeType.rawValue ?? member.employeeType
+            let resolvedRate = member.hourlyRateOverride ?? employee?.defaultHourlyRate ?? 0
+
+            let entry = TimesheetEntry(
+                employeeName: resolvedName,
+                employeeType: resolvedType,
+                employeeRef: employee?.id.uuidString ?? "",
+                projectName: defaultProject?.title ?? "",
+                projectRef: defaultProject?.id.recordName ?? "",
+                hourlyRate: resolvedRate,
+                mondayHours: member.dailyHours[0],
+                tuesdayHours: member.dailyHours[1],
+                wednesdayHours: member.dailyHours[2],
+                thursdayHours: member.dailyHours[3],
+                fridayHours: member.dailyHours[4],
+                saturdayHours: member.dailyHours[5],
+                sundayHours: member.dailyHours[6],
+                perDiem: member.perDiem,
+                weekStartDate: weekStart
+            )
+            addTimesheetEntry(entry)
+            added += 1
+        }
+        logAudit(.created, type: "Crew Preset Apply", name: preset.name, details: "Added \(added) row(s) to week of \(weekStart.shortDate)")
+        return added
+    }
+
     func timesheetWeekTotals(for weekStart: Date) -> (hours: Decimal, perDiem: Decimal, pay: Decimal) {
         let entries = timesheetEntries(for: weekStart)
         let hours = entries.reduce(Decimal.zero) { $0 + $1.totalHours }
-        let perDiem = entries.reduce(Decimal.zero) { $0 + $1.perDiem }
+        let perDiem = entries.reduce(Decimal.zero) { $0 + $1.totalPerDiem }
         let pay = entries.reduce(Decimal.zero) { $0 + $1.totalPay }
         return (hours, perDiem, pay)
     }

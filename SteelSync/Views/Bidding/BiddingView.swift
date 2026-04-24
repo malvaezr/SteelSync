@@ -3,17 +3,19 @@ import CloudKit
 
 struct BiddingView: View {
     @EnvironmentObject var dataStore: DataStore
-    @State private var selectedFilter = "All"
+    @State private var selectedFilter = "Pending"
     @State private var searchText = ""
     @State private var showAddBid = false
     @State private var selectedBid: BidProject?
+    @State private var bidToDelete: BidProject?
 
-    private let filters = ["All", "Pending", "Ready", "Submitted", "Awarded", "Lost"]
+    private let filters = ["All", "Pending", "Working On", "Ready", "Submitted", "Awarded", "Lost"]
 
     var filteredBids: [BidProject] {
         var result = dataStore.bids
         switch selectedFilter {
         case "Pending": result = result.filter { $0.status == .pending }
+        case "Working On": result = result.filter { $0.status == .workingOn }
         case "Ready": result = result.filter { $0.status == .readyToSubmit }
         case "Submitted": result = result.filter { $0.status == .submitted }
         case "Awarded": result = result.filter { $0.status == .awarded }
@@ -32,6 +34,17 @@ struct BiddingView: View {
     var body: some View {
         PlatformSplitView {
             VStack(spacing: 0) {
+                ScreenHeader(
+                    title: "Bidding Pipeline",
+                    subtitle: "\(dataStore.pendingBids.count) pending · \(dataStore.submittedBids.count) submitted",
+                    icon: AppIcons.document
+                ) {
+                    Button { showAddBid = true } label: {
+                        Label("New Bid", systemImage: AppIcons.add)
+                    }
+                    .buttonStyle(.appPrimary)
+                }
+
                 // Pipeline metrics
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: AppTheme.Spacing.sm) {
@@ -40,7 +53,7 @@ struct BiddingView: View {
                         MetricCard(title: "Win Rate", value: String(format: "%.0f%%", dataStore.bidWinRate),
                                    icon: "trophy.fill", color: .green)
                         MetricCard(title: "Open Bids", value: "\(dataStore.pendingBids.count + dataStore.bids.filter { $0.status == .readyToSubmit }.count)",
-                                   icon: "doc.text.fill", color: AppTheme.primaryOrange)
+                                   icon: AppIcons.document, color: AppTheme.primaryOrange)
                         MetricCard(title: "Submitted", value: "\(dataStore.submittedBids.count)",
                                    icon: "paperplane.fill", color: .purple)
                     }
@@ -68,15 +81,24 @@ struct BiddingView: View {
                             .tag(bid)
                             .contextMenu {
                                 if !bid.isSubmitted && !bid.isAwarded {
+                                    if !bid.isWorkingOn && !bid.isReadyToSubmit {
+                                        Button("Mark as Working On") {
+                                            var updated = bid
+                                            updated.isWorkingOn = true
+                                            dataStore.updateBid(updated)
+                                        }
+                                    }
                                     Button("Mark as Ready") {
                                         var updated = bid
                                         updated.isReadyToSubmit = true
+                                        updated.isWorkingOn = false
                                         dataStore.updateBid(updated)
                                     }
                                     Button("Mark as Submitted") {
                                         var updated = bid
                                         updated.isSubmitted = true
                                         updated.submittedDate = Date()
+                                        updated.isWorkingOn = false
                                         dataStore.updateBid(updated)
                                     }
                                 }
@@ -95,11 +117,12 @@ struct BiddingView: View {
                                         updated.isSubmitted = false
                                         updated.submittedDate = nil
                                         updated.isReadyToSubmit = true
+                                        updated.isWorkingOn = false
                                         dataStore.updateBid(updated)
                                     }
                                 }
                                 Divider()
-                                Button("Delete", role: .destructive) { dataStore.deleteBid(bid) }
+                                Button("Delete…", role: .destructive) { bidToDelete = bid }
                             }
                     }
                 }
@@ -135,6 +158,23 @@ struct BiddingView: View {
         .sheet(isPresented: $showAddBid) {
             AddBidView()
         }
+        .confirmationDialog(
+            "Delete bid?",
+            isPresented: Binding(
+                get: { bidToDelete != nil },
+                set: { if !$0 { bidToDelete = nil } }
+            ),
+            presenting: bidToDelete
+        ) { bid in
+            Button("Delete", role: .destructive) {
+                dataStore.deleteBid(bid)
+                if selectedBid?.id == bid.id { selectedBid = nil }
+                bidToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { bidToDelete = nil }
+        } message: { bid in
+            Text("\"\(bid.projectName)\" for \(bid.clientName) will be removed. This cannot be undone.")
+        }
         .navigationTitle("Bidding")
     }
 }
@@ -147,6 +187,7 @@ struct BidRow: View {
     var statusColor: Color {
         switch bid.status {
         case .pending: return AppTheme.BidStatus.open
+        case .workingOn: return AppTheme.BidStatus.workingOn
         case .readyToSubmit: return AppTheme.BidStatus.ready
         case .submitted: return AppTheme.BidStatus.submitted
         case .awarded: return AppTheme.BidStatus.won
@@ -179,7 +220,7 @@ struct BidRow: View {
 
             HStack {
                 if !bid.address.isEmpty {
-                    Label(bid.address, systemImage: "mappin")
+                    Label(bid.address, systemImage: AppIcons.location)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)

@@ -20,6 +20,7 @@ struct BidDetailView: View {
     var statusColor: Color {
         switch bid.status {
         case .pending: return AppTheme.BidStatus.open
+        case .workingOn: return AppTheme.BidStatus.workingOn
         case .readyToSubmit: return AppTheme.BidStatus.ready
         case .submitted: return AppTheme.BidStatus.submitted
         case .awarded: return AppTheme.BidStatus.won
@@ -54,15 +55,24 @@ struct BidDetailView: View {
                             Button("Convert to Project") { showConvert = true }
                         }
                         if !bid.isSubmitted {
+                            if !bid.isWorkingOn && !bid.isReadyToSubmit {
+                                Button("Mark Working On") {
+                                    var updated = bid
+                                    updated.isWorkingOn = true
+                                    dataStore.updateBid(updated)
+                                }
+                            }
                             Button("Mark Ready") {
                                 var updated = bid
                                 updated.isReadyToSubmit = true
+                                updated.isWorkingOn = false
                                 dataStore.updateBid(updated)
                             }
                             Button("Mark Submitted") {
                                 var updated = bid
                                 updated.isSubmitted = true
                                 updated.submittedDate = Date()
+                                updated.isWorkingOn = false
                                 dataStore.updateBid(updated)
                             }
                         }
@@ -82,7 +92,7 @@ struct BidDetailView: View {
                         InfoRow(label: "Due Date", value: bid.bidDueDate.shortDate, icon: "calendar")
                         Divider()
                         if !bid.address.isEmpty {
-                            InfoRow(label: "Location", value: bid.address, icon: "mappin")
+                            InfoRow(label: "Location", value: bid.address, icon: AppIcons.location)
                             Divider()
                         }
                         InfoRow(label: "Created", value: bid.createdDate.shortDate, icon: "clock")

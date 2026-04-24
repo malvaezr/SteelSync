@@ -5,6 +5,9 @@ struct CrewManagementView: View {
     @State private var weekStart = TimesheetEntry.currentWeekStart()
     @State private var showAddRow = false
     @State private var editingEntry: TimesheetEntry?
+    @State private var showApplyPreset = false
+    @State private var showManagePresets = false
+    @State private var presetApplyToast: String?
 
     private var entries: [TimesheetEntry] {
         dataStore.timesheetEntries(for: weekStart)
@@ -46,6 +49,26 @@ struct CrewManagementView: View {
                 Text("\(entries.count) worker\(entries.count == 1 ? "" : "s")")
                     .font(.caption)
                     .foregroundColor(.secondary)
+
+                Menu {
+                    Button {
+                        showApplyPreset = true
+                    } label: {
+                        Label("Apply Crew Preset…", systemImage: "person.3.sequence.fill")
+                    }
+                    .disabled(dataStore.crewPresets.isEmpty)
+
+                    Button {
+                        showManagePresets = true
+                    } label: {
+                        Label("Manage Presets…", systemImage: "slider.horizontal.3")
+                    }
+                } label: {
+                    Label("Presets", systemImage: "person.3.sequence")
+                        .font(.callout)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
 
                 Button { showAddRow = true } label: {
                     Label("Add Row", systemImage: "plus")
@@ -91,6 +114,36 @@ struct CrewManagementView: View {
         .sheet(item: $editingEntry) { entry in
             EditTimesheetRowSheet(entry: entry)
         }
+        .sheet(isPresented: $showApplyPreset) {
+            ApplyCrewPresetSheet(weekStart: weekStart) { added in
+                presetApplyToast = added > 0
+                    ? "Added \(added) row\(added == 1 ? "" : "s") to this week"
+                    : "Everyone in that preset is already on the week"
+            }
+        }
+        .sheet(isPresented: $showManagePresets) {
+            ManageCrewPresetsView()
+        }
+        .overlay(alignment: .top) {
+            if let toast = presetApplyToast {
+                Text(toast)
+                    .font(.callout)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule().fill(AppTheme.primaryOrange.opacity(0.92))
+                    )
+                    .foregroundColor(.white)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+                            withAnimation { presetApplyToast = nil }
+                        }
+                    }
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: presetApplyToast)
     }
 
     // MARK: - Header Row
@@ -108,7 +161,7 @@ struct CrewManagementView: View {
             Text("Sat").gridHeader(width: 45)
             Text("Sun").gridHeader(width: 45)
             Text("Hours").gridHeader(width: 55)
-            Text("Per Diem").gridHeader(width: 70)
+            Text("Per Diem").gridHeader(width: 90)
             Text("Total").gridHeader(width: 80)
             Text("").gridHeader(width: 30) // actions
         }
@@ -147,9 +200,16 @@ struct CrewManagementView: View {
                 .font(.caption).fontWeight(.semibold)
                 .frame(width: 55)
 
-            Text(entry.perDiem.currencyFormatted)
-                .font(.caption)
-                .frame(width: 70)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(entry.totalPerDiem.currencyFormatted)
+                    .font(.caption)
+                if entry.daysWorked > 0 && entry.perDiem > 0 {
+                    Text("\(entry.perDiem.currencyFormatted)/d × \(entry.daysWorked)")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(width: 90, alignment: .trailing)
 
             Text(entry.totalPay.currencyFormatted)
                 .font(.caption).fontWeight(.bold)
@@ -201,7 +261,7 @@ struct CrewManagementView: View {
                 .frame(width: 55)
             Text(totals.perDiem.currencyFormatted)
                 .font(.caption).fontWeight(.bold)
-                .frame(width: 70)
+                .frame(width: 90, alignment: .trailing)
             Text(totals.pay.currencyFormatted)
                 .font(.caption).fontWeight(.bold)
                 .foregroundColor(.green)
@@ -246,6 +306,18 @@ struct AddTimesheetRowSheet: View {
     @State private var fri = ""
     @State private var sat = ""
     @State private var sun = ""
+
+    /// Live preview of `perDiem × daysWorked`. Returned as nil when there's
+    /// nothing useful to show (no rate or no days entered).
+    private var perDiemPreview: String? {
+        let rate = Decimal(string: perDiem) ?? 0
+        guard rate > 0 else { return nil }
+        let days = [mon, tue, wed, thu, fri, sat, sun]
+            .reduce(0) { $0 + ((Decimal(string: $1) ?? 0) > 0 ? 1 : 0) }
+        guard days > 0 else { return "Per diem applies once hours are entered for at least one day." }
+        let total = rate * Decimal(days)
+        return "Per diem total: \(rate.currencyFormatted)/day × \(days) day\(days == 1 ? "" : "s") = \(total.currencyFormatted)"
+    }
 
     var body: some View {
         NavigationStack {
@@ -292,10 +364,13 @@ struct AddTimesheetRowSheet: View {
                             #if !os(macOS)
                             .keyboardType(.decimalPad)
                             #endif
+                        Text("/ day")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
 
-                Section("Daily Hours") {
+                Section {
                     dayField("Monday", value: $mon)
                     dayField("Tuesday", value: $tue)
                     dayField("Wednesday", value: $wed)
@@ -303,6 +378,14 @@ struct AddTimesheetRowSheet: View {
                     dayField("Friday", value: $fri)
                     dayField("Saturday", value: $sat)
                     dayField("Sunday", value: $sun)
+                } header: {
+                    Text("Daily Hours")
+                } footer: {
+                    if let preview = perDiemPreview {
+                        Text(preview)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
             .formStyle(.grouped)
@@ -393,6 +476,16 @@ struct EditTimesheetRowSheet: View {
         _sun = State(initialValue: entry.sundayHours > 0 ? NSDecimalNumber(decimal: entry.sundayHours).stringValue : "")
     }
 
+    private var perDiemPreview: String? {
+        let rate = Decimal(string: perDiem) ?? 0
+        guard rate > 0 else { return nil }
+        let days = [mon, tue, wed, thu, fri, sat, sun]
+            .reduce(0) { $0 + ((Decimal(string: $1) ?? 0) > 0 ? 1 : 0) }
+        guard days > 0 else { return "Per diem applies once hours are entered for at least one day." }
+        let total = rate * Decimal(days)
+        return "Per diem total: \(rate.currencyFormatted)/day × \(days) day\(days == 1 ? "" : "s") = \(total.currencyFormatted)"
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -419,10 +512,13 @@ struct EditTimesheetRowSheet: View {
                             #if !os(macOS)
                             .keyboardType(.decimalPad)
                             #endif
+                        Text("/ day")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
 
-                Section("Daily Hours") {
+                Section {
                     dayField("Monday", value: $mon)
                     dayField("Tuesday", value: $tue)
                     dayField("Wednesday", value: $wed)
@@ -430,6 +526,14 @@ struct EditTimesheetRowSheet: View {
                     dayField("Friday", value: $fri)
                     dayField("Saturday", value: $sat)
                     dayField("Sunday", value: $sun)
+                } header: {
+                    Text("Daily Hours")
+                } footer: {
+                    if let preview = perDiemPreview {
+                        Text(preview)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
             .formStyle(.grouped)

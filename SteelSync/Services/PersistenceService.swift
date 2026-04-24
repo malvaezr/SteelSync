@@ -104,6 +104,7 @@ struct PersistenceService {
         var address: String; var bidAmount: Decimal; var bidDueDate: Date; var createdDate: Date
         var isSubmitted: Bool; var submittedDate: Date?; var awardedProjectID: String?
         var isReadyToSubmit: Bool; var isLost: Bool
+        var isWorkingOn: Bool
         var squareFeet: Int; var numberOfBeams: Int; var numberOfColumns: Int
         var numberOfJoists: Int; var numberOfWallPanels: Int; var estimatedTons: Double
         var touchpoints: [Touchpoint]; var nextFollowUp: Date?; var reminderDate: Date?
@@ -115,11 +116,42 @@ struct PersistenceService {
             bidAmount = b.bidAmount; bidDueDate = b.bidDueDate; createdDate = b.createdDate
             isSubmitted = b.isSubmitted; submittedDate = b.submittedDate
             awardedProjectID = b.awardedProjectID; isReadyToSubmit = b.isReadyToSubmit; isLost = b.isLost
+            isWorkingOn = b.isWorkingOn
             squareFeet = b.squareFeet; numberOfBeams = b.numberOfBeams
             numberOfColumns = b.numberOfColumns; numberOfJoists = b.numberOfJoists
             numberOfWallPanels = b.numberOfWallPanels; estimatedTons = b.estimatedTons
             touchpoints = b.touchpoints; nextFollowUp = b.nextFollowUp
             reminderDate = b.reminderDate; notes = b.notes; attachments = b.attachments
+        }
+
+        // Backward-compatible decoder: pre-existing bid JSON lacks `isWorkingOn`.
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            idName = try c.decode(String.self, forKey: .idName)
+            projectName = try c.decode(String.self, forKey: .projectName)
+            clientName = try c.decode(String.self, forKey: .clientName)
+            clientRefName = try c.decodeIfPresent(String.self, forKey: .clientRefName)
+            address = try c.decode(String.self, forKey: .address)
+            bidAmount = try c.decode(Decimal.self, forKey: .bidAmount)
+            bidDueDate = try c.decode(Date.self, forKey: .bidDueDate)
+            createdDate = try c.decode(Date.self, forKey: .createdDate)
+            isSubmitted = try c.decode(Bool.self, forKey: .isSubmitted)
+            submittedDate = try c.decodeIfPresent(Date.self, forKey: .submittedDate)
+            awardedProjectID = try c.decodeIfPresent(String.self, forKey: .awardedProjectID)
+            isReadyToSubmit = try c.decode(Bool.self, forKey: .isReadyToSubmit)
+            isLost = try c.decode(Bool.self, forKey: .isLost)
+            isWorkingOn = try c.decodeIfPresent(Bool.self, forKey: .isWorkingOn) ?? false
+            squareFeet = try c.decode(Int.self, forKey: .squareFeet)
+            numberOfBeams = try c.decode(Int.self, forKey: .numberOfBeams)
+            numberOfColumns = try c.decode(Int.self, forKey: .numberOfColumns)
+            numberOfJoists = try c.decode(Int.self, forKey: .numberOfJoists)
+            numberOfWallPanels = try c.decode(Int.self, forKey: .numberOfWallPanels)
+            estimatedTons = try c.decode(Double.self, forKey: .estimatedTons)
+            touchpoints = try c.decode([Touchpoint].self, forKey: .touchpoints)
+            nextFollowUp = try c.decodeIfPresent(Date.self, forKey: .nextFollowUp)
+            reminderDate = try c.decodeIfPresent(Date.self, forKey: .reminderDate)
+            notes = try c.decode(String.self, forKey: .notes)
+            attachments = try c.decode([Attachment].self, forKey: .attachments)
         }
 
         func toBid() -> BidProject {
@@ -130,6 +162,7 @@ struct PersistenceService {
                 address: address, bidAmount: bidAmount, bidDueDate: bidDueDate, createdDate: createdDate,
                 isSubmitted: isSubmitted, submittedDate: submittedDate,
                 awardedProjectID: awardedProjectID, isReadyToSubmit: isReadyToSubmit, isLost: isLost,
+                isWorkingOn: isWorkingOn,
                 squareFeet: squareFeet, numberOfBeams: numberOfBeams, numberOfColumns: numberOfColumns,
                 numberOfJoists: numberOfJoists, numberOfWallPanels: numberOfWallPanels,
                 estimatedTons: estimatedTons, touchpoints: touchpoints, nextFollowUp: nextFollowUp,
@@ -200,8 +233,10 @@ struct PersistenceService {
         save(encodeDict(store.equipmentRentals), as: "equipmentRentals")
         save(store.ganttTasks, as: "ganttTasks")
         save(encodeDict(store.payApplications), as: "payApplications")
+        save(encodeDict(store.invoices), as: "invoices")
         save(store.auditLog, as: "auditLog")
         save(store.timesheetEntries, as: "timesheetEntries")
+        save(store.crewPresets, as: "crewPresets")
         save(encodeDict(store.rfis), as: "rfis")
         save(store.planningPads, as: "planningPads")
         save(store.assistantMessages, as: "assistantMessages")
@@ -244,8 +279,12 @@ struct PersistenceService {
         if let pa: [CodableDictEntry<PayApplication>] = load([CodableDictEntry<PayApplication>].self, from: "payApplications") {
             store.payApplications = decodeDict(pa)
         }
+        if let inv: [CodableDictEntry<Invoice>] = load([CodableDictEntry<Invoice>].self, from: "invoices") {
+            store.invoices = decodeDict(inv)
+        }
         if let a = load([AuditEntry].self, from: "auditLog") { store.auditLog = a }
         if let ts = load([TimesheetEntry].self, from: "timesheetEntries") { store.timesheetEntries = ts }
+        if let cp = load([CrewPreset].self, from: "crewPresets") { store.crewPresets = cp }
         if let ri: [CodableDictEntry<RFI>] = load([CodableDictEntry<RFI>].self, from: "rfis") {
             store.rfis = decodeDict(ri)
         }

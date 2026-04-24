@@ -1,6 +1,306 @@
 
 import SwiftUI
 
+// MARK: - Canonical Icons
+
+/// Canonical SF Symbol names for SteelSync. Use these instead of hard-coded strings
+/// so the same concept always gets the same glyph throughout the app.
+/// Name by *meaning* (money, location), not by glyph (dollarsign, mappin), so swapping
+/// the symbol later is a single-line change.
+enum AppIcons {
+    // Money / Finance
+    static let money = "dollarsign.circle.fill"
+    static let invoice = "doc.text.fill"
+    static let payment = "creditcard.fill"
+    static let cost = "cart.fill"
+
+    // Place / Address
+    static let location = "mappin.and.ellipse"
+    static let building = "building.2.fill"
+
+    // Documents
+    static let document = "doc.text.fill"
+    static let pdf = "doc.richtext.fill"
+    static let attachment = "paperclip"
+
+    // People
+    static let person = "person.fill"
+    static let people = "person.2.fill"
+    static let crew = "person.3.fill"
+
+    // Time
+    static let calendar = "calendar"
+    static let clock = "clock.fill"
+    static let history = "clock.arrow.circlepath"
+
+    // Status
+    static let warning = "exclamationmark.triangle.fill"
+    static let success = "checkmark.circle.fill"
+    static let pinned = "pin.fill"
+
+    // Equipment
+    static let equipment = "shippingbox.fill"
+    static let tools = "wrench.and.screwdriver.fill"
+
+    // Actions
+    static let add = "plus"
+    static let edit = "pencil"
+    static let delete = "trash"
+    static let save = "square.and.arrow.down"
+    static let share = "square.and.arrow.up"
+    static let search = "magnifyingglass"
+    static let filter = "line.3.horizontal.decrease.circle"
+
+    // Navigation
+    static let menu = "ellipsis.circle"
+    static let settings = "gearshape.fill"
+}
+
+// MARK: - Button Styles
+//
+// Three semantic button styles used app-wide. Use these instead of mixing
+// .borderedProminent / .bordered / .plain so the visual hierarchy stays clear:
+//
+//   .buttonStyle(.appPrimary)      — main call-to-action, one per screen
+//   .buttonStyle(.appSecondary)    — supporting actions (Cancel, alternate paths)
+//   .buttonStyle(.appDestructive)  — anything that deletes / removes data
+
+private enum AppButtonMetrics {
+    static let radius: CGFloat = 10
+    static let hPadding: CGFloat = 16
+    static let vPadding: CGFloat = 10
+    static let minHeight: CGFloat = 36
+    static let font: Font = .system(size: 14, weight: .semibold)
+}
+
+/// Applied to every button label so text shrinks (down to 65%) and tightens
+/// before breaking across lines — and when it does wrap, it wraps at word
+/// boundaries instead of chopping `Biddi-ng`.
+private struct FitButtonLabel: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .lineLimit(2)
+            .minimumScaleFactor(0.65)
+            .allowsTightening(true)
+            .multilineTextAlignment(.center)
+            .truncationMode(.tail)
+    }
+}
+
+struct AppPrimaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(AppButtonMetrics.font)
+            .modifier(FitButtonLabel())
+            .padding(.horizontal, AppButtonMetrics.hPadding)
+            .padding(.vertical, AppButtonMetrics.vPadding)
+            .frame(minHeight: AppButtonMetrics.minHeight)
+            .background(
+                RoundedRectangle(cornerRadius: AppButtonMetrics.radius, style: .continuous)
+                    .fill(AppTheme.primaryOrange)
+                    .brightness(configuration.isPressed ? -0.05 : 0)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: AppButtonMetrics.radius, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
+            )
+            .foregroundColor(.white)
+            .shadow(color: AppTheme.primaryOrange.opacity(configuration.isPressed ? 0.0 : 0.22),
+                    radius: 6, x: 0, y: 2)
+            .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+struct AppSecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 14, weight: .medium))
+            .modifier(FitButtonLabel())
+            .padding(.horizontal, AppButtonMetrics.hPadding)
+            .padding(.vertical, AppButtonMetrics.vPadding)
+            .frame(minHeight: AppButtonMetrics.minHeight)
+            .background(
+                RoundedRectangle(cornerRadius: AppButtonMetrics.radius, style: .continuous)
+                    .fill(AppTheme.primaryText.opacity(configuration.isPressed ? 0.10 : 0.06))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: AppButtonMetrics.radius, style: .continuous)
+                    .strokeBorder(AppTheme.primaryText.opacity(0.10), lineWidth: 0.5)
+            )
+            .foregroundColor(AppTheme.primaryText)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+struct AppDestructiveButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(AppButtonMetrics.font)
+            .modifier(FitButtonLabel())
+            .padding(.horizontal, AppButtonMetrics.hPadding)
+            .padding(.vertical, AppButtonMetrics.vPadding)
+            .frame(minHeight: AppButtonMetrics.minHeight)
+            .background(
+                RoundedRectangle(cornerRadius: AppButtonMetrics.radius, style: .continuous)
+                    .fill(Color.red)
+                    .brightness(configuration.isPressed ? -0.05 : 0)
+            )
+            .foregroundColor(.white)
+            .shadow(color: Color.red.opacity(configuration.isPressed ? 0.0 : 0.22),
+                    radius: 6, x: 0, y: 2)
+            .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+struct AppOutlineButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 14, weight: .medium))
+            .modifier(FitButtonLabel())
+            .padding(.horizontal, AppButtonMetrics.hPadding)
+            .padding(.vertical, AppButtonMetrics.vPadding)
+            .frame(minHeight: AppButtonMetrics.minHeight)
+            .background(
+                RoundedRectangle(cornerRadius: AppButtonMetrics.radius, style: .continuous)
+                    .fill(configuration.isPressed ? AppTheme.primaryOrange.opacity(0.08) : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: AppButtonMetrics.radius, style: .continuous)
+                    .strokeBorder(AppTheme.primaryOrange.opacity(0.6), lineWidth: 1)
+            )
+            .foregroundColor(AppTheme.primaryOrange)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+struct AppGhostButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 14, weight: .medium))
+            .modifier(FitButtonLabel())
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(AppTheme.primaryText.opacity(configuration.isPressed ? 0.08 : 0))
+            )
+            .foregroundColor(AppTheme.primaryText.opacity(configuration.isPressed ? 0.6 : 1))
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == AppPrimaryButtonStyle {
+    static var appPrimary: AppPrimaryButtonStyle { AppPrimaryButtonStyle() }
+}
+
+extension ButtonStyle where Self == AppSecondaryButtonStyle {
+    static var appSecondary: AppSecondaryButtonStyle { AppSecondaryButtonStyle() }
+}
+
+extension ButtonStyle where Self == AppDestructiveButtonStyle {
+    static var appDestructive: AppDestructiveButtonStyle { AppDestructiveButtonStyle() }
+}
+
+extension ButtonStyle where Self == AppOutlineButtonStyle {
+    static var appOutline: AppOutlineButtonStyle { AppOutlineButtonStyle() }
+}
+
+extension ButtonStyle where Self == AppGhostButtonStyle {
+    static var appGhost: AppGhostButtonStyle { AppGhostButtonStyle() }
+}
+
+// MARK: - TextField Style
+//
+// Softer, modern input field: tinted surface, hairline border, accent-tinted
+// focus ring. Applied via `.textFieldStyle(.appField)`. Works for TextField
+// and SecureField. For `Form` rows, keep the platform default — this style is
+// intended for stacked/inline inputs in sheets and detail views.
+
+struct AppFieldStyle: TextFieldStyle {
+    var isFocused: Bool = false
+
+    // swiftlint:disable:next identifier_name
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        configuration
+            .textFieldStyle(.plain)
+            .font(.system(size: 14))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(minHeight: 36)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(AppTheme.secondaryBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(
+                        isFocused ? AppTheme.primaryOrange.opacity(0.55) : AppTheme.primaryText.opacity(0.08),
+                        lineWidth: isFocused ? 1.5 : 0.5
+                    )
+            )
+    }
+}
+
+extension TextFieldStyle where Self == AppFieldStyle {
+    static var appField: AppFieldStyle { AppFieldStyle() }
+}
+
+/// Shared surface for non-TextField inputs (Picker, DatePicker) so they
+/// visually match `.textFieldStyle(.appField)`.
+struct AppControlSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .frame(minHeight: 36)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(AppTheme.secondaryBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(AppTheme.primaryText.opacity(0.08), lineWidth: 0.5)
+            )
+    }
+}
+
+extension View {
+    /// Wrap a Picker / DatePicker / custom control so it matches `.appField` TextFields.
+    func appControlSurface() -> some View { modifier(AppControlSurface()) }
+}
+
+/// Labeled field wrapper — label above input, optional help text below.
+///
+/// ```swift
+/// LabeledField("Project Name") {
+///     TextField("", text: $name).textFieldStyle(.appField)
+/// }
+/// ```
+struct LabeledField<Content: View>: View {
+    let label: String
+    var helpText: String? = nil
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(AppTheme.secondaryText)
+                .textCase(.uppercase)
+                .tracking(0.4)
+            content()
+            if let helpText = helpText {
+                Text(helpText)
+                    .font(.caption2)
+                    .foregroundColor(AppTheme.tertiaryText)
+            }
+        }
+    }
+}
+
 // MARK: - Theme Definitions
 
 enum AppColorTheme: String, CaseIterable, Codable {
@@ -246,6 +546,7 @@ struct AppTheme {
     // MARK: - Status Colors
     struct BidStatus {
         static let open = Color.blue
+        static let workingOn = Color.yellow
         static let ready = Color.cyan
         static let submitted = Color.purple
         static let won = Color.green

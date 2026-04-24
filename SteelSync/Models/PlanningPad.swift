@@ -37,7 +37,10 @@ struct PlanningPad: Identifiable, Codable, Hashable {
 
     var drawingFileURL: URL? {
         guard let name = drawingDataFileName else { return nil }
-        return Self.drawingsDirectory.appendingPathComponent(name)
+        // Sanitize: strip path traversal characters
+        let safe = name.replacingOccurrences(of: "/", with: "_")
+                       .replacingOccurrences(of: "..", with: "_")
+        return Self.drawingsDirectory.appendingPathComponent(safe)
     }
 
     /// Saves PKDrawing data to disk and updates the fileName reference.

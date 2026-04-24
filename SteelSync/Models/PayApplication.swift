@@ -12,6 +12,18 @@ struct PayApplication: Identifiable, Codable, Hashable {
     var retainageRate: Decimal  // e.g., 0.10 for 10%
     var lineItems: [SOVLineItem]
     var notes: String
+    /// True when this pay app is the final retainage release at project closeout.
+    /// Displayed with a distinct badge and excluded from normal progress calcs.
+    var isRetainageRelease: Bool
+    /// Set once a matching Invoice has been created. Used to surface status on
+    /// the pay app row without duplicating Invoice's state tracking.
+    var linkedInvoiceID: UUID?
+
+    enum CodingKeys: String, CodingKey {
+        case id, applicationNumber, applicationDate, periodTo, projectID
+        case retainageRate, lineItems, notes
+        case isRetainageRelease, linkedInvoiceID
+    }
 
     init(
         id: UUID = UUID(),
@@ -21,7 +33,9 @@ struct PayApplication: Identifiable, Codable, Hashable {
         projectID: String,
         retainageRate: Decimal = 0.10,
         lineItems: [SOVLineItem] = [],
-        notes: String = ""
+        notes: String = "",
+        isRetainageRelease: Bool = false,
+        linkedInvoiceID: UUID? = nil
     ) {
         self.id = id
         self.applicationNumber = applicationNumber
@@ -31,6 +45,24 @@ struct PayApplication: Identifiable, Codable, Hashable {
         self.retainageRate = retainageRate
         self.lineItems = lineItems
         self.notes = notes
+        self.isRetainageRelease = isRetainageRelease
+        self.linkedInvoiceID = linkedInvoiceID
+    }
+
+    /// Backward-compatible decoder. Older pay apps don't have `isRetainageRelease`
+    /// or `linkedInvoiceID` — defaults apply.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.applicationNumber = try c.decode(Int.self, forKey: .applicationNumber)
+        self.applicationDate = try c.decode(Date.self, forKey: .applicationDate)
+        self.periodTo = try c.decode(Date.self, forKey: .periodTo)
+        self.projectID = try c.decode(String.self, forKey: .projectID)
+        self.retainageRate = try c.decode(Decimal.self, forKey: .retainageRate)
+        self.lineItems = try c.decode([SOVLineItem].self, forKey: .lineItems)
+        self.notes = try c.decode(String.self, forKey: .notes)
+        self.isRetainageRelease = try c.decodeIfPresent(Bool.self, forKey: .isRetainageRelease) ?? false
+        self.linkedInvoiceID = try c.decodeIfPresent(UUID.self, forKey: .linkedInvoiceID)
     }
 
     // MARK: - Computed Totals

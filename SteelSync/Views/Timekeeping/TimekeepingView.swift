@@ -6,6 +6,7 @@ struct TimekeepingView: View {
     @State private var showAddEmployee = false
     @State private var selectedEmployee: Employee?
     @State private var searchText = ""
+    @State private var employeeToDelete: Employee?
 
     var filteredEmployees: [Employee] {
         if searchText.isEmpty { return dataStore.employees }
@@ -47,6 +48,23 @@ struct TimekeepingView: View {
         .sheet(isPresented: $showAddEmployee) {
             AddEmployeeView()
         }
+        .confirmationDialog(
+            "Delete employee?",
+            isPresented: Binding(
+                get: { employeeToDelete != nil },
+                set: { if !$0 { employeeToDelete = nil } }
+            ),
+            presenting: employeeToDelete
+        ) { employee in
+            Button("Delete", role: .destructive) {
+                dataStore.deleteEmployee(employee)
+                if selectedEmployee?.id == employee.id { selectedEmployee = nil }
+                employeeToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { employeeToDelete = nil }
+        } message: { employee in
+            Text("\"\(employee.fullName)\" will be removed. Their timesheet history will remain in the records but they won't be assignable to new entries. This cannot be undone.")
+        }
         .navigationTitle("Timekeeping")
         .toolbar {
             ToolbarItem(placement: .automatic) {
@@ -76,7 +94,7 @@ struct TimekeepingView: View {
                             .contextMenu {
                                 Button("Edit") { selectedEmployee = employee }
                                 Divider()
-                                Button("Delete", role: .destructive) { dataStore.deleteEmployee(employee) }
+                                Button("Delete…", role: .destructive) { employeeToDelete = employee }
                             }
                     }
                 }

@@ -12,6 +12,7 @@ struct GanttTask: Identifiable, Codable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, projectID, name, category, status, startDate
         case durationDays, assignedTo, notes, sortOrder, progress, includesSaturdays
+        case predecessorIDs, isPinned
     }
 
     var durationDays: Int
@@ -20,6 +21,10 @@ struct GanttTask: Identifiable, Codable, Hashable {
     var sortOrder: Int
     var progress: Double
     var includesSaturdays: Bool
+    /// IDs of tasks that must finish before this one can start (for dependency lines + critical path).
+    var predecessorIDs: [UUID]
+    /// When true, the bar cannot be dragged or resized. Toggle from the bar context menu or edit sheet.
+    var isPinned: Bool
 
     init(
         id: UUID = UUID(), projectID: String, name: String,
@@ -27,7 +32,9 @@ struct GanttTask: Identifiable, Codable, Hashable {
         startDate: Date = Date(), durationDays: Int = 5,
         assignedTo: String = "", notes: String = "",
         sortOrder: Int = 0, progress: Double = 0,
-        includesSaturdays: Bool = false
+        includesSaturdays: Bool = false,
+        predecessorIDs: [UUID] = [],
+        isPinned: Bool = false
     ) {
         self.id = id; self.projectID = projectID; self.name = name
         self.category = category; self.status = status
@@ -35,7 +42,37 @@ struct GanttTask: Identifiable, Codable, Hashable {
         self.assignedTo = assignedTo; self.notes = notes
         self.sortOrder = sortOrder; self.progress = progress
         self.includesSaturdays = includesSaturdays
+        self.predecessorIDs = predecessorIDs
+        self.isPinned = isPinned
     }
+
+    /// Custom decoder so older persisted tasks (before predecessorIDs / isPinned existed)
+    /// still deserialize cleanly with safe defaults.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.projectID = try c.decode(String.self, forKey: .projectID)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.category = try c.decode(TaskCategory.self, forKey: .category)
+        self.status = try c.decode(TaskStatus.self, forKey: .status)
+        self.startDate = try c.decode(Date.self, forKey: .startDate)
+        self.durationDays = try c.decode(Int.self, forKey: .durationDays)
+        self.assignedTo = try c.decode(String.self, forKey: .assignedTo)
+        self.notes = try c.decode(String.self, forKey: .notes)
+        self.sortOrder = try c.decode(Int.self, forKey: .sortOrder)
+        self.progress = try c.decode(Double.self, forKey: .progress)
+        self.includesSaturdays = try c.decode(Bool.self, forKey: .includesSaturdays)
+        self.predecessorIDs = try c.decodeIfPresent([UUID].self, forKey: .predecessorIDs) ?? []
+        self.isPinned = try c.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+    }
+
+    /// Returns true if this task is overdue — end date has passed and it's not completed.
+    var isOverdue: Bool {
+        endDate < Date() && status != .completed && status != .milestone
+    }
+
+    /// Milestones reduce to a single-day diamond regardless of durationDays.
+    var isMilestone: Bool { status == .milestone }
 
     var endDate: Date {
         startDate.addingWorkdays(durationDays, includeSaturdays: includesSaturdays)

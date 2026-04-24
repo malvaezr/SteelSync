@@ -306,6 +306,10 @@ struct Payment: Identifiable, Codable, Hashable {
     var amount: Decimal
     var date: Date
     var appliedToChangeOrder: UUID?
+    var appliedToInvoiceID: UUID?    // Link to Invoice this payment satisfies
+    var paymentMethod: PaymentMethod
+    var referenceNumber: String      // Check #, wire confirmation, ACH ref, etc.
+    var proofReason: String          // Explanation if no check image attached
     var notes: String
     var attachments: [Attachment]
     var recordID: CKRecord.ID?
@@ -313,16 +317,53 @@ struct Payment: Identifiable, Codable, Hashable {
 
     enum CodingKeys: String, CodingKey {
         case id, amount, date, appliedToChangeOrder, notes, attachments
+        case appliedToInvoiceID, paymentMethod, referenceNumber, proofReason
     }
 
     init(
         id: UUID = UUID(), amount: Decimal, date: Date = Date(),
-        appliedToChangeOrder: UUID? = nil, notes: String = "", attachments: [Attachment] = [],
+        appliedToChangeOrder: UUID? = nil,
+        appliedToInvoiceID: UUID? = nil,
+        paymentMethod: PaymentMethod = .check,
+        referenceNumber: String = "",
+        proofReason: String = "",
+        notes: String = "",
+        attachments: [Attachment] = [],
         recordID: CKRecord.ID? = nil, projectRef: CKRecord.Reference? = nil
     ) {
         self.id = id; self.amount = amount; self.date = date
-        self.appliedToChangeOrder = appliedToChangeOrder; self.notes = notes
+        self.appliedToChangeOrder = appliedToChangeOrder
+        self.appliedToInvoiceID = appliedToInvoiceID
+        self.paymentMethod = paymentMethod
+        self.referenceNumber = referenceNumber
+        self.proofReason = proofReason
+        self.notes = notes
         self.attachments = attachments; self.recordID = recordID; self.projectRef = projectRef
+    }
+
+    /// Backward-compatible decoder: older Payments from disk are missing the new
+    /// fields. Defaults are applied so existing saves load without migration.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.amount = try c.decode(Decimal.self, forKey: .amount)
+        self.date = try c.decode(Date.self, forKey: .date)
+        self.appliedToChangeOrder = try c.decodeIfPresent(UUID.self, forKey: .appliedToChangeOrder)
+        self.notes = try c.decode(String.self, forKey: .notes)
+        self.attachments = try c.decode([Attachment].self, forKey: .attachments)
+        self.appliedToInvoiceID = try c.decodeIfPresent(UUID.self, forKey: .appliedToInvoiceID)
+        self.paymentMethod = try c.decodeIfPresent(PaymentMethod.self, forKey: .paymentMethod) ?? .check
+        self.referenceNumber = try c.decodeIfPresent(String.self, forKey: .referenceNumber) ?? ""
+        self.proofReason = try c.decodeIfPresent(String.self, forKey: .proofReason) ?? ""
+        self.recordID = nil
+        self.projectRef = nil
+    }
+
+    /// True if this payment has at least one attachment (typically a check image
+    /// or payment confirmation). When false, `proofReason` must be non-empty to
+    /// satisfy the "proof OR reason" save gate.
+    var hasProofDocument: Bool {
+        !attachments.isEmpty
     }
 }
 
@@ -332,11 +373,49 @@ struct EmployeePayrollDetail: Identifiable, Codable, Hashable {
     var hourlyRate: Decimal
     var hoursWorked: Decimal
     var projectName: String
-    var totalPay: Decimal { hourlyRate * hoursWorked }
+    /// Optional daily hours breakdown (7 entries, week-start-first). When set,
+    /// `hoursWorked` should equal the sum. Nil means the entry was logged with
+    /// a single total-hours value.
+    var dailyHours: [Decimal]?
+    /// Per diem paid to this employee for the week. Added on top of hourly pay.
+    var perDiem: Decimal
 
-    init(id: UUID = UUID(), employeeName: String, hourlyRate: Decimal, hoursWorked: Decimal, projectName: String) {
-        self.id = id; self.employeeName = employeeName; self.hourlyRate = hourlyRate
-        self.hoursWorked = hoursWorked; self.projectName = projectName
+    var totalPay: Decimal { hourlyRate * hoursWorked + perDiem }
+
+    enum CodingKeys: String, CodingKey {
+        case id, employeeName, hourlyRate, hoursWorked, projectName
+        case dailyHours, perDiem
+    }
+
+    init(
+        id: UUID = UUID(),
+        employeeName: String,
+        hourlyRate: Decimal,
+        hoursWorked: Decimal,
+        projectName: String,
+        dailyHours: [Decimal]? = nil,
+        perDiem: Decimal = 0
+    ) {
+        self.id = id
+        self.employeeName = employeeName
+        self.hourlyRate = hourlyRate
+        self.hoursWorked = hoursWorked
+        self.projectName = projectName
+        self.dailyHours = dailyHours
+        self.perDiem = perDiem
+    }
+
+    /// Backwards-compatible decoder: older entries don't have `dailyHours` or
+    /// `perDiem`, so we default them when missing.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.employeeName = try c.decode(String.self, forKey: .employeeName)
+        self.hourlyRate = try c.decode(Decimal.self, forKey: .hourlyRate)
+        self.hoursWorked = try c.decode(Decimal.self, forKey: .hoursWorked)
+        self.projectName = try c.decode(String.self, forKey: .projectName)
+        self.dailyHours = try c.decodeIfPresent([Decimal].self, forKey: .dailyHours)
+        self.perDiem = try c.decodeIfPresent(Decimal.self, forKey: .perDiem) ?? 0
     }
 }
 

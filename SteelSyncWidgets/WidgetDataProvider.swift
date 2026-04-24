@@ -19,11 +19,44 @@ struct WidgetData: Codable {
     var nextBidDue: Date?
     var nextBidName: String?
     var upcomingBids: [WidgetBidItem]
+    // Invoice / cash-flow metrics (new for Invoice Aging widget)
+    var outstandingInvoiced: Double
+    var overdueInvoiced: Double
+    var agingCurrent: Double
+    var aging1to30: Double
+    var aging31to60: Double
+    var aging61to90: Double
+    var agingOver90: Double
+    // RFI + today attention metrics (new)
+    var openRFIs: Int
+    var overdueRFIs: Int
+    var todayAttentionCount: Int
 
     static let empty = WidgetData(
-        activeProjects: 0, totalRevenue: 0, totalProfit: 0, topProjects: [],
-        activeTodos: 0, overdueTodos: 0, completedTodos: 0, dueTodayTodos: 0, recentTodos: [],
-        pipelineValue: 0, pendingBids: 0, nextBidDue: nil, nextBidName: nil, upcomingBids: []
+        activeProjects: 0,
+        totalRevenue: 0,
+        totalProfit: 0,
+        topProjects: [],
+        activeTodos: 0,
+        overdueTodos: 0,
+        completedTodos: 0,
+        dueTodayTodos: 0,
+        recentTodos: [],
+        pipelineValue: 0,
+        pendingBids: 0,
+        nextBidDue: nil,
+        nextBidName: nil,
+        upcomingBids: [],
+        outstandingInvoiced: 0,
+        overdueInvoiced: 0,
+        agingCurrent: 0,
+        aging1to30: 0,
+        aging31to60: 0,
+        aging61to90: 0,
+        agingOver90: 0,
+        openRFIs: 0,
+        overdueRFIs: 0,
+        todayAttentionCount: 0
     )
 
     /// Placeholder data shown during widget preview and snapshot
@@ -53,7 +86,17 @@ struct WidgetData: Codable {
             WidgetBidItem(id: "1", name: "Downtown Office Tower", client: "Acme Developers", amount: 250_000, dueDate: Date().addingTimeInterval(86400 * 3)),
             WidgetBidItem(id: "2", name: "Riverside Complex", client: "Smith Construction", amount: 480_000, dueDate: Date().addingTimeInterval(86400 * 7)),
             WidgetBidItem(id: "3", name: "Airport Hangar", client: "Metro Aviation", amount: 520_000, dueDate: Date().addingTimeInterval(86400 * 14))
-        ]
+        ],
+        outstandingInvoiced: 187_500,
+        overdueInvoiced: 47_200,
+        agingCurrent: 92_300,
+        aging1to30: 48_000,
+        aging31to60: 28_700,
+        aging61to90: 12_500,
+        agingOver90: 6_000,
+        openRFIs: 5,
+        overdueRFIs: 2,
+        todayAttentionCount: 7
     )
 }
 
@@ -135,7 +178,17 @@ struct WidgetDataStore {
             pendingBids: defaults.integer(forKey: "pendingBids"),
             nextBidDue: nextBidDue,
             nextBidName: defaults.string(forKey: "nextBidName"),
-            upcomingBids: []
+            upcomingBids: [],
+            outstandingInvoiced: defaults.double(forKey: "outstandingInvoiced"),
+            overdueInvoiced: defaults.double(forKey: "overdueInvoiced"),
+            agingCurrent: defaults.double(forKey: "agingCurrent"),
+            aging1to30: defaults.double(forKey: "aging1to30"),
+            aging31to60: defaults.double(forKey: "aging31to60"),
+            aging61to90: defaults.double(forKey: "aging61to90"),
+            agingOver90: defaults.double(forKey: "agingOver90"),
+            openRFIs: defaults.integer(forKey: "openRFIs"),
+            overdueRFIs: defaults.integer(forKey: "overdueRFIs"),
+            todayAttentionCount: defaults.integer(forKey: "todayAttentionCount")
         )
     }
 }
