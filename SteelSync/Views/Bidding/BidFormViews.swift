@@ -1,80 +1,6 @@
 import SwiftUI
 import CloudKit
 
-// MARK: - Shared Sheet Chrome
-
-private struct SheetHeader: View {
-    let title: String
-    let saveTitle: String
-    var saveDisabled: Bool = false
-    let onCancel: () -> Void
-    let onSave: () -> Void
-
-    var body: some View {
-        HStack {
-            Text(title)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(AppTheme.primaryText)
-            Spacer()
-            Button("Cancel") { onCancel() }
-                .buttonStyle(.appGhost)
-                .keyboardShortcut(.cancelAction)
-            Button(saveTitle) { onSave() }
-                .buttonStyle(.appPrimary)
-                .keyboardShortcut(.defaultAction)
-                .disabled(saveDisabled)
-        }
-        .padding(.horizontal, AppTheme.Spacing.lg)
-        .padding(.vertical, AppTheme.Spacing.md)
-        .background(AppTheme.background)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(AppTheme.primaryText.opacity(0.08)).frame(height: 0.5)
-        }
-    }
-}
-
-private struct SectionTitle: View {
-    let text: String
-    var body: some View {
-        Text(text)
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundColor(AppTheme.secondaryText)
-            .textCase(.uppercase)
-            .tracking(0.5)
-            .padding(.bottom, 2)
-    }
-}
-
-private struct CurrencyInput: View {
-    let placeholder: String
-    @Binding var text: String
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Text("$")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(AppTheme.secondaryText)
-            TextField(placeholder, text: $text)
-                .textFieldStyle(.plain)
-                .font(.system(size: 14))
-                #if !os(macOS)
-                .keyboardType(.decimalPad)
-                #endif
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(minHeight: 36)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(AppTheme.secondaryBackground)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(AppTheme.primaryText.opacity(0.08), lineWidth: 0.5)
-        )
-    }
-}
-
 // MARK: - Add Bid
 struct AddBidView: View {
     @EnvironmentObject var dataStore: DataStore
@@ -191,19 +117,7 @@ struct AddBidView: View {
     @ViewBuilder private var notesSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             SectionTitle(text: "Notes")
-            TextEditor(text: $notes)
-                .font(.system(size: 14))
-                .scrollContentBackground(.hidden)
-                .padding(8)
-                .frame(minHeight: 80)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(AppTheme.secondaryBackground)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(AppTheme.primaryText.opacity(0.08), lineWidth: 0.5)
-                )
+            NotesField(text: $notes)
         }
     }
 
@@ -364,19 +278,7 @@ struct EditBidView: View {
     @ViewBuilder private var notesSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             SectionTitle(text: "Notes")
-            TextEditor(text: $notes)
-                .font(.system(size: 14))
-                .scrollContentBackground(.hidden)
-                .padding(8)
-                .frame(minHeight: 80)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(AppTheme.secondaryBackground)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(AppTheme.primaryText.opacity(0.08), lineWidth: 0.5)
-                )
+            NotesField(text: $notes)
         }
     }
 

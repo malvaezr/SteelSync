@@ -55,7 +55,7 @@ struct PayAppsTab: View {
                         Label("Retainage Release", systemImage: "lock.open.fill")
                             .font(.caption)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.appSecondary)
                 }
                 Button {
                     showCreatePayApp = true
@@ -63,8 +63,7 @@ struct PayAppsTab: View {
                     Label("New Pay App", systemImage: "plus")
                         .font(.caption)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.primaryOrange)
+                .buttonStyle(.appPrimary)
             }
 
             // Invoice summary strip
@@ -349,8 +348,7 @@ struct CreatePayAppSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") { create() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
+                        .buttonStyle(.appPrimary)
                 }
             }
         }
@@ -424,8 +422,7 @@ struct EditPayAppSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
+                        .buttonStyle(.appPrimary)
                 }
             }
         }
@@ -649,8 +646,7 @@ struct MarkAsSentSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create Invoice") { markSent() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
+                        .buttonStyle(.appPrimary)
                 }
             }
             .onAppear {
@@ -759,7 +755,7 @@ struct LogPaymentSheet: View {
                                 } label: {
                                     Label("Or choose a file…", systemImage: "paperclip")
                                 }
-                                .buttonStyle(.bordered)
+                                .buttonStyle(.appSecondary)
                                 .controlSize(.small)
                             }
                             .frame(maxWidth: .infinity)
@@ -820,8 +816,7 @@ struct LogPaymentSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
+                        .buttonStyle(.appPrimary)
                         .disabled(!canSave)
                 }
             }
@@ -963,8 +958,7 @@ struct ExportPayAppSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Export") { export() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
+                        .buttonStyle(.appPrimary)
                 }
             }
         }
@@ -1025,8 +1019,7 @@ struct RetainageReleaseSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") { create() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
+                        .buttonStyle(.appPrimary)
                         .disabled(totalRetainageHeld <= 0)
                 }
             }

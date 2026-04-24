@@ -197,7 +197,7 @@ struct EmployeeDetailPanel: View {
                         Text(employee.employeeID).foregroundColor(.secondary)
                     }
                     Spacer()
-                    Button("Edit") { showEdit = true }.buttonStyle(.bordered)
+                    Button("Edit") { showEdit = true }.buttonStyle(.appSecondary)
                 }
 
                 GroupBox("Details") {
@@ -250,45 +250,73 @@ struct AddEmployeeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Add Employee").font(AppTheme.Typography.title2)
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(firstName.isEmpty || lastName.isEmpty)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
-            }
-            .padding()
-            Divider()
-            Form {
-                Section("Personal Information") {
-                    TextField("First Name", text: $firstName)
-                    TextField("Last Name", text: $lastName)
-                    TextField("Phone", text: $phone)
-                    TextField("Email", text: $email)
-                }
-                Section("Employment") {
-                    Picker("Type", selection: $employeeType) {
-                        ForEach(EmployeeType.allCases, id: \.self) { Text($0.displayName).tag($0) }
+            SheetHeader(
+                title: "Add Employee",
+                saveTitle: "Save",
+                saveDisabled: firstName.isEmpty || lastName.isEmpty,
+                onCancel: { dismiss() },
+                onSave: save
+            )
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                        SectionTitle(text: "Personal Information")
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            LabeledField(label: "First Name") {
+                                TextField("First", text: $firstName)
+                                    .textFieldStyle(.appField)
+                            }
+                            LabeledField(label: "Last Name") {
+                                TextField("Last", text: $lastName)
+                                    .textFieldStyle(.appField)
+                            }
+                        }
+                        LabeledField(label: "Phone") {
+                            TextField("(555) 555-5555", text: $phone)
+                                .textFieldStyle(.appField)
+                                #if !os(macOS)
+                                .keyboardType(.phonePad)
+                                #endif
+                        }
+                        LabeledField(label: "Email") {
+                            TextField("name@example.com", text: $email)
+                                .textFieldStyle(.appField)
+                                #if !os(macOS)
+                                .textInputAutocapitalization(.never)
+                                .keyboardType(.emailAddress)
+                                #endif
+                        }
                     }
-                    HStack {
-                        Text("$")
-                        TextField("Hourly Rate", text: $hourlyRate)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
+
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                        SectionTitle(text: "Employment")
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            LabeledField(label: "Type") {
+                                Picker("", selection: $employeeType) {
+                                    ForEach(EmployeeType.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                                }
+                                .labelsHidden()
+                                .pickerStyle(.menu)
+                                .appControlSurface()
+                            }
+                            LabeledField(label: "Hourly Rate") {
+                                CurrencyInput(placeholder: "0.00", text: $hourlyRate)
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                        SectionTitle(text: "Notes")
+                        NotesField(text: $notes, minHeight: 70)
                     }
                 }
-                Section("Notes") {
-                    TextEditor(text: $notes).frame(height: 60)
-                }
+                .padding(AppTheme.Spacing.lg)
             }
-            .formStyle(.grouped)
+            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 450, height: 480)
+        .frame(width: 520, height: 560)
         #endif
     }
 
@@ -333,48 +361,92 @@ struct EditEmployeeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Edit Employee").font(AppTheme.Typography.title2)
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+            SheetHeader(
+                title: "Edit Employee",
+                saveTitle: "Save",
+                saveDisabled: firstName.isEmpty || lastName.isEmpty,
+                onCancel: { dismiss() },
+                onSave: save
+            )
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    editEmployeePersonalSection
+                    editEmployeeEmploymentSection
+                    editEmployeeNotesSection
+                }
+                .padding(AppTheme.Spacing.lg)
             }
-            .padding()
-            Divider()
-            Form {
-                Section("Personal Information") {
-                    TextField("First Name", text: $firstName)
-                    TextField("Last Name", text: $lastName)
-                    TextField("Phone", text: $phone)
-                    TextField("Email", text: $email)
-                }
-                Section("Employment") {
-                    Picker("Type", selection: $employeeType) {
-                        ForEach(EmployeeType.allCases, id: \.self) { Text($0.displayName).tag($0) }
-                    }
-                    HStack {
-                        Text("$")
-                        TextField("Hourly Rate", text: $hourlyRate)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                    }
-                    Picker("Status", selection: $status) {
-                        ForEach(EmployeeStatus.allCases, id: \.self) { Text($0.displayName).tag($0) }
-                    }
-                }
-                Section("Notes") {
-                    TextEditor(text: $notes).frame(height: 60)
-                }
-            }
-            .formStyle(.grouped)
+            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 450, height: 520)
+        .frame(width: 520, height: 600)
         #endif
+    }
+
+    @ViewBuilder private var editEmployeePersonalSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Personal Information")
+            HStack(spacing: AppTheme.Spacing.md) {
+                LabeledField(label: "First Name") {
+                    TextField("First", text: $firstName)
+                        .textFieldStyle(.appField)
+                }
+                LabeledField(label: "Last Name") {
+                    TextField("Last", text: $lastName)
+                        .textFieldStyle(.appField)
+                }
+            }
+            LabeledField(label: "Phone") {
+                TextField("(555) 555-5555", text: $phone)
+                    .textFieldStyle(.appField)
+                    #if !os(macOS)
+                    .keyboardType(.phonePad)
+                    #endif
+            }
+            LabeledField(label: "Email") {
+                TextField("name@example.com", text: $email)
+                    .textFieldStyle(.appField)
+                    #if !os(macOS)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.emailAddress)
+                    #endif
+            }
+        }
+    }
+
+    @ViewBuilder private var editEmployeeEmploymentSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Employment")
+            HStack(spacing: AppTheme.Spacing.md) {
+                LabeledField(label: "Type") {
+                    Picker("", selection: $employeeType) {
+                        ForEach(EmployeeType.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .appControlSurface()
+                }
+                LabeledField(label: "Hourly Rate") {
+                    CurrencyInput(placeholder: "0.00", text: $hourlyRate)
+                }
+            }
+            LabeledField(label: "Status") {
+                Picker("", selection: $status) {
+                    ForEach(EmployeeStatus.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .appControlSurface()
+            }
+        }
+    }
+
+    @ViewBuilder private var editEmployeeNotesSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Notes")
+            NotesField(text: $notes, minHeight: 70)
+        }
     }
 
     private func save() {

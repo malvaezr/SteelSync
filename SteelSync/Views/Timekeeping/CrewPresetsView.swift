@@ -102,8 +102,7 @@ struct ApplyCrewPresetSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Apply") { apply() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
+                        .buttonStyle(.appPrimary)
                         .disabled(selectedPreset == nil)
                 }
             }
@@ -303,8 +302,7 @@ struct EditCrewPresetSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
+                        .buttonStyle(.appPrimary)
                         .disabled(preset.name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
@@ -403,12 +401,12 @@ private struct CrewPresetMemberEditor: View {
                         member.dailyHours = [8, 8, 8, 8, 8, 0, 0]
                     }
                     .font(.caption2)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.appSecondary)
                     Button("Clear") {
                         member.dailyHours = [0, 0, 0, 0, 0, 0, 0]
                     }
                     .font(.caption2)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.appSecondary)
                 }
 
                 HStack(spacing: 4) {
@@ -535,8 +533,7 @@ struct AddPresetMemberSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") { add() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
+                        .buttonStyle(.appPrimary)
                         .disabled(!canAdd)
                 }
             }

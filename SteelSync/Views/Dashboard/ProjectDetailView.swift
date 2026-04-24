@@ -417,10 +417,10 @@ struct ProjectDetailView: View {
                     Label("Quick Entry", systemImage: "bolt.fill")
                         .font(.caption)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.appSecondary)
                 .tint(.yellow)
                 Button("Edit") { showEditProject = true }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.appSecondary)
             }
 
             // Financial summary bar
@@ -979,7 +979,7 @@ struct ProjectDetailView: View {
                                                 rentalToClose = rental
                                             }
                                             .font(.caption)
-                                            .buttonStyle(.bordered)
+                                            .buttonStyle(.appSecondary)
                                             .tint(.green)
                                         }
                                     }

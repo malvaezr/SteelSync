@@ -216,7 +216,7 @@ struct AssistantView: View {
                 Label("Browse saved conversations", systemImage: "folder")
                     .font(.caption)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.appSecondary)
             .controlSize(.small)
             .padding(.top, 8)
 
@@ -517,14 +517,14 @@ private struct SavedConversationRow: View {
                     Label("Reopen", systemImage: "arrow.uturn.backward")
                         .font(.caption)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.appPrimary)
                 .controlSize(.small)
 
                 ShareLink(item: file.url) {
                     Label("Share", systemImage: "square.and.arrow.up")
                         .font(.caption)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.appSecondary)
                 .controlSize(.small)
             }
             .padding(.top, 2)

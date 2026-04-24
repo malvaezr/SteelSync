@@ -310,3 +310,110 @@ struct CurrencyField: View {
         )
     }
 }
+
+// MARK: - Sheet Chrome
+//
+// Shared primitives used by every Add/Edit/log sheet so headers, section
+// dividers, and currency fields stay consistent app-wide.
+
+/// Sticky top bar for modal sheets. Cancel on the left of the save CTA, a
+/// hairline divider, and background that matches the sheet surface.
+struct SheetHeader: View {
+    let title: String
+    let saveTitle: String
+    var saveDisabled: Bool = false
+    let onCancel: () -> Void
+    let onSave: () -> Void
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(AppTheme.primaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Spacer(minLength: AppTheme.Spacing.sm)
+            Button("Cancel") { onCancel() }
+                .buttonStyle(.appGhost)
+                .keyboardShortcut(.cancelAction)
+            Button(saveTitle) { onSave() }
+                .buttonStyle(.appPrimary)
+                .keyboardShortcut(.defaultAction)
+                .disabled(saveDisabled)
+        }
+        .padding(.horizontal, AppTheme.Spacing.lg)
+        .padding(.vertical, AppTheme.Spacing.md)
+        .background(AppTheme.background)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(AppTheme.primaryText.opacity(0.08)).frame(height: 0.5)
+        }
+    }
+}
+
+/// Small uppercase tracked heading used to group fields inside sheets.
+struct SectionTitle: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundColor(AppTheme.secondaryText)
+            .textCase(.uppercase)
+            .tracking(0.5)
+            .padding(.bottom, 2)
+    }
+}
+
+/// `.appField`-styled currency input with a `$` prefix. Use inside a
+/// `LabeledField` for currency inputs in sheets.
+struct CurrencyInput: View {
+    let placeholder: String
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("$")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(AppTheme.secondaryText)
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 14))
+                #if !os(macOS)
+                .keyboardType(.decimalPad)
+                #endif
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(minHeight: 36)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(AppTheme.secondaryBackground)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(AppTheme.primaryText.opacity(0.08), lineWidth: 0.5)
+        )
+    }
+}
+
+/// Multi-line note editor styled to match `.appField`. Replaces bare
+/// `TextEditor` usage inside sheets.
+struct NotesField: View {
+    @Binding var text: String
+    var minHeight: CGFloat = 80
+
+    var body: some View {
+        TextEditor(text: $text)
+            .font(.system(size: 14))
+            .scrollContentBackground(.hidden)
+            .padding(8)
+            .frame(minHeight: minHeight)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(AppTheme.secondaryBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(AppTheme.primaryText.opacity(0.08), lineWidth: 0.5)
+            )
+    }
+}

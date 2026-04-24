@@ -31,13 +31,12 @@ struct ReportsView: View {
                 Button(action: exportCSV) {
                     Label("Export CSV", systemImage: "tablecells")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.appSecondary)
 
                 Button(action: exportPDF) {
                     Label("Export PDF", systemImage: "doc.richtext")
                 }
-                .buttonStyle(.bordered)
-                .tint(AppTheme.primaryOrange)
+                .buttonStyle(.appSecondary)
             }
             .padding(AppTheme.Spacing.md)
             .background(AppTheme.secondaryBackground)

@@ -78,8 +78,7 @@ struct SettingsView: View {
                             Spacer()
                             if notificationService.permissionStatus == .notDetermined {
                                 Button("Enable") { notificationService.requestPermission() }
-                                    .buttonStyle(.borderedProminent)
-                                    .tint(AppTheme.primaryOrange)
+                                    .buttonStyle(.appPrimary)
                                     .controlSize(.small)
                             } else if notificationService.permissionStatus == .denied {
                                 Text("Denied in System Settings")
@@ -119,7 +118,7 @@ struct SettingsView: View {
                             Button("Reschedule Now") {
                                 notificationService.scheduleMorningBatch(from: dataStore)
                             }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(.appSecondary)
                             .controlSize(.small)
                             .padding(.top, 4)
                         }
@@ -151,8 +150,7 @@ struct SettingsView: View {
                             } label: {
                                 Label("Create Snapshot", systemImage: "archivebox.fill")
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(AppTheme.primaryOrange)
+                            .buttonStyle(.appPrimary)
                             .disabled(snapshotBusy)
                         }
 
@@ -437,10 +435,9 @@ struct SettingsView: View {
                 }
                 Spacer()
                 Button("Download") { llmService.downloadModel() }
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+                    .buttonStyle(.appPrimary)
                 Button("Import File...") { showModelFilePicker = true }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.appSecondary)
             }
             .fileImporter(isPresented: $showModelFilePicker, allowedContentTypes: [.data], allowsMultipleSelection: false) { result in
                 if case .success(let urls) = result, let url = urls.first {
@@ -475,7 +472,7 @@ struct SettingsView: View {
                 Spacer()
                 if llmService.status == .downloaded {
                     Button("Load") { llmService.loadModel() }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.appSecondary)
                 }
                 Button("Delete", role: .destructive) { llmService.deleteModel() }
                     .font(.caption)
@@ -487,7 +484,7 @@ struct SettingsView: View {
                 Text(msg).font(.caption).foregroundColor(.red)
                 Spacer()
                 Button("Retry") { llmService.downloadModel() }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.appSecondary)
             }
         }
     }

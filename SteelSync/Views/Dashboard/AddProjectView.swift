@@ -23,70 +23,35 @@ struct AddProjectView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("New Project")
-                    .font(AppTheme.Typography.title2)
-                Spacer()
-                Button("Cancel") { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(title.isEmpty)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+            SheetHeader(
+                title: "New Project",
+                saveTitle: "Save",
+                saveDisabled: title.isEmpty,
+                onCancel: { dismiss() },
+                onSave: save
+            )
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    ProjectClientsSection(
+                        gcClients: gcClients, subClients: subClients,
+                        selectedGCID: $selectedGCID, selectedSubID: $selectedSubID
+                    )
+                    ProjectInfoSection(
+                        title: $title, location: $location, contractAmount: $contractAmount,
+                        status: $status, statuses: statuses
+                    )
+                    ProjectDatesSection(
+                        startDate: $startDate, endDate: $endDate, hasEndDate: $hasEndDate
+                    )
+                    ProjectNotesSection(notes: $notes)
+                }
+                .padding(AppTheme.Spacing.lg)
             }
-            .padding()
-
-            Divider()
-
-            Form {
-                Section("Clients") {
-                    Picker("General Contractor", selection: $selectedGCID) {
-                        Text("None").tag(nil as CKRecord.ID?)
-                        ForEach(gcClients) { client in
-                            Text(client.name).tag(client.id as CKRecord.ID?)
-                        }
-                    }
-                    Picker("Subcontractor", selection: $selectedSubID) {
-                        Text("None").tag(nil as CKRecord.ID?)
-                        ForEach(subClients) { client in
-                            Text(client.name).tag(client.id as CKRecord.ID?)
-                        }
-                    }
-                }
-
-                Section("Project Information") {
-                    TextField("Project Title", text: $title)
-                    TextField("Location", text: $location)
-                    HStack {
-                        Text("$")
-                        TextField("Contract Amount", text: $contractAmount)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                    }
-                    Picker("Status", selection: $status) {
-                        ForEach(statuses, id: \.self) { Text($0) }
-                    }
-                }
-
-                Section("Dates") {
-                    DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
-                    Toggle("Set End Date", isOn: $hasEndDate)
-                    if hasEndDate {
-                        DatePicker("End Date", selection: $endDate, displayedComponents: .date)
-                    }
-                }
-
-                Section("Notes") {
-                    TextEditor(text: $notes)
-                        .frame(height: 80)
-                }
-            }
-            .formStyle(.grouped)
+            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 500, height: 580)
+        .frame(width: 560, height: 640)
         #endif
     }
 
@@ -94,7 +59,6 @@ struct AddProjectView: View {
         let amount = Decimal(string: contractAmount.replacingOccurrences(of: ",", with: "")) ?? 0
         let gcRef = selectedGCID.map { CKRecord.Reference(recordID: $0, action: .none) }
         let subRef = selectedSubID.map { CKRecord.Reference(recordID: $0, action: .none) }
-        // Set primary clientRef to GC if available, otherwise Sub
         let primaryRef = gcRef ?? subRef
         let project = Project(
             clientRef: primaryRef,
@@ -147,70 +111,35 @@ struct EditProjectView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Edit Project")
-                    .font(AppTheme.Typography.title2)
-                Spacer()
-                Button("Cancel") { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(title.isEmpty)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+            SheetHeader(
+                title: "Edit Project",
+                saveTitle: "Save",
+                saveDisabled: title.isEmpty,
+                onCancel: { dismiss() },
+                onSave: save
+            )
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    ProjectClientsSection(
+                        gcClients: gcClients, subClients: subClients,
+                        selectedGCID: $selectedGCID, selectedSubID: $selectedSubID
+                    )
+                    ProjectInfoSection(
+                        title: $title, location: $location, contractAmount: $contractAmount,
+                        status: $status, statuses: statuses
+                    )
+                    ProjectDatesSection(
+                        startDate: $startDate, endDate: $endDate, hasEndDate: $hasEndDate
+                    )
+                    ProjectNotesSection(notes: $notes)
+                }
+                .padding(AppTheme.Spacing.lg)
             }
-            .padding()
-
-            Divider()
-
-            Form {
-                Section("Clients") {
-                    Picker("General Contractor", selection: $selectedGCID) {
-                        Text("None").tag(nil as CKRecord.ID?)
-                        ForEach(gcClients) { client in
-                            Text(client.name).tag(client.id as CKRecord.ID?)
-                        }
-                    }
-                    Picker("Subcontractor", selection: $selectedSubID) {
-                        Text("None").tag(nil as CKRecord.ID?)
-                        ForEach(subClients) { client in
-                            Text(client.name).tag(client.id as CKRecord.ID?)
-                        }
-                    }
-                }
-
-                Section("Project Information") {
-                    TextField("Project Title", text: $title)
-                    TextField("Location", text: $location)
-                    HStack {
-                        Text("$")
-                        TextField("Contract Amount", text: $contractAmount)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                    }
-                    Picker("Status", selection: $status) {
-                        ForEach(statuses, id: \.self) { Text($0) }
-                    }
-                }
-
-                Section("Dates") {
-                    DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
-                    Toggle("Set End Date", isOn: $hasEndDate)
-                    if hasEndDate {
-                        DatePicker("End Date", selection: $endDate, displayedComponents: .date)
-                    }
-                }
-
-                Section("Notes") {
-                    TextEditor(text: $notes)
-                        .frame(height: 80)
-                }
-            }
-            .formStyle(.grouped)
+            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 500, height: 580)
+        .frame(width: 560, height: 640)
         #endif
     }
 
@@ -231,5 +160,114 @@ struct EditProjectView: View {
         updated.notes = notes
         dataStore.updateProject(updated)
         dismiss()
+    }
+}
+
+// MARK: - Shared field sections
+
+private struct ProjectClientsSection: View {
+    let gcClients: [Client]
+    let subClients: [Client]
+    @Binding var selectedGCID: CKRecord.ID?
+    @Binding var selectedSubID: CKRecord.ID?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Clients")
+            LabeledField(label: "General Contractor") {
+                Picker("", selection: $selectedGCID) {
+                    Text("None").tag(nil as CKRecord.ID?)
+                    ForEach(gcClients) { client in
+                        Text(client.name).tag(client.id as CKRecord.ID?)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .appControlSurface()
+            }
+            LabeledField(label: "Subcontractor") {
+                Picker("", selection: $selectedSubID) {
+                    Text("None").tag(nil as CKRecord.ID?)
+                    ForEach(subClients) { client in
+                        Text(client.name).tag(client.id as CKRecord.ID?)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .appControlSurface()
+            }
+        }
+    }
+}
+
+private struct ProjectInfoSection: View {
+    @Binding var title: String
+    @Binding var location: String
+    @Binding var contractAmount: String
+    @Binding var status: String
+    let statuses: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Project Information")
+            LabeledField(label: "Project Title") {
+                TextField("e.g. Downtown Tower", text: $title)
+                    .textFieldStyle(.appField)
+            }
+            LabeledField(label: "Location") {
+                TextField("City, ST", text: $location)
+                    .textFieldStyle(.appField)
+            }
+            HStack(spacing: AppTheme.Spacing.md) {
+                LabeledField(label: "Contract Amount") {
+                    CurrencyInput(placeholder: "0.00", text: $contractAmount)
+                }
+                LabeledField(label: "Status") {
+                    Picker("", selection: $status) {
+                        ForEach(statuses, id: \.self) { Text($0) }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .appControlSurface()
+                }
+            }
+        }
+    }
+}
+
+private struct ProjectDatesSection: View {
+    @Binding var startDate: Date
+    @Binding var endDate: Date
+    @Binding var hasEndDate: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Dates")
+            LabeledField(label: "Start Date") {
+                DatePicker("", selection: $startDate, displayedComponents: .date)
+                    .labelsHidden()
+                    .appControlSurface()
+            }
+            Toggle("Set End Date", isOn: $hasEndDate)
+                .toggleStyle(.switch)
+            if hasEndDate {
+                LabeledField(label: "End Date") {
+                    DatePicker("", selection: $endDate, displayedComponents: .date)
+                        .labelsHidden()
+                        .appControlSurface()
+                }
+            }
+        }
+    }
+}
+
+private struct ProjectNotesSection: View {
+    @Binding var notes: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Notes")
+            NotesField(text: $notes, minHeight: 90)
+        }
     }
 }

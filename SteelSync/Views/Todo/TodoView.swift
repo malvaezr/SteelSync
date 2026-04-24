@@ -173,38 +173,25 @@ struct AddTodoView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("New Task").font(AppTheme.Typography.title2)
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(title.isEmpty)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+            SheetHeader(
+                title: "New Task",
+                saveTitle: "Save",
+                saveDisabled: title.isEmpty,
+                onCancel: { dismiss() },
+                onSave: save
+            )
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                    todoFields(title: $title, notes: $notes, priority: $priority,
+                               category: $category, hasDueDate: $hasDueDate, dueDate: $dueDate)
+                }
+                .padding(AppTheme.Spacing.lg)
             }
-            .padding()
-            Divider()
-            Form {
-                TextField("Title", text: $title)
-                TextEditor(text: $notes).frame(height: 60)
-                Picker("Priority", selection: $priority) {
-                    ForEach(TodoPriority.allCases, id: \.self) { Text($0.displayName).tag($0) }
-                }
-                Picker("Category", selection: $category) {
-                    ForEach(TodoCategory.allCases, id: \.self) {
-                        Label($0.rawValue, systemImage: $0.icon).tag($0)
-                    }
-                }
-                Toggle("Set Due Date", isOn: $hasDueDate)
-                if hasDueDate {
-                    DatePicker("Due Date", selection: $dueDate, displayedComponents: [.date, .hourAndMinute])
-                }
-            }
-            .formStyle(.grouped)
+            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 450, height: 420)
+        .frame(width: 480, height: 520)
         #endif
     }
 
@@ -241,37 +228,25 @@ struct EditTodoView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Edit Task").font(AppTheme.Typography.title2)
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+            SheetHeader(
+                title: "Edit Task",
+                saveTitle: "Save",
+                saveDisabled: title.isEmpty,
+                onCancel: { dismiss() },
+                onSave: save
+            )
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                    todoFields(title: $title, notes: $notes, priority: $priority,
+                               category: $category, hasDueDate: $hasDueDate, dueDate: $dueDate)
+                }
+                .padding(AppTheme.Spacing.lg)
             }
-            .padding()
-            Divider()
-            Form {
-                TextField("Title", text: $title)
-                TextEditor(text: $notes).frame(height: 60)
-                Picker("Priority", selection: $priority) {
-                    ForEach(TodoPriority.allCases, id: \.self) { Text($0.displayName).tag($0) }
-                }
-                Picker("Category", selection: $category) {
-                    ForEach(TodoCategory.allCases, id: \.self) {
-                        Label($0.rawValue, systemImage: $0.icon).tag($0)
-                    }
-                }
-                Toggle("Set Due Date", isOn: $hasDueDate)
-                if hasDueDate {
-                    DatePicker("Due Date", selection: $dueDate, displayedComponents: [.date, .hourAndMinute])
-                }
-            }
-            .formStyle(.grouped)
+            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 450, height: 420)
+        .frame(width: 480, height: 520)
         #endif
     }
 
@@ -282,5 +257,58 @@ struct EditTodoView: View {
         updated.priority = priority; updated.category = category
         dataStore.updateTodo(updated)
         dismiss()
+    }
+}
+
+/// Shared field stack used by both AddTodoView and EditTodoView.
+@ViewBuilder
+fileprivate func todoFields(
+    title: Binding<String>,
+    notes: Binding<String>,
+    priority: Binding<TodoPriority>,
+    category: Binding<TodoCategory>,
+    hasDueDate: Binding<Bool>,
+    dueDate: Binding<Date>
+) -> some View {
+    LabeledField(label: "Title") {
+        TextField("What needs doing?", text: title)
+            .textFieldStyle(.appField)
+    }
+
+    LabeledField(label: "Notes") {
+        NotesField(text: notes, minHeight: 70)
+    }
+
+    HStack(spacing: AppTheme.Spacing.md) {
+        LabeledField(label: "Priority") {
+            Picker("", selection: priority) {
+                ForEach(TodoPriority.allCases, id: \.self) { Text($0.displayName).tag($0) }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .appControlSurface()
+        }
+        LabeledField(label: "Category") {
+            Picker("", selection: category) {
+                ForEach(TodoCategory.allCases, id: \.self) {
+                    Label($0.rawValue, systemImage: $0.icon).tag($0)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .appControlSurface()
+        }
+    }
+
+    Toggle("Set Due Date", isOn: hasDueDate)
+        .toggleStyle(.switch)
+        .padding(.top, 4)
+
+    if hasDueDate.wrappedValue {
+        LabeledField(label: "Due Date") {
+            DatePicker("", selection: dueDate, displayedComponents: [.date, .hourAndMinute])
+                .labelsHidden()
+                .appControlSurface()
+        }
     }
 }

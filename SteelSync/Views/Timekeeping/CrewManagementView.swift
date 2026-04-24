@@ -42,7 +42,7 @@ struct CrewManagementView: View {
 
                 Button("This Week") { weekStart = TimesheetEntry.currentWeekStart() }
                     .font(.caption)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.appSecondary)
 
                 Spacer()
 
@@ -74,8 +74,7 @@ struct CrewManagementView: View {
                     Label("Add Row", systemImage: "plus")
                         .font(.callout)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.primaryOrange)
+                .buttonStyle(.appPrimary)
             }
             .padding(.horizontal, AppTheme.Spacing.md)
             .padding(.vertical, AppTheme.Spacing.sm)
@@ -398,8 +397,7 @@ struct AddTimesheetRowSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") { save() }
                         .disabled(selectedEmployee == nil)
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
+                        .buttonStyle(.appPrimary)
                 }
             }
         }
@@ -545,8 +543,7 @@ struct EditTimesheetRowSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
+                        .buttonStyle(.appPrimary)
                 }
             }
         }

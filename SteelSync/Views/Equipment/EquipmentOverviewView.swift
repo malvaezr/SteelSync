@@ -214,7 +214,7 @@ struct EquipmentOverviewView: View {
             Text(label)
                 .font(.caption)
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(.appSecondary)
         .controlSize(.small)
     }
 

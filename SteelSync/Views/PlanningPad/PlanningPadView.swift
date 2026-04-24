@@ -117,7 +117,7 @@ struct PlanningPadContent: View {
                 Button { convertHandwriting() } label: {
                     Label("Convert", systemImage: "text.viewfinder").font(.caption)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.appSecondary)
                 .controlSize(.small)
                 .disabled(drawing.strokes.isEmpty)
             }
@@ -127,7 +127,7 @@ struct PlanningPadContent: View {
                 Image(systemName: "trash")
                     .font(.caption)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.appSecondary)
             .controlSize(.small)
             .tint(.red.opacity(0.8))
             .disabled(drawing.strokes.isEmpty)
@@ -139,7 +139,7 @@ struct PlanningPadContent: View {
                 Image(systemName: showNotes ? "note.text" : "note.text.badge.plus")
                     .font(.caption)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.appSecondary)
             .controlSize(.small)
             .tint(showNotes ? AppTheme.primaryOrange : .secondary)
 
@@ -148,9 +148,8 @@ struct PlanningPadContent: View {
                 Image(systemName: "checklist")
                     .font(.caption)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.appSecondary)
             .controlSize(.small)
-            .tint(AppTheme.primaryOrange)
 
             // Full screen toggle
             Button {
@@ -162,7 +161,7 @@ struct PlanningPadContent: View {
                 Image(systemName: isFullScreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
                     .font(.caption)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.appPrimary)
             .controlSize(.small)
             .tint(isFullScreen ? AppTheme.primaryOrange : .gray)
         }

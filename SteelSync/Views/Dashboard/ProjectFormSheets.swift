@@ -66,8 +66,7 @@ struct AddChangeOrderView: View {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+                    .buttonStyle(.appPrimary)
             }
             .padding()
             Divider()
@@ -375,8 +374,7 @@ struct EditChangeOrderSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
+                        .buttonStyle(.appPrimary)
                 }
             }
         }
@@ -451,8 +449,7 @@ struct AddPaymentView: View {
                 Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(!canSave)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+                    .buttonStyle(.appPrimary)
             }
             .padding()
             Divider()
@@ -577,7 +574,7 @@ struct AddPaymentView: View {
                                 } label: {
                                     Label("Or choose a file…", systemImage: "paperclip")
                                 }
-                                .buttonStyle(.bordered)
+                                .buttonStyle(.appSecondary)
                                 .controlSize(.small)
                             }
                             .frame(maxWidth: .infinity)
@@ -769,8 +766,7 @@ struct AddPayrollView: View {
                 Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(crewLines.isEmpty || totalHours == 0)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+                    .buttonStyle(.appPrimary)
             }
             .padding()
             Divider()
@@ -1067,8 +1063,7 @@ struct AddCostView: View {
                 Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(coDescription.isEmpty)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+                    .buttonStyle(.appPrimary)
             }
             .padding()
             Divider()
@@ -1288,8 +1283,7 @@ struct AddEquipmentRentalView: View {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+                    .buttonStyle(.appPrimary)
             }
             .padding()
             Divider()
@@ -1454,8 +1448,7 @@ struct CloseEquipmentRentalView: View {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Button("Close Rental") { save() }
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+                    .buttonStyle(.appPrimary)
             }
             .padding()
             Divider()
@@ -1777,8 +1770,7 @@ struct QuickEntrySheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
                         .disabled(parsedAmount == 0)
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
+                        .buttonStyle(.appPrimary)
                 }
             }
         }
@@ -1929,8 +1921,7 @@ struct AddRFISheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") { save() }
                         .disabled(subject.isEmpty)
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
+                        .buttonStyle(.appPrimary)
                 }
             }
             .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.pdf, .png, .jpeg, .tiff, .data], allowsMultipleSelection: true) { result in
@@ -2039,8 +2030,7 @@ struct EditRFISheet: View {
                         dataStore.updateRFI(rfi, in: projectID)
                         dismiss()
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+                    .buttonStyle(.appPrimary)
                 }
             }
             .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.pdf, .png, .jpeg, .tiff, .data], allowsMultipleSelection: true) { result in

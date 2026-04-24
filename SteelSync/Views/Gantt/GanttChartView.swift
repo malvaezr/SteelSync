@@ -327,7 +327,7 @@ struct GanttChartView: View {
                     Button("Fit") {
                         vm.fitToWindow(tasks: filteredTasks, availableWidth: vm.availableWidth)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.appSecondary)
                     .controlSize(.small)
                     .disabled(vm.availableWidth <= 0)
                 }
@@ -335,8 +335,7 @@ struct GanttChartView: View {
                 Button(action: { showAddTask = true }) {
                     Label("Add", systemImage: "plus")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.primaryOrange)
+                .buttonStyle(.appPrimary)
                 .controlSize(.small)
             }
 

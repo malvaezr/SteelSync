@@ -25,7 +25,7 @@ struct CalendarMainView: View {
                         Image(systemName: "chevron.left")
                     }
                     Button("Today") { selectedDate = Date() }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.appSecondary)
                     Button(action: { selectedDate = Calendar.current.date(byAdding: .month, value: 1, to: selectedDate) ?? selectedDate }) {
                         Image(systemName: "chevron.right")
                     }
@@ -257,36 +257,60 @@ struct AddEventView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("New Event").font(AppTheme.Typography.title2)
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(title.isEmpty)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
-            }
-            .padding()
-            Divider()
-            Form {
-                TextField("Title", text: $title)
-                TextField("Description", text: $description)
-                Picker("Type", selection: $type) {
-                    ForEach(CalendarEvent.EventType.allCases, id: \.self) {
-                        Label($0.rawValue, systemImage: $0.icon).tag($0)
+            SheetHeader(
+                title: "New Event",
+                saveTitle: "Save",
+                saveDisabled: title.isEmpty,
+                onCancel: { dismiss() },
+                onSave: save
+            )
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                    LabeledField(label: "Title") {
+                        TextField("Event title", text: $title)
+                            .textFieldStyle(.appField)
+                    }
+                    LabeledField(label: "Description") {
+                        TextField("Optional details", text: $description)
+                            .textFieldStyle(.appField)
+                    }
+                    LabeledField(label: "Type") {
+                        Picker("", selection: $type) {
+                            ForEach(CalendarEvent.EventType.allCases, id: \.self) {
+                                Label($0.rawValue, systemImage: $0.icon).tag($0)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .appControlSurface()
+                    }
+
+                    Toggle("All Day", isOn: $isAllDay)
+                        .toggleStyle(.switch)
+                        .padding(.top, 4)
+
+                    LabeledField(label: "Start") {
+                        DatePicker("", selection: $startDate,
+                                   displayedComponents: isAllDay ? .date : [.date, .hourAndMinute])
+                            .labelsHidden()
+                            .appControlSurface()
+                    }
+                    if !isAllDay {
+                        LabeledField(label: "End") {
+                            DatePicker("", selection: $endDate,
+                                       displayedComponents: [.date, .hourAndMinute])
+                                .labelsHidden()
+                                .appControlSurface()
+                        }
                     }
                 }
-                Toggle("All Day", isOn: $isAllDay)
-                DatePicker("Start", selection: $startDate, displayedComponents: isAllDay ? .date : [.date, .hourAndMinute])
-                if !isAllDay {
-                    DatePicker("End", selection: $endDate, displayedComponents: [.date, .hourAndMinute])
-                }
+                .padding(AppTheme.Spacing.lg)
             }
-            .formStyle(.grouped)
+            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 450, height: 400)
+        .frame(width: 480, height: 500)
         #endif
     }
 

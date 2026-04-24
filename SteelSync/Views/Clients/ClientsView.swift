@@ -274,7 +274,7 @@ struct ClientDetailView: View {
                     }
                     Spacer()
                     Button("Edit") { showEditClient = true }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.appSecondary)
                 }
 
                 // Contact Information
@@ -438,43 +438,67 @@ struct AddClientView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("New Client")
-                    .font(AppTheme.Typography.title2)
-                Spacer()
-                Button("Cancel") { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(name.isEmpty)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
-            }
-            .padding()
+            SheetHeader(
+                title: "New Client",
+                saveTitle: "Save",
+                saveDisabled: name.isEmpty,
+                onCancel: { dismiss() },
+                onSave: save
+            )
 
-            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                        SectionTitle(text: "Client Information")
+                        LabeledField(label: "Company Name") {
+                            TextField("Company name", text: $name)
+                                .textFieldStyle(.appField)
+                        }
+                        LabeledField(label: "Client Type") {
+                            Picker("", selection: $rateType) {
+                                ForEach(RateType.allCases, id: \.self) { type in
+                                    Text(type.displayName).tag(type)
+                                }
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .appControlSurface()
+                        }
+                    }
 
-            Form {
-                Section("Client Information") {
-                    TextField("Company Name", text: $name)
-                    Picker("Client Type", selection: $rateType) {
-                        ForEach(RateType.allCases, id: \.self) { type in
-                            Text(type.displayName).tag(type)
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                        SectionTitle(text: "Contact Details")
+                        LabeledField(label: "Contact Name") {
+                            TextField("Primary contact", text: $contactName)
+                                .textFieldStyle(.appField)
+                        }
+                        LabeledField(label: "Email") {
+                            TextField("name@example.com", text: $email)
+                                .textFieldStyle(.appField)
+                                #if !os(macOS)
+                                .textInputAutocapitalization(.never)
+                                .keyboardType(.emailAddress)
+                                #endif
+                        }
+                        LabeledField(label: "Phone") {
+                            TextField("(555) 555-5555", text: $phone)
+                                .textFieldStyle(.appField)
+                                #if !os(macOS)
+                                .keyboardType(.phonePad)
+                                #endif
+                        }
+                        LabeledField(label: "Billing Address") {
+                            TextField("Street, City, ST", text: $billingAddress)
+                                .textFieldStyle(.appField)
                         }
                     }
                 }
-
-                Section("Contact Details") {
-                    TextField("Contact Name", text: $contactName)
-                    TextField("Email", text: $email)
-                    TextField("Phone", text: $phone)
-                    TextField("Billing Address", text: $billingAddress)
-                }
+                .padding(AppTheme.Spacing.lg)
             }
-            .formStyle(.grouped)
+            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 480, height: 420)
+        .frame(width: 520, height: 520)
         #endif
     }
 
@@ -515,43 +539,67 @@ struct EditClientView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Edit Client")
-                    .font(AppTheme.Typography.title2)
-                Spacer()
-                Button("Cancel") { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(name.isEmpty)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
-            }
-            .padding()
+            SheetHeader(
+                title: "Edit Client",
+                saveTitle: "Save",
+                saveDisabled: name.isEmpty,
+                onCancel: { dismiss() },
+                onSave: save
+            )
 
-            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                        SectionTitle(text: "Client Information")
+                        LabeledField(label: "Company Name") {
+                            TextField("Company name", text: $name)
+                                .textFieldStyle(.appField)
+                        }
+                        LabeledField(label: "Client Type") {
+                            Picker("", selection: $rateType) {
+                                ForEach(RateType.allCases, id: \.self) { type in
+                                    Text(type.displayName).tag(type)
+                                }
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .appControlSurface()
+                        }
+                    }
 
-            Form {
-                Section("Client Information") {
-                    TextField("Company Name", text: $name)
-                    Picker("Client Type", selection: $rateType) {
-                        ForEach(RateType.allCases, id: \.self) { type in
-                            Text(type.displayName).tag(type)
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                        SectionTitle(text: "Contact Details")
+                        LabeledField(label: "Contact Name") {
+                            TextField("Primary contact", text: $contactName)
+                                .textFieldStyle(.appField)
+                        }
+                        LabeledField(label: "Email") {
+                            TextField("name@example.com", text: $email)
+                                .textFieldStyle(.appField)
+                                #if !os(macOS)
+                                .textInputAutocapitalization(.never)
+                                .keyboardType(.emailAddress)
+                                #endif
+                        }
+                        LabeledField(label: "Phone") {
+                            TextField("(555) 555-5555", text: $phone)
+                                .textFieldStyle(.appField)
+                                #if !os(macOS)
+                                .keyboardType(.phonePad)
+                                #endif
+                        }
+                        LabeledField(label: "Billing Address") {
+                            TextField("Street, City, ST", text: $billingAddress)
+                                .textFieldStyle(.appField)
                         }
                     }
                 }
-
-                Section("Contact Details") {
-                    TextField("Contact Name", text: $contactName)
-                    TextField("Email", text: $email)
-                    TextField("Phone", text: $phone)
-                    TextField("Billing Address", text: $billingAddress)
-                }
+                .padding(AppTheme.Spacing.lg)
             }
-            .formStyle(.grouped)
+            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 480, height: 420)
+        .frame(width: 520, height: 520)
         #endif
     }
 
@@ -697,7 +745,7 @@ struct UnassignedInvoicesDetailView: View {
                                     Button("Assign…") {
                                         assigningEntry = AssignmentContext(invoice: entry.invoice, projectID: entry.projectID)
                                     }
-                                    .buttonStyle(.bordered)
+                                    .buttonStyle(.appSecondary)
                                 }
                                 .padding(.vertical, AppTheme.Spacing.sm)
                                 if index < entries.count - 1 {
@@ -738,49 +786,61 @@ struct AssignBillToSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Invoice") {
-                    InfoRow(label: "Number", value: invoice.invoiceNumber)
-                    InfoRow(label: "Project", value: project?.title ?? "Unknown")
-                    InfoRow(label: "Net Due", value: invoice.netAmountDue.currencyFormatted)
-                }
-                Section {
-                    if candidates.isEmpty {
-                        Text("No clients exist yet. Add a client first.")
-                            .font(.caption)
-                            .foregroundColor(.orange)
-                    } else {
-                        Picker("Bill To", selection: $selectedClientID) {
-                            Text("— Select —").tag("")
-                            ForEach(candidates, id: \.id.recordName) { c in
-                                Text(c.name).tag(c.id.recordName)
+        VStack(spacing: 0) {
+            SheetHeader(
+                title: "Assign Bill-To",
+                saveTitle: "Save",
+                saveDisabled: selectedClientID.isEmpty,
+                onCancel: { dismiss() },
+                onSave: save
+            )
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                        SectionTitle(text: "Invoice")
+                        VStack(spacing: AppTheme.Spacing.sm) {
+                            InfoRow(label: "Number", value: invoice.invoiceNumber)
+                            InfoRow(label: "Project", value: project?.title ?? "Unknown")
+                            InfoRow(label: "Net Due", value: invoice.netAmountDue.currencyFormatted)
+                        }
+                        .padding(AppTheme.Spacing.md)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(AppTheme.secondaryBackground)
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                        SectionTitle(text: "Assign To")
+                        if candidates.isEmpty {
+                            Text("No clients exist yet. Add a client first.")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        } else {
+                            LabeledField(label: "Bill To") {
+                                Picker("", selection: $selectedClientID) {
+                                    Text("— Select —").tag("")
+                                    ForEach(candidates, id: \.id.recordName) { c in
+                                        Text(c.name).tag(c.id.recordName)
+                                    }
+                                }
+                                .labelsHidden()
+                                .pickerStyle(.menu)
+                                .appControlSurface()
                             }
                         }
+                        Text("Linked clients on the invoice's project appear first. Pick any client to attribute this invoice to them in AR.")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.tertiaryText)
                     }
-                } header: {
-                    Text("Assign To")
-                } footer: {
-                    Text("Linked clients on the invoice's project appear first. Pick any client to attribute this invoice to them in AR.")
                 }
+                .padding(AppTheme.Spacing.lg)
             }
-            .formStyle(.grouped)
-            .navigationTitle("Assign Bill-To")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.primaryOrange)
-                        .disabled(selectedClientID.isEmpty)
-                }
-            }
+            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 480, height: 420)
+        .frame(width: 500, height: 480)
         #endif
     }
 

@@ -68,8 +68,7 @@ struct GanttTaskEditSheet: View {
                 Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(name.isEmpty || projectID.isEmpty)
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primaryOrange)
+                    .buttonStyle(.appPrimary)
             }
             .padding()
             Divider()
