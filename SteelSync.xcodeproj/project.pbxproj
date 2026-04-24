@@ -42,6 +42,7 @@
 		17887569BD230D1305C2CEB3 /* SteelSyncWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F02A8419E7F23A58A8DA9A92 /* SteelSyncWidgetBundle.swift */; };
 		194F5FF10F04FFBF8F217946 /* TimeEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CEF8300A84E73A0EF9DF08 /* TimeEntry.swift */; };
 		19A6062F4253DEDA54ACF5C1 /* PayApplication.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8BD59F1AD2C45F5E18F52CE /* PayApplication.swift */; };
+		19EBE1B4E827A35E79CF2E94 /* OverheadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A8E550E7DDAFD4619DE39D6 /* OverheadView.swift */; };
 		1CCD076936941CD2C9C77ACE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8DD979CA3D82559B1DCA65E /* ContentView.swift */; };
 		1E3C94F14EF867BEAB6CDC59 /* EquipmentOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 630778E6199E0CE162622606 /* EquipmentOverviewView.swift */; };
 		1E3D4C5A59786C1417AB4285 /* GanttTaskBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A24368A58D2D9D49A30308 /* GanttTaskBarView.swift */; };
@@ -68,6 +69,7 @@
 		323FD5B94D4B3D6A7B4C5FA3 /* BidDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F89C7F8FCAE982405AB863B9 /* BidDetailView.swift */; };
 		325F54ED87871D67F1091F56 /* TodoOverviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B11124CBC093401AD48942 /* TodoOverviewWidget.swift */; };
 		32B5A58D1D24918211EA5296 /* CalendarEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76ADDAF194FFEAE179F13A66 /* CalendarEvent.swift */; };
+		32E6D1FCA1143E58957E9364 /* OverheadFormSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4570F329FB46D0640F9943B8 /* OverheadFormSheets.swift */; };
 		335FC26B619348AF1D78CB21 /* TimesheetEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D5CEF28092A786A2F20668 /* TimesheetEntry.swift */; };
 		33FF89DA556BE5F68FF1E358 /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F988730EAC002233173ACC1 /* LLMService.swift */; };
 		342C95135BDA5FBCE2DDA7C3 /* ClientsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E42E79F8F54FFD90C87D9CB /* ClientsView.swift */; };
@@ -97,6 +99,7 @@
 		4728108E4DAD3A8D3746931A /* BidPipelineWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 474B8F17059E432765BE0F9B /* BidPipelineWidget.swift */; };
 		47E14B1CFD99F553CF6B44C9 /* TodoOverviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B11124CBC093401AD48942 /* TodoOverviewWidget.swift */; };
 		492E407DF77C73C59CF88D76 /* PersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8D56045443EE049CDCFAF6A /* PersistenceService.swift */; };
+		4A910D9550C9B1C5C76E5AE3 /* OverheadFormSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4570F329FB46D0640F9943B8 /* OverheadFormSheets.swift */; };
 		4B64B4CAB182C442FEB3D167 /* PencilCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E414F6FDD05FC4316E2ED3 /* PencilCanvasView.swift */; };
 		4BE21E0936CA8D3C35C3EFCC /* RFI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530A1552340FF002D1AB9A8C /* RFI.swift */; };
 		4BE510047D4B8D0AD1A7D0A8 /* SteelSyncShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A800CC308927F8E692D3235 /* SteelSyncShortcuts.swift */; };
@@ -117,6 +120,7 @@
 		6045BC46947CC793AE3C044D /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA8123C4AA8DDD28AF866B85 /* SidebarView.swift */; };
 		6109246298FFB2E56B6EB311 /* PencilCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E414F6FDD05FC4316E2ED3 /* PencilCanvasView.swift */; };
 		611A181D6683F5CD4B3A15A5 /* PhoneSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B49BCBC5A72AB40FDB54104 /* PhoneSyncStatusView.swift */; };
+		611E7B2573EF7000437FFFA2 /* OverheadExpense.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C2ADF3F7937DBF838CB48B /* OverheadExpense.swift */; };
 		6196D5CEF0521D5BCE5635E0 /* GanttTaskBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A24368A58D2D9D49A30308 /* GanttTaskBarView.swift */; };
 		61B2E0DBFF869FB7CB5379F5 /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D1E8322F91B9CB44B59AC7 /* SharedComponents.swift */; };
 		6298C02F3B6F62665EA34C0E /* PlanningPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23F45CE67DC5A5F39DB10635 /* PlanningPad.swift */; };
@@ -135,9 +139,11 @@
 		6D1E508D5EFBED8E59A4A0F0 /* BidProject.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B1F30E7135A898D7C439BB /* BidProject.swift */; };
 		6D44218E45225BB9ED30BE6C /* GanttViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8968AE25CF9FEFEBC09B15 /* GanttViewModel.swift */; };
 		6DAC1B289ACF4D8DDE6072FF /* SnapshotService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77B10D2CBB3202FC8A534723 /* SnapshotService.swift */; };
+		6F735D526101D247F786072B /* OverheadExpense.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C2ADF3F7937DBF838CB48B /* OverheadExpense.swift */; };
 		706A1710F172094D5544FE71 /* AssistantMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B4736E176810AB66924CAB0 /* AssistantMessage.swift */; };
 		709C22B318CBD0190B9957DE /* PencilCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E414F6FDD05FC4316E2ED3 /* PencilCanvasView.swift */; };
 		7163927A8ADB0114065794D2 /* CalendarMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD77C25FBFE22464C5E0183 /* CalendarMainView.swift */; };
+		71B940F460308C7A318A6C70 /* OverheadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A8E550E7DDAFD4619DE39D6 /* OverheadView.swift */; };
 		74BF9E501E6BF3ED56E6368A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8DD979CA3D82559B1DCA65E /* ContentView.swift */; };
 		74CF3C75ED9458B5BFF4BA2C /* GanttTimelineGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7C2C4520D17CE6438BF0BF4 /* GanttTimelineGridView.swift */; };
 		75B233FE537827A867FD3BCE /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4653DF72B79DC7583A950CC8 /* TodayView.swift */; };
@@ -154,6 +160,7 @@
 		80502C7C9B069BB083671525 /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D1E8322F91B9CB44B59AC7 /* SharedComponents.swift */; };
 		8113BFBBE57099641331865F /* CloudKitConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E9683DA4F3B1ABA7AE3A72 /* CloudKitConvertible.swift */; };
 		83808EBAA9290FEEAED39F96 /* ProjectFormSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C688ECAD2EB3B55FE5B19133 /* ProjectFormSheets.swift */; };
+		84F149D84ABD65F831E3EF23 /* OverheadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A8E550E7DDAFD4619DE39D6 /* OverheadView.swift */; };
 		8525133AD9B01D31CE61A2C8 /* DataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 382FFF1355B696458FB6E3D8 /* DataStore.swift */; };
 		86082208D4AC71348C1B5BF7 /* Invoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 974F3DBE56C2C2D69C94EC91 /* Invoice.swift */; };
 		867A071AD2292114401EF208 /* ResourceType.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4FFFCC03C9E0ECCD289C86B /* ResourceType.swift */; };
@@ -197,6 +204,7 @@
 		AE55A3D6730D5A9F7998BCD3 /* FileDropModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F937DB7367744CB2FD75497 /* FileDropModifier.swift */; };
 		B0A13B0A4FF1B011062E754B /* BidProject.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B1F30E7135A898D7C439BB /* BidProject.swift */; };
 		B0FCAE7F78F606264568E4BC /* PlatformHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6300CD8818402187D0ABD23A /* PlatformHelpers.swift */; };
+		B1496C1A66AA8C7742F20A36 /* OverheadFormSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4570F329FB46D0640F9943B8 /* OverheadFormSheets.swift */; };
 		B2408C1833EDB55AAE433B41 /* GanttTimelineGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7C2C4520D17CE6438BF0BF4 /* GanttTimelineGridView.swift */; };
 		B2BCEC9F28159D542DFF98C1 /* PersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8D56045443EE049CDCFAF6A /* PersistenceService.swift */; };
 		B38E23A8F69BDB947030698C /* ModelConversions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58398A718E943CC2D34502F3 /* ModelConversions.swift */; };
@@ -274,6 +282,7 @@
 		FD00D112711A47DE4CF7A5DC /* WorkOrderInvoicePDFView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF20B46D8C773A462C02FB9E /* WorkOrderInvoicePDFView.swift */; };
 		FF167F1E5AD52014B45D080A /* CrewManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4FDB469A32E53EAB31384F /* CrewManagementView.swift */; };
 		FF7C3AE14704BF47635D7F7F /* HandwritingRecognitionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2953DF713912AE6F41BA1451 /* HandwritingRecognitionService.swift */; };
+		FF89C0322E7810E0CF89AD66 /* OverheadExpense.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C2ADF3F7937DBF838CB48B /* OverheadExpense.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -373,6 +382,7 @@
 		3A800CC308927F8E692D3235 /* SteelSyncShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelSyncShortcuts.swift; sourceTree = "<group>"; };
 		3CD77C25FBFE22464C5E0183 /* CalendarMainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarMainView.swift; sourceTree = "<group>"; };
 		3E42E79F8F54FFD90C87D9CB /* ClientsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientsView.swift; sourceTree = "<group>"; };
+		4570F329FB46D0640F9943B8 /* OverheadFormSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverheadFormSheets.swift; sourceTree = "<group>"; };
 		45C110DB5B14052C675D8B39 /* ResponseFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseFormatter.swift; sourceTree = "<group>"; };
 		4653DF72B79DC7583A950CC8 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		474B8F17059E432765BE0F9B /* BidPipelineWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BidPipelineWidget.swift; sourceTree = "<group>"; };
@@ -402,6 +412,7 @@
 		77B10D2CBB3202FC8A534723 /* SnapshotService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotService.swift; sourceTree = "<group>"; };
 		7942C645F9E3BF0378EFFFBF /* GanttTaskEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GanttTaskEditSheet.swift; sourceTree = "<group>"; };
 		7A51DBCAC0070BC1988CE5F3 /* PhoneContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneContentView.swift; sourceTree = "<group>"; };
+		7A8E550E7DDAFD4619DE39D6 /* OverheadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverheadView.swift; sourceTree = "<group>"; };
 		7D8968AE25CF9FEFEBC09B15 /* GanttViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GanttViewModel.swift; sourceTree = "<group>"; };
 		7E400BF6C446F19B0101B2A3 /* ProjectDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectDetailView.swift; sourceTree = "<group>"; };
 		7EC530616AD5C1FA78544D40 /* TodoItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoItem.swift; sourceTree = "<group>"; };
@@ -420,6 +431,7 @@
 		9B49BCBC5A72AB40FDB54104 /* PhoneSyncStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneSyncStatusView.swift; sourceTree = "<group>"; };
 		9CBD37DF59091C54FB3DBA26 /* llama.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = llama.xcframework; path = Frameworks/llama.xcframework; sourceTree = "<group>"; };
 		A22D7545054C909577915F25 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		A2C2ADF3F7937DBF838CB48B /* OverheadExpense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverheadExpense.swift; sourceTree = "<group>"; };
 		A4FFFCC03C9E0ECCD289C86B /* ResourceType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceType.swift; sourceTree = "<group>"; };
 		A8D56045443EE049CDCFAF6A /* PersistenceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceService.swift; sourceTree = "<group>"; };
 		A9D1E8322F91B9CB44B59AC7 /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
@@ -549,6 +561,15 @@
 			path = Bidding;
 			sourceTree = "<group>";
 		};
+		2C51D7D4A3971A3095011775 /* Overhead */ = {
+			isa = PBXGroup;
+			children = (
+				4570F329FB46D0640F9943B8 /* OverheadFormSheets.swift */,
+				7A8E550E7DDAFD4619DE39D6 /* OverheadView.swift */,
+			);
+			path = Overhead;
+			sourceTree = "<group>";
+		};
 		2D612E3473F7FCC45C96555C /* Gantt */ = {
 			isa = PBXGroup;
 			children = (
@@ -639,6 +660,7 @@
 				DA34885EDE9A7BE1C05F3A42 /* EquipmentRental.swift */,
 				5DF9906F7D629C310853F8C1 /* GanttTask.swift */,
 				974F3DBE56C2C2D69C94EC91 /* Invoice.swift */,
+				A2C2ADF3F7937DBF838CB48B /* OverheadExpense.swift */,
 				E8BD59F1AD2C45F5E18F52CE /* PayApplication.swift */,
 				23F45CE67DC5A5F39DB10635 /* PlanningPad.swift */,
 				5EB8D10C49A60882B9F6EBA0 /* Project.swift */,
@@ -936,6 +958,7 @@
 				053CF7B2FE002EB046E0BA77 /* Equipment */,
 				2D612E3473F7FCC45C96555C /* Gantt */,
 				1ABDA1477DF869879765D50A /* Invoices */,
+				2C51D7D4A3971A3095011775 /* Overhead */,
 				FC9EF7CD314C867F1DA3BB8B /* PlanningPad */,
 				B962DFD416C1EDBEC72210A5 /* Reports */,
 				955D661BC18EE4F079163FC9 /* RFI */,
@@ -1180,6 +1203,9 @@
 				4101591E8A4F4FA5D12CB7EF /* InvoicesView.swift in Sources */,
 				765D7EF3B7A8D7F516CF2ABB /* ModelConversions.swift in Sources */,
 				4FE8EC2C37E83384B48A3231 /* NotificationService.swift in Sources */,
+				611E7B2573EF7000437FFFA2 /* OverheadExpense.swift in Sources */,
+				4A910D9550C9B1C5C76E5AE3 /* OverheadFormSheets.swift in Sources */,
+				71B940F460308C7A318A6C70 /* OverheadView.swift in Sources */,
 				236892F4F5205CD629403534 /* PDFExportService.swift in Sources */,
 				05B06EF1ABA1DB9037FBBE41 /* PayAppPDFRenderer.swift in Sources */,
 				69A98901ACF23C7FC918D169 /* PayAppView.swift in Sources */,
@@ -1279,6 +1305,9 @@
 				33FF89DA556BE5F68FF1E358 /* LLMService.swift in Sources */,
 				F5F8789129336C36E0A13718 /* ModelConversions.swift in Sources */,
 				A499B40C156A3EE3E06CA71B /* NotificationService.swift in Sources */,
+				6F735D526101D247F786072B /* OverheadExpense.swift in Sources */,
+				32E6D1FCA1143E58957E9364 /* OverheadFormSheets.swift in Sources */,
+				84F149D84ABD65F831E3EF23 /* OverheadView.swift in Sources */,
 				403F8D096C16B77C5CCEFF9D /* PDFExportService.swift in Sources */,
 				9EBE2C4C5A504CB8A2D08324 /* PayAppPDFRenderer.swift in Sources */,
 				4C039FA5BBE0222A1421ED7F /* PayAppView.swift in Sources */,
@@ -1394,6 +1423,9 @@
 				8B741AFEBB6842E34C33693C /* LLMService.swift in Sources */,
 				B38E23A8F69BDB947030698C /* ModelConversions.swift in Sources */,
 				659D914955FAA0BE9B5FA8A4 /* NotificationService.swift in Sources */,
+				FF89C0322E7810E0CF89AD66 /* OverheadExpense.swift in Sources */,
+				B1496C1A66AA8C7742F20A36 /* OverheadFormSheets.swift in Sources */,
+				19EBE1B4E827A35E79CF2E94 /* OverheadView.swift in Sources */,
 				913896951CDA4C6F4F5BF537 /* PDFExportService.swift in Sources */,
 				BD07F7C8E8FC2EA32AAFA27D /* PayAppPDFRenderer.swift in Sources */,
 				C8CDA35C866FBBB5EEB3639A /* PayAppView.swift in Sources */,

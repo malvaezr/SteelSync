@@ -32,6 +32,9 @@ struct SteelSyncApp: App {
                 .task {
                     notificationService.requestPermission()
                     notificationService.scheduleMorningBatch(from: dataStore)
+                    // Catch up any recurring overhead expenses whose next
+                    // occurrence is now past-due. Idempotent.
+                    dataStore.generateRecurringOverhead()
                 }
                 #if os(macOS)
                 .frame(minWidth: 900, minHeight: 600)

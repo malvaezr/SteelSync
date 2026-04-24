@@ -709,3 +709,46 @@ extension RFI: CloudKitConvertible {
         )
     }
 }
+
+// MARK: - Overhead Expense
+
+extension OverheadExpense: CloudKitConvertible {
+    static let ckRecordType = "SS_OverheadExpense"
+    var ckRecordName: String { recordID.recordName }
+
+    func toCKRecord(in zoneID: CKRecordZone.ID) -> CKRecord {
+        let r = CKRecord(recordType: Self.ckRecordType,
+                         recordID: CKRecord.ID(recordName: ckRecordName, zoneID: zoneID))
+        r["date"] = date as CKRecordValue
+        CKField.setDecimal(r, "amount", amount)
+        r["category"] = category.rawValue as CKRecordValue
+        r["vendor"] = vendor as CKRecordValue
+        r["expenseDescription"] = expenseDescription as CKRecordValue
+        r["notes"] = notes as CKRecordValue
+        r["recurrence"] = recurrence.rawValue as CKRecordValue
+        if let parent = parentRecurringID {
+            r["parentRecurringID"] = parent as CKRecordValue
+        }
+        r["distributionMode"] = distributionMode.rawValue as CKRecordValue
+        r["distributionProjectIDsJSON"] = CKField.encodeJSON(distributionProjectIDs) as CKRecordValue
+        r["attachmentsJSON"] = CKField.encodeJSON(attachments) as CKRecordValue
+        return r
+    }
+
+    static func from(_ record: CKRecord) -> OverheadExpense? {
+        OverheadExpense(
+            recordID: record.recordID,
+            date: CKField.date(record, "date"),
+            amount: CKField.decimal(record, "amount"),
+            category: OverheadCategory(rawValue: CKField.string(record, "category")) ?? .other,
+            vendor: CKField.string(record, "vendor"),
+            expenseDescription: CKField.string(record, "expenseDescription"),
+            notes: CKField.string(record, "notes"),
+            recurrence: RecurrenceInterval(rawValue: CKField.string(record, "recurrence")) ?? .none,
+            parentRecurringID: CKField.optString(record, "parentRecurringID"),
+            distributionMode: OverheadDistributionMode(rawValue: CKField.string(record, "distributionMode")) ?? .allActive,
+            distributionProjectIDs: CKField.decodeJSON(record, "distributionProjectIDsJSON", as: [String].self) ?? [],
+            attachments: CKField.decodeJSON(record, "attachmentsJSON", as: [Attachment].self) ?? []
+        )
+    }
+}

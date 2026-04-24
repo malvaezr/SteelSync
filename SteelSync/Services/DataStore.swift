@@ -22,6 +22,7 @@ class DataStore: ObservableObject {
     @Published var timesheetEntries: [TimesheetEntry] = []
     @Published var crewPresets: [CrewPreset] = []
     @Published var rfis: [CKRecord.ID: [RFI]] = [:]
+    @Published var overheadExpenses: [OverheadExpense] = []
     @Published var planningPads: [PlanningPad] = []
     @Published var assistantMessages: [AssistantMessage] = []
     @Published var auditLog: [AuditEntry] = []
@@ -116,6 +117,7 @@ class DataStore: ObservableObject {
         for a in auditLog { localIDs.insert(a.ckRecordName) }
         for ts in timesheetEntries { localIDs.insert(ts.ckRecordName) }
         for cp in crewPresets { localIDs.insert(cp.ckRecordName) }
+        for oh in overheadExpenses { localIDs.insert(oh.ckRecordName) }
         for (_, items) in changeOrders { for co in items { localIDs.insert(co.ckRecordName) } }
         for (_, items) in payments { for p in items { localIDs.insert(p.ckRecordName) } }
         for (_, items) in payrollEntries { for e in items { localIDs.insert(e.ckRecordName) } }
@@ -1386,6 +1388,148 @@ class DataStore: ObservableObject {
         let perDiem = entries.reduce(Decimal.zero) { $0 + $1.totalPerDiem }
         let pay = entries.reduce(Decimal.zero) { $0 + $1.totalPay }
         return (hours, perDiem, pay)
+    }
+
+    // MARK: - Overhead Operations
+
+    /// Top-level recurring templates (one row per recurring series).
+    var overheadRecurringTemplates: [OverheadExpense] {
+        overheadExpenses.filter { $0.isRecurringTemplate }
+    }
+
+    /// All entries within a given date range (inclusive of both ends).
+    func overheadEntries(in range: ClosedRange<Date>) -> [OverheadExpense] {
+        overheadExpenses.filter { range.contains($0.date) }
+    }
+
+    /// Total overhead amount for the given date range.
+    func overheadTotal(in range: ClosedRange<Date>) -> Decimal {
+        overheadEntries(in: range).reduce(Decimal.zero) { $0 + $1.amount }
+    }
+
+    /// Sum grouped by category for the given date range, largest first.
+    func overheadByCategory(in range: ClosedRange<Date>) -> [(OverheadCategory, Decimal)] {
+        let entries = overheadEntries(in: range)
+        var totals: [OverheadCategory: Decimal] = [:]
+        for entry in entries {
+            totals[entry.category, default: 0] += entry.amount
+        }
+        return totals.sorted { $0.value > $1.value }
+    }
+
+    /// Returns the allocated share of overhead each project absorbs across the
+    /// given range. Uses pro-rata distribution by `Project.contractAmount`.
+    /// Company-only expenses (`distributionMode == .companyOnly`) are excluded.
+    ///
+    /// - Returns: `(total: raw sum for the range, perProject: recordName → share)`
+    func allocateOverhead(in range: ClosedRange<Date>) -> (total: Decimal, perProject: [String: Decimal]) {
+        var total = Decimal.zero
+        var perProject: [String: Decimal] = [:]
+
+        for expense in overheadEntries(in: range) {
+            total += expense.amount
+
+            let targets: [Project]
+            switch expense.distributionMode {
+            case .companyOnly:
+                continue
+            case .allActive:
+                targets = projects.filter { $0.wasActive(on: expense.date) }
+            case .specificProjects:
+                let ids = Set(expense.distributionProjectIDs)
+                targets = projects.filter { ids.contains($0.id.recordName) }
+            }
+
+            let totalContract = targets.reduce(Decimal.zero) { $0 + $1.contractAmount }
+            guard totalContract > 0, !targets.isEmpty else { continue }
+
+            for project in targets {
+                let share = expense.amount * (project.contractAmount / totalContract)
+                perProject[project.id.recordName, default: 0] += share
+            }
+        }
+        return (total, perProject)
+    }
+
+    func addOverhead(_ expense: OverheadExpense) {
+        overheadExpenses.append(expense)
+        logAudit(.created, type: "Overhead", name: overheadAuditName(expense))
+        syncRecord(expense)
+    }
+
+    func updateOverhead(_ expense: OverheadExpense) {
+        guard let index = overheadExpenses.firstIndex(where: { $0.id == expense.id }) else { return }
+        overheadExpenses[index] = expense
+        logAudit(.updated, type: "Overhead", name: overheadAuditName(expense))
+        syncRecord(expense)
+    }
+
+    func deleteOverhead(_ expense: OverheadExpense) {
+        overheadExpenses.removeAll { $0.id == expense.id }
+        // Children of a recurring template survive — they're real historical
+        // expenses. We just detach them by clearing parentRecurringID so they
+        // don't reference a missing parent.
+        if expense.isRecurringTemplate {
+            let parentName = expense.recordID.recordName
+            for i in overheadExpenses.indices where overheadExpenses[i].parentRecurringID == parentName {
+                overheadExpenses[i].parentRecurringID = nil
+                syncRecord(overheadExpenses[i])
+            }
+        }
+        logAudit(.deleted, type: "Overhead", name: overheadAuditName(expense))
+        deleteFromCloud(expense)
+    }
+
+    private func overheadAuditName(_ e: OverheadExpense) -> String {
+        let label = e.expenseDescription.isEmpty ? e.category.rawValue : e.expenseDescription
+        return e.vendor.isEmpty ? label : "\(label) — \(e.vendor)"
+    }
+
+    /// Generates missing recurring-overhead instances up through today. Called
+    /// from app launch. For each recurring template, walks forward by its
+    /// interval and creates a new child (with `recurrence = .none` and
+    /// `parentRecurringID` pointing back) for every interval that has elapsed
+    /// since the last known occurrence.
+    ///
+    /// Idempotent: re-running it on the same day is a no-op.
+    @discardableResult
+    func generateRecurringOverhead(asOf today: Date = Date()) -> Int {
+        let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: today)
+        var created = 0
+
+        for template in overheadRecurringTemplates {
+            let parentName = template.recordID.recordName
+            let children = overheadExpenses.filter { $0.parentRecurringID == parentName }
+            let lastOccurrence = (children.map(\.date) + [template.date]).max() ?? template.date
+
+            var next = template.recurrence.next(after: lastOccurrence, calendar: cal)
+            while let nextDate = next, cal.startOfDay(for: nextDate) <= todayStart {
+                let newEntry = OverheadExpense(
+                    date: nextDate,
+                    amount: template.amount,
+                    category: template.category,
+                    vendor: template.vendor,
+                    expenseDescription: template.expenseDescription,
+                    notes: template.notes,
+                    recurrence: .none,
+                    parentRecurringID: parentName,
+                    distributionMode: template.distributionMode,
+                    distributionProjectIDs: template.distributionProjectIDs
+                )
+                overheadExpenses.append(newEntry)
+                syncRecord(newEntry)
+                created += 1
+                next = template.recurrence.next(after: nextDate, calendar: cal)
+            }
+        }
+
+        if created > 0 {
+            logAudit(.created, type: "Overhead",
+                     name: "\(created) recurring entries",
+                     details: "Auto-generated on \(todayStart.shortDate)")
+        }
+        return created
     }
 
     // MARK: - Report Calculations

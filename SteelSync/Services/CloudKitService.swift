@@ -233,6 +233,7 @@ class CloudKitService {
             store.auditLog = (byType[AuditEntry.ckRecordType] ?? []).compactMap { AuditEntry.from($0) }
             store.timesheetEntries = (byType[TimesheetEntry.ckRecordType] ?? []).compactMap { TimesheetEntry.from($0) }
             store.crewPresets = (byType[CrewPreset.ckRecordType] ?? []).compactMap { CrewPreset.from($0) }
+            store.overheadExpenses = (byType[OverheadExpense.ckRecordType] ?? []).compactMap { OverheadExpense.from($0) }
 
             // Child records — extract projectRef and group by parent
             store.changeOrders = groupChildRecords(byType[ChangeOrder.ckRecordType] ?? [], as: ChangeOrder.self)
@@ -290,6 +291,7 @@ class CloudKitService {
         for t in store.todos { allRecords.append(t.toCKRecord(in: zoneID)) }
         for ev in store.calendarEvents { allRecords.append(ev.toCKRecord(in: zoneID)) }
         for g in store.ganttTasks { allRecords.append(g.toCKRecord(in: zoneID)) }
+        for oh in store.overheadExpenses { allRecords.append(oh.toCKRecord(in: zoneID)) }
 
         // Child records — attach projectRef
         for (projectID, cos) in store.changeOrders {

@@ -25,6 +25,7 @@ struct SidebarView: View {
                     sidebarRow(.timekeeping, badge: dataStore.activeEmployees.count)
                     sidebarRow(.equipment, badge: dataStore.allActiveRentalCount)
                     sidebarRow(.calendar)
+                    sidebarRow(.overhead, badge: dataStore.overheadRecurringTemplates.count)
                     #if os(iOS)
                     if UIDevice.current.userInterfaceIdiom == .pad {
                         sidebarRow(.planningPad)

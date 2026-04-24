@@ -88,6 +88,17 @@ struct Project: Identifiable, Hashable {
     var changeOrders: [ChangeOrder] { [] }
     var payments: [Payment] { [] }
     var payrollEntries: [PayrollEntry] { [] }
+
+    /// True if the project was active on `date` — used by overhead allocation
+    /// so an expense only hits projects that existed at that point in time.
+    /// Falls back to status when dates aren't set.
+    func wasActive(on date: Date) -> Bool {
+        if status == "Completed" || status == "Cancelled" { return false }
+        if actualCompletionDate != nil, let actual = actualCompletionDate, date > actual { return false }
+        if let start = startDate, date < start { return false }
+        if let end = endDate, date > end { return false }
+        return true
+    }
 }
 
 enum PaymentAppliesTo: Int, Codable {

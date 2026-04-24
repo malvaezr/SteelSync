@@ -16,6 +16,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
     case timekeeping = "Crew & Timesheets"
     case equipment = "Equipment"
     case calendar = "Calendar"
+    case overhead = "Overhead"
 
     // PIPELINE — money and relationships
     case bidding = "Bidding"
@@ -43,6 +44,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .timekeeping: return "person.3.fill"
         case .equipment: return "shippingbox.fill"
         case .calendar: return "calendar"
+        case .overhead: return "briefcase.fill"
         case .bidding: return "doc.text.fill"
         case .clients: return "person.2.fill"
         case .assistant: return "bubble.left.and.text.bubble.right"
@@ -64,6 +66,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
         case .timekeeping: return "person.3.fill"
         case .equipment: return "shippingbox.fill"
         case .calendar: return "calendar"
+        case .overhead: return "briefcase.fill"
         case .bidding: return "doc.text.fill"
         case .clients: return "person.2.fill"
         case .assistant: return "bubble.left.and.text.bubble.right.fill"

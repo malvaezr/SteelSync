@@ -216,6 +216,45 @@ struct PersistenceService {
         print("[Persistence] Backup saved to \(backupFolder.lastPathComponent)")
     }
 
+    // MARK: - Overhead Expense (CKRecord.ID → String wrapper)
+
+    struct CodableOverhead: Codable {
+        let idName: String
+        var date: Date
+        var amount: Decimal
+        var category: OverheadCategory
+        var vendor: String
+        var expenseDescription: String
+        var notes: String
+        var recurrence: RecurrenceInterval
+        var parentRecurringID: String?
+        var distributionMode: OverheadDistributionMode
+        var distributionProjectIDs: [String]
+        var attachments: [Attachment]
+
+        init(_ e: OverheadExpense) {
+            idName = e.recordID.recordName
+            date = e.date; amount = e.amount; category = e.category
+            vendor = e.vendor; expenseDescription = e.expenseDescription; notes = e.notes
+            recurrence = e.recurrence; parentRecurringID = e.parentRecurringID
+            distributionMode = e.distributionMode
+            distributionProjectIDs = e.distributionProjectIDs
+            attachments = e.attachments
+        }
+
+        func toExpense() -> OverheadExpense {
+            OverheadExpense(
+                recordID: CKRecord.ID(recordName: idName),
+                date: date, amount: amount, category: category,
+                vendor: vendor, expenseDescription: expenseDescription, notes: notes,
+                recurrence: recurrence, parentRecurringID: parentRecurringID,
+                distributionMode: distributionMode,
+                distributionProjectIDs: distributionProjectIDs,
+                attachments: attachments
+            )
+        }
+    }
+
     // MARK: - Save All
 
     @MainActor
@@ -240,6 +279,7 @@ struct PersistenceService {
         save(encodeDict(store.rfis), as: "rfis")
         save(store.planningPads, as: "planningPads")
         save(store.assistantMessages, as: "assistantMessages")
+        save(store.overheadExpenses.map { CodableOverhead($0) }, as: "overheadExpenses")
     }
 
     // MARK: - Load All
@@ -290,6 +330,9 @@ struct PersistenceService {
         }
         if let pp = load([PlanningPad].self, from: "planningPads") { store.planningPads = pp }
         if let am = load([AssistantMessage].self, from: "assistantMessages") { store.assistantMessages = am }
+        if let oh: [CodableOverhead] = load([CodableOverhead].self, from: "overheadExpenses") {
+            store.overheadExpenses = oh.map { $0.toExpense() }
+        }
         return true
     }
 }
