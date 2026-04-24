@@ -9,9 +9,10 @@ struct ReportsView: View {
     @EnvironmentObject var dataStore: DataStore
     @State private var selectedReport = "Overview"
 
-    private let reports = ["Overview", "Projects", "Bidding", "Clients", "Financial", "Job Costing", "1099 Summary"]
+    private let reports = ["Overview", "Projects", "Bidding", "Clients", "Financial", "Job Costing", "Overhead", "1099 Summary"]
     @State private var selectedJobCostProject: Project?
     @State private var selected1099Year: Int = Calendar.current.component(.year, from: Date())
+    @State private var overheadRangePreset: OverheadRangePreset = .thisYear
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,6 +59,8 @@ struct ReportsView: View {
                         financialReport
                     case "Job Costing":
                         jobCostingReport
+                    case "Overhead":
+                        overheadReport
                     case "1099 Summary":
                         contractor1099Report
                     default:
@@ -348,6 +351,10 @@ struct ReportsView: View {
             }
 
             let projectsToShow = selectedJobCostProject.map { [$0] } ?? dataStore.projects
+            // Allocate overhead once across all time — each project picks up
+            // its own pro-rata share for expenses that happened while it was
+            // active. Hoisted out of the ForEach so we don't recompute per row.
+            let overheadAllocation = dataStore.allocateOverhead(in: Date.distantPast...Date.distantFuture).perProject
 
             ForEach(projectsToShow) { project in
                 GroupBox {
@@ -361,7 +368,8 @@ struct ReportsView: View {
                         let payrollTotal = payroll.reduce(Decimal.zero) { $0 + $1.totalAmount }
                         let timesheetTotal = timesheets.reduce(Decimal.zero) { $0 + $1.totalPay }
                         let costTotal = costs.reduce(Decimal.zero) { $0 + $1.amount }
-                        let grandTotal = payrollTotal + timesheetTotal + costTotal
+                        let projectOverhead = overheadAllocation[project.id.recordName] ?? 0
+                        let grandTotal = payrollTotal + timesheetTotal + costTotal + projectOverhead
 
                         // Labor section
                         if payrollTotal + timesheetTotal > 0 {
@@ -378,6 +386,11 @@ struct ReportsView: View {
                             }
                         }
 
+                        if projectOverhead > 0 {
+                            jobCostRow("Allocated Overhead", code: "OVHD",
+                                       amount: projectOverhead, total: grandTotal)
+                        }
+
                         Divider()
                         HStack {
                             Text("TOTAL COSTS").font(.caption).fontWeight(.bold)
@@ -390,7 +403,7 @@ struct ReportsView: View {
                             Text(project.totalRevenue.currencyFormatted).font(.caption)
                         }
                         HStack {
-                            Text("Profit").font(.caption).fontWeight(.bold)
+                            Text("Profit (after overhead)").font(.caption).fontWeight(.bold)
                             Spacer()
                             Text((project.totalRevenue - grandTotal).currencyFormatted)
                                 .font(.caption).fontWeight(.bold)
@@ -405,6 +418,177 @@ struct ReportsView: View {
                                message: "Select a project or add costs to see the job costing breakdown.")
             }
         }
+    }
+
+    // MARK: - Overhead
+
+    private var overheadReport: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            HStack {
+                Text("Overhead / Company P&L").font(AppTheme.Typography.headline)
+                Spacer()
+                Picker("Range", selection: $overheadRangePreset) {
+                    ForEach(OverheadRangePreset.allCases) { preset in
+                        Text(preset.rawValue).tag(preset)
+                    }
+                }
+                .frame(maxWidth: 180)
+            }
+
+            let range = overheadRangePreset.range()
+            let allocation = dataStore.allocateOverhead(in: range)
+            let byCategory = dataStore.overheadByCategory(in: range)
+            let entries = dataStore.overheadEntries(in: range)
+
+            // Summary metrics
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 200))], spacing: AppTheme.Spacing.md) {
+                MetricCard(
+                    title: "\(overheadRangePreset.rawValue) Total",
+                    value: allocation.total.currencyFormatted,
+                    icon: "sum", color: AppTheme.primaryOrange
+                )
+                MetricCard(
+                    title: "Entries",
+                    value: "\(entries.count)",
+                    icon: "list.bullet.rectangle", color: .blue
+                )
+                MetricCard(
+                    title: "Recurring Templates",
+                    value: "\(dataStore.overheadRecurringTemplates.count)",
+                    icon: "repeat", color: .purple
+                )
+                MetricCard(
+                    title: "Distributed to Projects",
+                    value: allocation.perProject.values.reduce(Decimal.zero, +).currencyFormatted,
+                    icon: "arrow.triangle.branch", color: .green
+                )
+            }
+
+            // Category breakdown
+            GroupBox {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                    Text("Breakdown by Category")
+                        .font(.caption).fontWeight(.bold).foregroundColor(.secondary)
+                    if byCategory.isEmpty {
+                        Text("No overhead entries in this range.")
+                            .font(.caption).foregroundColor(.secondary)
+                            .padding(.vertical, AppTheme.Spacing.sm)
+                    } else {
+                        ForEach(byCategory, id: \.0) { cat, amount in
+                            HStack {
+                                Image(systemName: cat.icon)
+                                    .font(.caption)
+                                    .foregroundColor(AppTheme.primaryOrange)
+                                    .frame(width: 18)
+                                Text(cat.rawValue).font(.caption)
+                                Spacer()
+                                Text(pct(amount, of: allocation.total))
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 55, alignment: .trailing)
+                                Text(amount.currencyFormatted)
+                                    .font(.caption).fontWeight(.medium)
+                                    .frame(width: 100, alignment: .trailing)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Per-project allocation
+            GroupBox {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                    Text("Distributed to Projects (Pro-Rata by Contract)")
+                        .font(.caption).fontWeight(.bold).foregroundColor(.secondary)
+                    if allocation.perProject.isEmpty {
+                        Text("No project distributions in this range.")
+                            .font(.caption).foregroundColor(.secondary)
+                            .padding(.vertical, AppTheme.Spacing.sm)
+                    } else {
+                        let sorted = allocation.perProject.sorted { $0.value > $1.value }
+                        ForEach(sorted, id: \.key) { recordName, amount in
+                            HStack {
+                                Text(projectTitle(for: recordName))
+                                    .font(.caption)
+                                    .lineLimit(1)
+                                Spacer()
+                                Text(pct(amount, of: allocation.perProject.values.reduce(Decimal.zero, +)))
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 55, alignment: .trailing)
+                                Text(amount.currencyFormatted)
+                                    .font(.caption).fontWeight(.medium)
+                                    .frame(width: 100, alignment: .trailing)
+                            }
+                        }
+                        Divider()
+                        HStack {
+                            Text("Company-only (not distributed)")
+                                .font(.caption2).foregroundColor(.secondary)
+                            Spacer()
+                            Text((allocation.total - allocation.perProject.values.reduce(Decimal.zero, +)).currencyFormatted)
+                                .font(.caption2).foregroundColor(.secondary)
+                                .frame(width: 100, alignment: .trailing)
+                        }
+                    }
+                }
+            }
+
+            // Company P&L roll-up
+            companyPnLCard(range: range, overheadTotal: allocation.total)
+        }
+    }
+
+    @ViewBuilder
+    private func companyPnLCard(range: ClosedRange<Date>, overheadTotal: Decimal) -> some View {
+        let revenue = dataStore.projects.reduce(Decimal.zero) { $0 + $1.totalRevenue }
+        let projectCosts = dataStore.projects.reduce(Decimal.zero) { $0 + $1.totalCosts }
+        let grossProfit = revenue - projectCosts
+        let netProfit = grossProfit - overheadTotal
+        let netMargin = revenue > 0 ? Double(truncating: (netProfit / revenue * 100) as NSDecimalNumber) : 0
+
+        GroupBox {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                Text("Company P&L — \(overheadRangePreset.rawValue)")
+                    .font(.caption).fontWeight(.bold).foregroundColor(.secondary)
+                Text("Lifetime project revenue/costs; overhead scoped to selected range.")
+                    .font(.caption2).foregroundColor(AppTheme.tertiaryText)
+
+                pnLRow(label: "Revenue (all projects)", value: revenue)
+                pnLRow(label: "Project costs", value: -projectCosts)
+                Divider()
+                pnLRow(label: "Gross profit", value: grossProfit, emphasize: true)
+                pnLRow(label: "Overhead (\(overheadRangePreset.rawValue.lowercased()))", value: -overheadTotal)
+                Divider()
+                pnLRow(label: "Net profit", value: netProfit, emphasize: true,
+                       tint: netProfit >= 0 ? .green : .red)
+                HStack {
+                    Text("Net margin").font(.caption).foregroundColor(.secondary)
+                    Spacer()
+                    Text(String(format: "%.1f%%", netMargin))
+                        .font(.caption).fontWeight(.medium)
+                        .foregroundColor(netMargin >= 0 ? .green : .red)
+                }
+            }
+        }
+    }
+
+    private func pnLRow(label: String, value: Decimal, emphasize: Bool = false, tint: Color? = nil) -> some View {
+        HStack {
+            Text(label)
+                .font(.caption)
+                .fontWeight(emphasize ? .bold : .regular)
+                .foregroundColor(emphasize ? .primary : .secondary)
+            Spacer()
+            Text(value.currencyFormatted)
+                .font(.caption)
+                .fontWeight(emphasize ? .bold : .medium)
+                .foregroundColor(tint ?? (emphasize ? .primary : .primary))
+        }
+    }
+
+    private func projectTitle(for recordName: String) -> String {
+        dataStore.projects.first { $0.id.recordName == recordName }?.title ?? recordName
     }
 
     private func jobCostRow(_ label: String, code: String, amount: Decimal, total: Decimal) -> some View {
@@ -562,18 +746,50 @@ struct ReportsView: View {
         case "Job Costing":
             csv = "Project,Cost Code,Category,Amount,% of Total\n"
             let projects = selectedJobCostProject.map { [$0] } ?? dataStore.projects
+            let overheadAllocation = dataStore.allocateOverhead(in: Date.distantPast...Date.distantFuture).perProject
             for p in projects {
                 let costs = dataStore.costs(for: p.id)
                 let payrollTotal = dataStore.payrollEntries(for: p.id).reduce(Decimal.zero) { $0 + $1.totalAmount }
                 let tsTotal = dataStore.timesheetEntries.filter { $0.projectRef == p.id.recordName }.reduce(Decimal.zero) { $0 + $1.totalPay }
-                let grand = costs.reduce(Decimal.zero) { $0 + $1.amount } + payrollTotal + tsTotal
+                let ohTotal = overheadAllocation[p.id.recordName] ?? 0
+                let grand = costs.reduce(Decimal.zero) { $0 + $1.amount } + payrollTotal + tsTotal + ohTotal
                 if payrollTotal > 0 { csv += "\"\(p.title)\",\(Cost.LaborCostCode.payroll),Labor (Payroll),\(payrollTotal),\(pct(payrollTotal, of: grand))\n" }
                 if tsTotal > 0 { csv += "\"\(p.title)\",\(Cost.LaborCostCode.timesheet),Labor (Timesheet),\(tsTotal),\(pct(tsTotal, of: grand))\n" }
                 for cat in Cost.CostCategory.allCases {
                     let amt = costs.filter { $0.category == cat }.reduce(Decimal.zero) { $0 + $1.amount }
                     if amt > 0 { csv += "\"\(p.title)\",\(cat.costCode),\(cat.displayName),\(amt),\(pct(amt, of: grand))\n" }
                 }
+                if ohTotal > 0 {
+                    csv += "\"\(p.title)\",OVHD,Allocated Overhead,\(ohTotal),\(pct(ohTotal, of: grand))\n"
+                }
             }
+        case "Overhead":
+            let range = overheadRangePreset.range()
+            let allocation = dataStore.allocateOverhead(in: range)
+            let entries = dataStore.overheadEntries(in: range).sorted { $0.date > $1.date }
+            csv = "# Overhead — \(overheadRangePreset.rawValue)\n"
+            csv += "Date,Category,Vendor,Description,Amount,Distribution,Recurrence\n"
+            for e in entries {
+                let desc = e.expenseDescription.replacingOccurrences(of: "\"", with: "'")
+                let vendor = e.vendor.replacingOccurrences(of: "\"", with: "'")
+                csv += "\(e.date.shortDate),\(e.category.rawValue),\"\(vendor)\",\"\(desc)\",\(e.amount),\(e.distributionMode.shortLabel),\(e.recurrence.rawValue)\n"
+            }
+            csv += "\n# By Category\n"
+            csv += "Category,Amount,% of Total\n"
+            for (cat, amt) in dataStore.overheadByCategory(in: range) {
+                csv += "\(cat.rawValue),\(amt),\(pct(amt, of: allocation.total))\n"
+            }
+            csv += "\n# Distributed to Projects (Pro-Rata)\n"
+            csv += "Project,Allocated,% of Distributed\n"
+            let distributed = allocation.perProject.values.reduce(Decimal.zero, +)
+            for (recordName, amt) in allocation.perProject.sorted(by: { $0.value > $1.value }) {
+                csv += "\"\(projectTitle(for: recordName))\",\(amt),\(pct(amt, of: distributed))\n"
+            }
+            csv += "\n# Summary\n"
+            csv += "Metric,Value\n"
+            csv += "Range Total,\(allocation.total)\n"
+            csv += "Distributed to Projects,\(distributed)\n"
+            csv += "Company-only (not distributed),\(allocation.total - distributed)\n"
         case "1099 Summary":
             csv = "Contractor,Employee ID,Total Paid,Meets $600 Threshold\n"
             for c in contractorPayments(for: selected1099Year) {
