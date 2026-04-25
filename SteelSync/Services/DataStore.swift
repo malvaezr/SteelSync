@@ -1485,6 +1485,22 @@ class DataStore: ObservableObject {
         return e.vendor.isEmpty ? label : "\(label) — \(e.vendor)"
     }
 
+    func addOverheadAttachment(_ attachment: Attachment, to expenseID: CKRecord.ID) {
+        guard let idx = overheadExpenses.firstIndex(where: { $0.id == expenseID }) else { return }
+        overheadExpenses[idx].attachments.append(attachment)
+        logAudit(.created, type: "Attachment", name: attachment.filename,
+                 details: "Attached to \(overheadAuditName(overheadExpenses[idx]))")
+        syncRecord(overheadExpenses[idx])
+    }
+
+    func removeOverheadAttachment(_ attachment: Attachment, from expenseID: CKRecord.ID) {
+        guard let idx = overheadExpenses.firstIndex(where: { $0.id == expenseID }) else { return }
+        overheadExpenses[idx].attachments.removeAll { $0.id == attachment.id }
+        FileStorageService.deleteFile(attachment)
+        logAudit(.deleted, type: "Attachment", name: attachment.filename)
+        syncRecord(overheadExpenses[idx])
+    }
+
     /// Generates missing recurring-overhead instances up through today. Called
     /// from app launch. For each recurring template, walks forward by its
     /// interval and creates a new child (with `recurrence = .none` and

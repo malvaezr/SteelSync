@@ -56,6 +56,7 @@
 		24D3266C6DE1F255E9F37D75 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21737A4F1A7835C79DF0F894 /* AppTheme.swift */; };
 		2639B3E7BFC6238D4FCB99A4 /* WidgetDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08744754F83C0EF0B550A65 /* WidgetDataProvider.swift */; };
 		2774A4E85CD00742C2BECCAC /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA8123C4AA8DDD28AF866B85 /* SidebarView.swift */; };
+		28A37F9D7EB3CEC2B77817C0 /* PhoneOverheadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D247FD4AD3E327061C8B7D33 /* PhoneOverheadView.swift */; };
 		29A3ED37F3F3099597392BB3 /* TimeEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CEF8300A84E73A0EF9DF08 /* TimeEntry.swift */; };
 		2A6F5BFF70A8EC7CFB265060 /* ChatBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF7CCD36013F2C98AAB86D4E /* ChatBubbleView.swift */; };
 		2AE223EDAD5525283958237B /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2493EBC395F13A8EE6F94B4A /* WidgetBridge.swift */; };
@@ -448,6 +449,7 @@
 		CA2FF42E0379902EEE230296 /* RFILogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RFILogView.swift; sourceTree = "<group>"; };
 		CED7423ECC173140145A872B /* SteelSync-Phone.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "SteelSync-Phone.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D07BA1BD89EC94E153CBC023 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
+		D247FD4AD3E327061C8B7D33 /* PhoneOverheadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneOverheadView.swift; sourceTree = "<group>"; };
 		D94423C9C5229CC31078E9B3 /* Client.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Client.swift; sourceTree = "<group>"; };
 		DA34885EDE9A7BE1C05F3A42 /* EquipmentRental.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentRental.swift; sourceTree = "<group>"; };
 		DA8123C4AA8DDD28AF866B85 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
@@ -726,6 +728,7 @@
 				884FACD061E1F0835CDAFF80 /* Dashboard */,
 				F8860203E4695C9ED3E124A9 /* Invoices */,
 				7FB3030215B987966CC9827B /* More */,
+				D820C0A3FBACD08AF468B224 /* Overhead */,
 				CFBB0012F86790594C4F8350 /* Projects */,
 				4E30EE8B5A9C672D11F8AA76 /* RFI */,
 				F7CD926D537EA889CEC97CD8 /* Tasks */,
@@ -892,6 +895,14 @@
 				3CD77C25FBFE22464C5E0183 /* CalendarMainView.swift */,
 			);
 			path = Calendar;
+			sourceTree = "<group>";
+		};
+		D820C0A3FBACD08AF468B224 /* Overhead */ = {
+			isa = PBXGroup;
+			children = (
+				D247FD4AD3E327061C8B7D33 /* PhoneOverheadView.swift */,
+			);
+			path = Overhead;
 			sourceTree = "<group>";
 		};
 		E1612FAE64DF538BAFB27BEC /* SteelSyncWidgets */ = {
@@ -1220,6 +1231,7 @@
 				55ED3BA0C30082D65B726097 /* PhoneInvoicesView.swift in Sources */,
 				FAA29D3C90158405EF5914F3 /* PhoneLogPaymentView.swift in Sources */,
 				FC1F7CA420ACB35CBEFF844B /* PhoneMoreView.swift in Sources */,
+				28A37F9D7EB3CEC2B77817C0 /* PhoneOverheadView.swift in Sources */,
 				109EAC9291E9D0B33880DDA4 /* PhoneProjectDetailView.swift in Sources */,
 				2E30240222A7214FCE9652B9 /* PhoneProjectsView.swift in Sources */,
 				F642C1FF2AAE56B3CDF71E63 /* PhoneRFILogView.swift in Sources */,

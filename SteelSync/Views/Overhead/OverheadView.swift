@@ -1,5 +1,6 @@
 import SwiftUI
 import CloudKit
+import UniformTypeIdentifiers
 
 // MARK: - Range Preset
 
@@ -332,6 +333,9 @@ struct OverheadDetailView: View {
     let onDelete: () -> Void
     @EnvironmentObject var dataStore: DataStore
     @State private var showEditSheet = false
+    @State private var showFileImporter = false
+    @State private var uploadError: String?
+    @State private var attachmentToDelete: Attachment?
 
     var body: some View {
         ScrollView {
@@ -341,6 +345,8 @@ struct OverheadDetailView: View {
                 infoCard
 
                 allocationCard
+
+                attachmentsCard
 
                 if !expense.notes.isEmpty {
                     VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
@@ -365,6 +371,148 @@ struct OverheadDetailView: View {
         }
         .sheet(isPresented: $showEditSheet) {
             EditOverheadExpenseView(expense: expense)
+        }
+        .fileImporter(
+            isPresented: $showFileImporter,
+            allowedContentTypes: [.pdf, .png, .jpeg, .tiff, .data],
+            allowsMultipleSelection: true
+        ) { result in
+            switch result {
+            case .success(let urls):
+                importFiles(urls)
+            case .failure(let error):
+                uploadError = error.localizedDescription
+            }
+        }
+        .alert("Upload error", isPresented: Binding(
+            get: { uploadError != nil },
+            set: { if !$0 { uploadError = nil } }
+        ), presenting: uploadError) { _ in
+            Button("OK") { uploadError = nil }
+        } message: { msg in
+            Text(msg)
+        }
+        .confirmationDialog(
+            "Remove attachment?",
+            isPresented: Binding(
+                get: { attachmentToDelete != nil },
+                set: { if !$0 { attachmentToDelete = nil } }
+            ),
+            presenting: attachmentToDelete
+        ) { att in
+            Button("Remove", role: .destructive) {
+                dataStore.removeOverheadAttachment(att, from: expense.id)
+                attachmentToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { attachmentToDelete = nil }
+        } message: { att in
+            Text("\"\(att.filename)\" will be deleted from local storage.")
+        }
+    }
+
+    @ViewBuilder private var attachmentsCard: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            HStack {
+                SectionTitle(text: "Receipts (\(expense.attachments.count))")
+                Spacer()
+                Button { pickFiles() } label: {
+                    Label("Upload", systemImage: "paperclip")
+                }
+                .buttonStyle(.appSecondary)
+                .controlSize(.small)
+            }
+
+            if expense.attachments.isEmpty {
+                HStack {
+                    Image(systemName: "doc.badge.plus")
+                        .foregroundColor(.secondary)
+                    Text("No receipts attached. Drag a file in, or click Upload.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .padding(AppTheme.Spacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(AppTheme.secondaryBackground)
+                )
+                .fileDropOverhead(expenseID: expense.recordID.recordName) { attachment in
+                    Task { @MainActor in
+                        dataStore.addOverheadAttachment(attachment, to: expense.id)
+                    }
+                }
+            } else {
+                VStack(spacing: 6) {
+                    ForEach(expense.attachments) { att in
+                        attachmentRow(att)
+                    }
+                }
+                .padding(AppTheme.Spacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(AppTheme.secondaryBackground)
+                )
+                .fileDrop(folderID: "overhead/\(expense.recordID.recordName)", showHint: false) { attachment in
+                    Task { @MainActor in
+                        dataStore.addOverheadAttachment(attachment, to: expense.id)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func attachmentRow(_ att: Attachment) -> some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Image(systemName: FileStorageService.iconName(for: att.filename))
+                .foregroundColor(AppTheme.primaryOrange)
+                .frame(width: 20)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(att.filename)
+                    .font(.callout)
+                    .lineLimit(1)
+                Text("\(FileStorageService.fileTypeLabel(for: att.filename)) · \(att.fileSizeFormatted)")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            Button {
+                FileStorageService.openFile(att)
+            } label: {
+                Image(systemName: "arrow.up.forward.app")
+            }
+            .buttonStyle(.borderless)
+            .help("Open")
+            Button {
+                attachmentToDelete = att
+            } label: {
+                Image(systemName: "trash")
+                    .foregroundColor(.red)
+            }
+            .buttonStyle(.borderless)
+            .help("Delete")
+        }
+    }
+
+    private func pickFiles() {
+        #if os(macOS)
+        let urls = FileStorageService.presentFilePicker()
+        importFiles(urls)
+        #else
+        showFileImporter = true
+        #endif
+    }
+
+    private func importFiles(_ urls: [URL]) {
+        let expenseID = expense.recordID.recordName
+        for url in urls {
+            switch FileStorageService.importFile(from: url, overheadID: expenseID) {
+            case .success(let attachment):
+                dataStore.addOverheadAttachment(attachment, to: expense.id)
+            case .failure(let error):
+                uploadError = error.localizedDescription
+            }
         }
     }
 

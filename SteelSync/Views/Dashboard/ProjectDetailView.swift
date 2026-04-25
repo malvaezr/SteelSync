@@ -906,10 +906,45 @@ struct ProjectDetailView: View {
                     }
                 }
 
+                let directCosts = projectCosts.reduce(Decimal(0)) { $0 + $1.amount }
+                let allocatedOverhead = dataStore.allocateOverhead(
+                    in: Date.distantPast...Date.distantFuture
+                ).perProject[project.id.recordName] ?? 0
+
+                if allocatedOverhead > 0 {
+                    GroupBox("Allocated Overhead") {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Image(systemName: "briefcase.fill")
+                                    .foregroundColor(AppTheme.primaryOrange)
+                                Text("Pro-rata share of company overhead")
+                                    .font(.callout)
+                                Spacer()
+                                Text(allocatedOverhead.currencyFormatted)
+                                    .font(.callout)
+                                    .fontWeight(.semibold)
+                            }
+                            Text("Indirect costs (rent, office, insurance) distributed by contract value. Edit in Overhead module.")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
                 HStack {
                     Spacer()
-                    Text("Total Costs: \(projectCosts.reduce(0) { $0 + $1.amount }.currencyFormatted)")
-                        .font(.headline)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("Direct Costs: \(directCosts.currencyFormatted)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        if allocatedOverhead > 0 {
+                            Text("+ Overhead: \(allocatedOverhead.currencyFormatted)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Text("Total Costs: \((directCosts + allocatedOverhead).currencyFormatted)")
+                            .font(.headline)
+                    }
                 }
             }
         }

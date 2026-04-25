@@ -65,6 +65,11 @@ struct PhoneMoreView: View {
                         Label("Employee Directory", systemImage: "person.crop.rectangle.stack.fill")
                             .foregroundColor(AppTheme.primaryText)
                     }
+
+                    NavigationLink(value: PhoneContentView.MoreDestination.overhead) {
+                        Label("Overhead", systemImage: "briefcase.fill")
+                            .foregroundColor(AppTheme.primaryText)
+                    }
                 } header: {
                     Text("Operations")
                         .foregroundColor(AppTheme.secondaryText)
@@ -127,6 +132,8 @@ struct PhoneMoreView: View {
             PhoneReportsSummaryView()
         case .employees:
             PhoneEmployeeDirectoryView()
+        case .overhead:
+            PhoneOverheadView()
         }
     }
 

@@ -14,7 +14,7 @@ struct PhoneContentView: View {
     }
 
     enum MoreDestination: Hashable {
-        case invoices, rfis, timeClock, equipment, reports, employees
+        case invoices, rfis, timeClock, equipment, reports, employees, overhead
     }
 
     var body: some View {

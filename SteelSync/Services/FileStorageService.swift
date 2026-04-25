@@ -47,10 +47,36 @@ struct FileStorageService {
         return folder
     }
 
+    /// Per-expense folder for overhead receipts, kept under the shared
+    /// Documents root but in a `overhead/` subdirectory so it never collides
+    /// with bid folders (which sit at root level).
+    static func overheadFolder(for expenseID: String) throws -> URL {
+        let root = documentsRoot.appendingPathComponent("overhead", isDirectory: true)
+        try ensureDirectory(root)
+        let folder = root.appendingPathComponent(expenseID, isDirectory: true)
+        try ensureDirectory(folder)
+        return folder
+    }
+
     // MARK: - File Operations
 
     /// Copies a file into the bid's local storage. Returns Result with Attachment or error.
     static func importFile(from sourceURL: URL, bidID: String) -> Result<Attachment, Error> {
+        importFile(from: sourceURL, intoFolder: { try bidFolder(for: bidID) })
+    }
+
+    /// Copies a file into an overhead expense's local storage. Same contract
+    /// as `importFile(from:bidID:)` but writes into the overhead subtree.
+    static func importFile(from sourceURL: URL, overheadID: String) -> Result<Attachment, Error> {
+        importFile(from: sourceURL, intoFolder: { try overheadFolder(for: overheadID) })
+    }
+
+    /// Shared implementation — takes a folder-resolver closure so bid/overhead
+    /// callers differ only in destination.
+    private static func importFile(
+        from sourceURL: URL,
+        intoFolder folderProvider: () throws -> URL
+    ) -> Result<Attachment, Error> {
         // Access security-scoped resource first (required for files picked via .fileImporter on iPad)
         let accessed = sourceURL.startAccessingSecurityScopedResource()
         defer { if accessed { sourceURL.stopAccessingSecurityScopedResource() } }
@@ -61,7 +87,7 @@ struct FileStorageService {
         }
 
         do {
-            let folder = try bidFolder(for: bidID)
+            let folder = try folderProvider()
             let filename = sourceURL.lastPathComponent
             var destURL = folder.appendingPathComponent(filename)
 

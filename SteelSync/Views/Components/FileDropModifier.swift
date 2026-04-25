@@ -14,7 +14,11 @@ import UniformTypeIdentifiers
 ///       attachments.append(attachment)
 ///   }
 struct FileDropModifier: ViewModifier {
-    let folderID: String
+    /// Closure that copies a dropped source URL into persistent storage and
+    /// returns an `Attachment` ready to append to a model. Callers provide
+    /// this so the modifier doesn't need to know which folder hierarchy
+    /// (bid / overhead / payment / etc.) the files belong to.
+    let importer: (URL) -> Result<Attachment, Error>
     let showHint: Bool
     let onImport: (Attachment) -> Void
 
@@ -75,7 +79,7 @@ struct FileDropModifier: ViewModifier {
                 guard allowed.contains(ext) else { return }
 
                 DispatchQueue.main.async {
-                    switch FileStorageService.importFile(from: url, bidID: folderID) {
+                    switch importer(url) {
                     case .success(let attachment):
                         onImport(attachment)
                     case .failure:
@@ -89,19 +93,31 @@ struct FileDropModifier: ViewModifier {
 }
 
 extension View {
-    /// Adds file drag-and-drop support to this view. Dropped images/PDFs are
-    /// imported through `FileStorageService` into a folder keyed by `folderID`
-    /// and passed to `onImport` as ready-to-use Attachments.
-    ///
-    /// - Parameters:
-    ///   - folderID: Storage folder identifier (usually the parent record's UUID).
-    ///   - showHint: Whether to show an "Drop to attach" overlay while targeted.
-    ///   - onImport: Called on the main thread for each successful import.
+    /// Adds file drag-and-drop support to this view, storing drops under the
+    /// bid attachment hierarchy.
     func fileDrop(
         folderID: String,
         showHint: Bool = true,
         onImport: @escaping (Attachment) -> Void
     ) -> some View {
-        modifier(FileDropModifier(folderID: folderID, showHint: showHint, onImport: onImport))
+        modifier(FileDropModifier(
+            importer: { FileStorageService.importFile(from: $0, bidID: folderID) },
+            showHint: showHint,
+            onImport: onImport
+        ))
+    }
+
+    /// Adds file drag-and-drop support that routes drops into the overhead
+    /// attachment hierarchy (per `FileStorageService.overheadFolder`).
+    func fileDropOverhead(
+        expenseID: String,
+        showHint: Bool = true,
+        onImport: @escaping (Attachment) -> Void
+    ) -> some View {
+        modifier(FileDropModifier(
+            importer: { FileStorageService.importFile(from: $0, overheadID: expenseID) },
+            showHint: showHint,
+            onImport: onImport
+        ))
     }
 }

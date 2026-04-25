@@ -732,11 +732,46 @@ extension OverheadExpense: CloudKitConvertible {
         r["distributionMode"] = distributionMode.rawValue as CKRecordValue
         r["distributionProjectIDsJSON"] = CKField.encodeJSON(distributionProjectIDs) as CKRecordValue
         r["attachmentsJSON"] = CKField.encodeJSON(attachments) as CKRecordValue
+
+        // Upload actual file data as CKAssets for cross-device sync
+        let assets: [CKAsset] = attachments.compactMap { att in
+            guard let url = att.fileURL, FileManager.default.isReadableFile(atPath: url.path) else { return nil }
+            return CKAsset(fileURL: url)
+        }
+        if !assets.isEmpty {
+            r["attachmentAssets"] = assets as CKRecordValue
+        }
         return r
     }
 
     static func from(_ record: CKRecord) -> OverheadExpense? {
-        OverheadExpense(
+        // Decode attachment metadata from JSON
+        var attachments = CKField.decodeJSON(record, "attachmentsJSON", as: [Attachment].self) ?? []
+
+        // If CKAsset files are present, download them to local storage and update file URLs
+        let assets = record["attachmentAssets"] as? [CKAsset] ?? []
+        let expenseID = record.recordID.recordName
+        if !assets.isEmpty {
+            let localFolder = (try? FileStorageService.overheadFolder(for: expenseID)) ?? FileStorageService.documentsRoot
+            for i in 0..<min(assets.count, attachments.count) {
+                guard let tempURL = assets[i].fileURL else { continue }
+                let destURL = localFolder.appendingPathComponent(attachments[i].filename)
+                if !FileManager.default.fileExists(atPath: destURL.path) {
+                    try? FileManager.default.copyItem(at: tempURL, to: destURL)
+                }
+                let attrs = try? FileManager.default.attributesOfItem(atPath: destURL.path)
+                let fileSize = attrs?[.size] as? Int64 ?? attachments[i].fileSize
+                attachments[i] = Attachment(
+                    id: attachments[i].id,
+                    filename: attachments[i].filename,
+                    fileSize: fileSize,
+                    fileURL: destURL,
+                    uploadedDate: attachments[i].uploadedDate
+                )
+            }
+        }
+
+        return OverheadExpense(
             recordID: record.recordID,
             date: CKField.date(record, "date"),
             amount: CKField.decimal(record, "amount"),
@@ -748,7 +783,7 @@ extension OverheadExpense: CloudKitConvertible {
             parentRecurringID: CKField.optString(record, "parentRecurringID"),
             distributionMode: OverheadDistributionMode(rawValue: CKField.string(record, "distributionMode")) ?? .allActive,
             distributionProjectIDs: CKField.decodeJSON(record, "distributionProjectIDsJSON", as: [String].self) ?? [],
-            attachments: CKField.decodeJSON(record, "attachmentsJSON", as: [Attachment].self) ?? []
+            attachments: attachments
         )
     }
 }
