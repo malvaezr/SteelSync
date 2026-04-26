@@ -542,6 +542,17 @@ class DataStore: ObservableObject {
         deleteFromCloud(cost)
     }
 
+    func updateCost(_ cost: Cost, in projectID: CKRecord.ID) {
+        guard var list = costs[projectID],
+              let index = list.firstIndex(where: { $0.id == cost.id }) else { return }
+        list[index] = cost
+        costs[projectID] = list
+        recalculateBalance(for: projectID)
+        logAudit(.updated, type: "Cost", name: cost.description,
+                 details: "\(cost.category.displayName) — \(cost.amount.currencyFormatted)")
+        syncChild(cost, projectID: projectID)
+    }
+
     // MARK: - Balance Recalculation
 
     func recalculateAllBalances() {

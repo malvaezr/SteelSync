@@ -67,6 +67,7 @@ struct ProjectDetailView: View {
     @State private var showAddRFI = false
     @State private var editingRFI: RFI?
     @State private var costToDelete: Cost?
+    @State private var editingCost: Cost?
     @State private var rfiToDelete: RFI?
     @State private var changeOrderToDelete: ChangeOrder?
     @State private var payrollEntryToDelete: PayrollEntry?
@@ -883,23 +884,59 @@ struct ProjectDetailView: View {
                     if let items = grouped[group], !items.isEmpty {
                         GroupBox(group.rawValue) {
                             Table(items) {
-                                TableColumn("Category") { c in Text(c.category.displayName) }
-                                TableColumn("Description") { c in Text(c.description) }
-                                TableColumn("Amount") { c in Text(c.amount.currencyFormatted) }
-                                    .width(min: 80, max: 120)
-                                TableColumn("Date") { c in Text(c.date.shortDate) }
-                                    .width(min: 90, max: 120)
-                                TableColumn("") { c in
-                                    Button {
-                                        costToDelete = c
-                                    } label: {
-                                        Image(systemName: "trash")
-                                            .foregroundColor(.red)
+                                TableColumn("Category") { c in
+                                    Button { editingCost = c } label: {
+                                        Text(c.category.displayName)
+                                            .foregroundColor(AppTheme.primaryText)
                                     }
-                                    .buttonStyle(.borderless)
-                                    .help("Delete this cost")
+                                    .buttonStyle(.plain)
                                 }
-                                .width(40)
+                                TableColumn("Description") { c in
+                                    Button { editingCost = c } label: {
+                                        Text(c.description)
+                                            .foregroundColor(AppTheme.primaryText)
+                                            .lineLimit(1)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                TableColumn("Amount") { c in
+                                    Button { editingCost = c } label: {
+                                        Text(c.amount.currencyFormatted)
+                                            .foregroundColor(AppTheme.primaryText)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .width(min: 80, max: 120)
+                                TableColumn("Date") { c in
+                                    Button { editingCost = c } label: {
+                                        Text(c.date.shortDate)
+                                            .foregroundColor(AppTheme.primaryText)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .width(min: 90, max: 120)
+                                TableColumn("") { c in
+                                    HStack(spacing: 8) {
+                                        Button {
+                                            editingCost = c
+                                        } label: {
+                                            Image(systemName: "pencil")
+                                                .foregroundColor(.blue)
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .help("Edit this cost")
+
+                                        Button {
+                                            costToDelete = c
+                                        } label: {
+                                            Image(systemName: "trash")
+                                                .foregroundColor(.red)
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .help("Delete this cost")
+                                    }
+                                }
+                                .width(70)
                             }
                             .frame(minHeight: 100)
                         }
@@ -965,6 +1002,9 @@ struct ProjectDetailView: View {
             }
         } message: { cost in
             Text("\"\(cost.description)\" — \(cost.amount.currencyFormatted)\nThis cannot be undone.")
+        }
+        .sheet(item: $editingCost) { cost in
+            EditCostView(cost: cost, projectID: project.id)
         }
     }
 

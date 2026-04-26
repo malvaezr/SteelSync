@@ -1271,26 +1271,152 @@ struct AddCostView: View {
         dismiss()
     }
 
-    private func categoryIcon(_ cat: Cost.CostCategory) -> String {
-        switch cat {
-        case .machinery: return "gearshape.2.fill"
-        case .hotel: return "bed.double.fill"
-        case .gas: return "fuelpump.fill"
-        case .diesel: return "fuelpump.fill"
-        case .insurance: return "shield.checkered"
-        case .materialsAndTools: return "wrench.and.screwdriver.fill"
-        case .subcontractor: return "person.2.fill"
-        case .permits: return "doc.text.fill"
-        case .other: return "ellipsis.circle.fill"
-        }
+    private func categoryIcon(_ cat: Cost.CostCategory) -> String { costCategoryIcon(cat) }
+    private func categoryColor(_ cat: Cost.CostCategory) -> Color { costCategoryColor(cat) }
+}
+
+// MARK: - Cost category helpers (shared by AddCostView + EditCostView)
+
+fileprivate func costCategoryIcon(_ cat: Cost.CostCategory) -> String {
+    switch cat {
+    case .machinery: return "gearshape.2.fill"
+    case .hotel: return "bed.double.fill"
+    case .gas: return "fuelpump.fill"
+    case .diesel: return "fuelpump.fill"
+    case .insurance: return "shield.checkered"
+    case .materialsAndTools: return "wrench.and.screwdriver.fill"
+    case .subcontractor: return "person.2.fill"
+    case .permits: return "doc.text.fill"
+    case .other: return "ellipsis.circle.fill"
+    }
+}
+
+fileprivate func costCategoryColor(_ cat: Cost.CostCategory) -> Color {
+    switch cat.categoryGroup {
+    case .machinery: return .blue
+    case .overhead: return .orange
+    case .other: return .purple
+    }
+}
+
+// MARK: - Edit Cost
+
+struct EditCostView: View {
+    let cost: Cost
+    let projectID: CKRecord.ID
+    @EnvironmentObject var dataStore: DataStore
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var category: Cost.CostCategory
+    @State private var coDescription: String
+    @State private var amount: String
+    @State private var date: Date
+
+    init(cost: Cost, projectID: CKRecord.ID) {
+        self.cost = cost
+        self.projectID = projectID
+        _category = State(initialValue: cost.category)
+        _coDescription = State(initialValue: cost.description)
+        _amount = State(initialValue: NSDecimalNumber(decimal: cost.amount).stringValue)
+        _date = State(initialValue: cost.date)
     }
 
-    private func categoryColor(_ cat: Cost.CostCategory) -> Color {
-        switch cat.categoryGroup {
-        case .machinery: return .blue
-        case .overhead: return .orange
-        case .other: return .purple
+    private var parsedAmount: Decimal {
+        Decimal(string: amount.replacingOccurrences(of: ",", with: "")) ?? cost.amount
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Edit Cost")
+                    .font(AppTheme.Typography.title3)
+                Spacer()
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Save") { save() }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(coDescription.isEmpty || parsedAmount <= 0)
+                    .buttonStyle(.appPrimary)
+            }
+            .padding()
+            Divider()
+
+            Form {
+                Section {
+                    Picker("Category", selection: $category) {
+                        ForEach(Cost.CostCategoryGroup.allCases, id: \.self) { group in
+                            Section(group.rawValue) {
+                                ForEach(group.categories, id: \.self) { cat in
+                                    Label(cat.displayName, systemImage: costCategoryIcon(cat))
+                                        .tag(cat)
+                                }
+                            }
+                        }
+                    }
+
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Image(systemName: costCategoryIcon(category))
+                            .foregroundColor(costCategoryColor(category))
+                            .frame(width: 24)
+                        Text(category.categoryGroup.rawValue)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        StatusBadge(text: category.displayName, color: costCategoryColor(category))
+                    }
+                } header: {
+                    Label("Category", systemImage: "tag")
+                }
+
+                Section {
+                    TextEditor(text: $coDescription)
+                        .frame(height: 60)
+                        .overlay(
+                            Group {
+                                if coDescription.isEmpty {
+                                    Text("What was this cost for...")
+                                        .foregroundColor(AppTheme.tertiaryText)
+                                        .padding(.leading, 4)
+                                        .padding(.top, 8)
+                                        .allowsHitTesting(false)
+                                }
+                            }, alignment: .topLeading
+                        )
+                    DatePicker("Date", selection: $date, displayedComponents: .date)
+                } header: {
+                    Label("Details", systemImage: "text.alignleft")
+                }
+
+                Section {
+                    HStack {
+                        Text("$")
+                            .foregroundColor(.secondary)
+                            .fontWeight(.semibold)
+                        TextField("Amount", text: $amount)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
+                            .textFieldStyle(.plain)
+                            .font(.title3)
+                    }
+                } header: {
+                    Label("Amount", systemImage: "dollarsign.circle")
+                }
+            }
+            .formStyle(.grouped)
         }
+        #if os(macOS)
+        .frame(width: 520, height: 540)
+        #endif
+    }
+
+    private func save() {
+        var updated = cost
+        updated.category = category
+        updated.description = coDescription
+        updated.amount = parsedAmount
+        updated.date = date
+        dataStore.updateCost(updated, in: projectID)
+        dismiss()
     }
 }
 
