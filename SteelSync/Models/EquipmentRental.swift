@@ -21,6 +21,11 @@ struct EquipmentRate: Identifiable, Hashable {
     static let edtxDeliveryCharge: Decimal = 140
     static let environmentalFeeRate = Decimal(sign: .plus, exponent: -3, significand: 24)   // 2.4%
     static let dealerInventoryTaxRate = Decimal(sign: .plus, exponent: -4, significand: 23)  // 0.23%
+    /// Texas state + Corpus Christi local. EDTX invoices apply this on top of
+    /// (equipment + env + dealer tax + delivery + fuel). Real EDTX invoices
+    /// often run a few percent higher because of additional rental-specific
+    /// surcharges, but 8.25% lands within ±$50–$100 on typical rentals.
+    static let salesTaxRate = Decimal(sign: .plus, exponent: -4, significand: 825)          // 8.25%
     static let defaultFuelPricePerGallon = Decimal(sign: .plus, exponent: -2, significand: 995) // $9.95
 
     static let edtxCatalog: [EquipmentRate] = [
@@ -150,13 +155,16 @@ struct EquipmentRental: Identifiable, Codable, Hashable {
 
     // MARK: - All-In Cost (includes EDTX surcharges)
 
-    /// Computes total cost including env fee, dealer tax, delivery, and optionally fuel
+    /// Computes total cost including env fee, dealer tax, delivery, fuel, and
+    /// 8.25% sales tax on the resulting subtotal.
     func allInCost(forDays days: Int, fuelGal: Decimal = 0, fuelPrice: Decimal = 0) -> Decimal {
         let base = EquipmentRental.calculateOptimalCost(totalDays: days, daily: dailyRate, weekly: weeklyRate, fourWeek: fourWeekRate).cost
         let envFee = Self.round2(base * EquipmentRate.environmentalFeeRate)
         let dealerTax = Self.round2(base * EquipmentRate.dealerInventoryTaxRate)
         let fuel = Self.round2(fuelGal * fuelPrice)
-        return base + envFee + dealerTax + totalDeliveryCharges + fuel
+        let preTax = base + envFee + dealerTax + totalDeliveryCharges + fuel
+        let salesTax = Self.round2(preTax * EquipmentRate.salesTaxRate)
+        return preTax + salesTax
     }
 
     /// Full line-item breakdown for display
@@ -165,12 +173,14 @@ struct EquipmentRental: Identifiable, Codable, Hashable {
         let envFee = Self.round2(result.cost * EquipmentRate.environmentalFeeRate)
         let dealerTax = Self.round2(result.cost * EquipmentRate.dealerInventoryTaxRate)
         let fuel = Self.round2(fuelGal * fuelPrice)
-        let subtotal = result.cost + envFee + dealerTax + totalDeliveryCharges + fuel
+        let preTax = result.cost + envFee + dealerTax + totalDeliveryCharges + fuel
+        let salesTax = Self.round2(preTax * EquipmentRate.salesTaxRate)
         return RentalCostDetail(
             equipmentCost: result.cost, breakdown: result.breakdown,
             environmentalFee: envFee, dealerInventoryTax: dealerTax,
             deliveryCharges: totalDeliveryCharges, fuelCharge: fuel,
-            subtotal: subtotal
+            preTaxSubtotal: preTax, salesTax: salesTax,
+            subtotal: preTax + salesTax
         )
     }
 
@@ -272,5 +282,11 @@ struct RentalCostDetail {
     let dealerInventoryTax: Decimal
     let deliveryCharges: Decimal
     let fuelCharge: Decimal
+    /// Sum of equipment + env + dealer tax + delivery + fuel — i.e. EDTX
+    /// "Subtotal" line, before sales tax is layered on.
+    let preTaxSubtotal: Decimal
+    /// 8.25% sales tax computed on `preTaxSubtotal`.
+    let salesTax: Decimal
+    /// Final invoice total (`preTaxSubtotal + salesTax`).
     let subtotal: Decimal
 }

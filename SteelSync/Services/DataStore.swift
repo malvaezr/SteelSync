@@ -869,9 +869,10 @@ class DataStore: ObservableObject {
         // Build description with all line items
         var desc = "Equipment Rental: \(updated.equipmentName) — \(detail.breakdown)"
         desc += " | Env \(detail.environmentalFee.currencyFormatted)"
-        desc += " | Tax \(detail.dealerInventoryTax.currencyFormatted)"
+        desc += " | Inv Tax \(detail.dealerInventoryTax.currencyFormatted)"
         if detail.deliveryCharges > 0 { desc += " | Transport \(detail.deliveryCharges.currencyFormatted)" }
         if detail.fuelCharge > 0 { desc += " | Fuel \(detail.fuelCharge.currencyFormatted)" }
+        desc += " | Sales Tax \(detail.salesTax.currencyFormatted)"
 
         let cost = Cost(
             category: .machinery,

@@ -1713,7 +1713,18 @@ struct CloseEquipmentRentalView: View {
                     Divider()
 
                     HStack {
-                        Text("Subtotal")
+                        Text("Subtotal").font(.subheadline).foregroundColor(.secondary)
+                        Spacer()
+                        Text(detail.preTaxSubtotal.currencyFormatted)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    invoiceLine("Sales Tax (8.25%)", detail.salesTax)
+
+                    Divider()
+
+                    HStack {
+                        Text("Total")
                             .font(.headline)
                         Spacer()
                         Text(detail.subtotal.currencyFormatted)
