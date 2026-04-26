@@ -313,7 +313,8 @@ struct EditChangeOrderSheet: View {
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
 
-    @State private var description: String
+    @State private var numberText: String
+    @State private var title: String
     @State private var amount: String
     @State private var scope: String
     @State private var isSigned: Bool
@@ -324,7 +325,8 @@ struct EditChangeOrderSheet: View {
     init(changeOrder: ChangeOrder, projectID: CKRecord.ID) {
         self.changeOrder = changeOrder
         self.projectID = projectID
-        _description = State(initialValue: changeOrder.description)
+        _numberText = State(initialValue: "\(changeOrder.number)")
+        _title = State(initialValue: changeOrder.description)
         _amount = State(initialValue: NSDecimalNumber(decimal: changeOrder.amount).stringValue)
         _scope = State(initialValue: changeOrder.scope)
         _isSigned = State(initialValue: changeOrder.isSigned)
@@ -333,11 +335,50 @@ struct EditChangeOrderSheet: View {
         _billedTo = State(initialValue: changeOrder.billedTo)
     }
 
+    /// Other change orders on the same project (for collision check).
+    private var siblingNumbers: Set<Int> {
+        Set(dataStore.changeOrders(for: projectID)
+            .filter { $0.id != changeOrder.id }
+            .map(\.number))
+    }
+
+    private var parsedNumber: Int? { Int(numberText.trimmingCharacters(in: .whitespaces)) }
+
+    private var numberCollision: Bool {
+        guard let n = parsedNumber else { return false }
+        return siblingNumbers.contains(n)
+    }
+
+    private var isSaveDisabled: Bool {
+        parsedNumber == nil || (parsedNumber ?? 0) < 1 || numberCollision
+    }
+
     var body: some View {
         NavigationStack {
             Form {
-                Section("Change Order #\(changeOrder.number)") {
-                    TextField("Brief Description", text: $description)
+                Section("Identification") {
+                    HStack {
+                        Text("CO Number")
+                        Spacer()
+                        TextField("e.g. 2", text: $numberText)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                            #if !os(macOS)
+                            .keyboardType(.numberPad)
+                            #endif
+                    }
+                    if numberCollision {
+                        Text("Another change order on this project already uses #\(parsedNumber ?? 0).")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    } else if parsedNumber == nil || (parsedNumber ?? 0) < 1 {
+                        Text("Number must be a positive integer.")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                    TextField("Title (e.g. Beam relocation, owner request)", text: $title)
+                }
+                Section("Details") {
                     HStack {
                         Text("$")
                         TextField("Total Amount", text: $amount)
@@ -375,17 +416,20 @@ struct EditChangeOrderSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
                         .buttonStyle(.appPrimary)
+                        .disabled(isSaveDisabled)
                 }
             }
         }
         #if os(macOS)
-        .frame(width: 480, height: 420)
+        .frame(width: 480, height: 480)
         #endif
     }
 
     private func save() {
+        guard let n = parsedNumber, n > 0, !numberCollision else { return }
         var updated = changeOrder
-        updated.description = description
+        updated.number = n
+        updated.description = title
         updated.amount = Decimal(string: amount) ?? changeOrder.amount
         updated.scope = scope
         updated.submittedDate = submittedDate
