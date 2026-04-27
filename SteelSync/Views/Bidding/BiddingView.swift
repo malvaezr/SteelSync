@@ -8,6 +8,7 @@ struct BiddingView: View {
     @State private var showAddBid = false
     @State private var selectedBid: BidProject?
     @State private var bidToDelete: BidProject?
+    @State private var bidToConvert: BidProject?
 
     private let filters = ["All", "Pending", "Working On", "Ready", "Submitted", "Awarded", "Lost"]
 
@@ -103,6 +104,9 @@ struct BiddingView: View {
                                     }
                                 }
                                 if bid.isSubmitted && !bid.isAwarded && !bid.isLost {
+                                    Button("Mark as Awarded…") {
+                                        bidToConvert = bid
+                                    }
                                     Button("Mark as Lost") {
                                         var updated = bid
                                         updated.isLost = true
@@ -157,6 +161,9 @@ struct BiddingView: View {
         }
         .sheet(isPresented: $showAddBid) {
             AddBidView()
+        }
+        .sheet(item: $bidToConvert) { bid in
+            ConvertBidToProjectView(bid: bid)
         }
         .confirmationDialog(
             "Delete bid?",
