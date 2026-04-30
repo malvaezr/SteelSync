@@ -36,11 +36,13 @@ struct GanttPDFRenderer {
     private let footerHeight: CGFloat = 30   // legend strip on last page
     private let taskListWidth: CGFloat = 320
 
-    // Column splits inside the task list (relative to task-list left edge)
-    private let nameColumnWidth: CGFloat = 180
-    private let startColumnWidth: CGFloat = 60
-    private let endColumnWidth: CGFloat = 60
-    private let daysColumnWidth: CGFloat = 20
+    // Column splits inside the task list (relative to task-list left edge).
+    // Sum + 8pt left padding = taskListWidth (320). Days column gets a wider
+    // slot so the bold "DAYS" header doesn't bleed into the timeline area.
+    private let nameColumnWidth: CGFloat = 178
+    private let startColumnWidth: CGFloat = 52
+    private let endColumnWidth: CGFloat = 52
+    private let daysColumnWidth: CGFloat = 30
 
     // Reference y-values, top-down. All are CG y (bottom-origin).
     private var pageTop: CGFloat { pageHeight - margin }
@@ -183,23 +185,53 @@ struct GanttPDFRenderer {
             ctx.addLine(to: CGPoint(x: x, y: dateHeaderBottom + 4))
             ctx.strokePath()
 
-            // Two-line label: month above, day below (or just one line for sparse strides)
+            // Two-line label: month above, day below (or one line for sparse strides).
+            // Anchor strategy:
+            //   - first tick (day == 0): left-align so labels stay inside the timeline
+            //   - last tick (day == totalDays): right-align so they stay inside too
+            //   - middle ticks: center on the tick
+            // Without this, "Apr 29" at the first tick spills into the task-list column.
+            let isFirst = (day == 0)
+            let isLast = (day == totalDays)
+
             if stride < 30 {
                 let monthLabel = monthFormatter.string(from: date)
                 let dayLabel = dayFormatter.string(from: date)
-                let monthWidth = estimateWidth(monthLabel, font: regular(8))
-                let dayWidth_ = estimateWidth(dayLabel, font: bold(11))
+                let monthW = estimateWidth(monthLabel, font: regular(8))
+                let dayW = estimateWidth(dayLabel, font: bold(11))
+
+                let monthX: CGFloat
+                let dayX: CGFloat
+                if isFirst {
+                    monthX = x + 3
+                    dayX = x + 3
+                } else if isLast {
+                    monthX = x - monthW - 3
+                    dayX = x - dayW - 3
+                } else {
+                    monthX = x - monthW / 2
+                    dayX = x - dayW / 2
+                }
+
                 drawText(monthLabel,
-                         at: CGPoint(x: x - monthWidth / 2, y: dateHeaderBottom + dateHeaderHeight - 14),
+                         at: CGPoint(x: monthX, y: dateHeaderBottom + dateHeaderHeight - 14),
                          font: regular(8), color: gray(0.4), in: ctx)
                 drawText(dayLabel,
-                         at: CGPoint(x: x - dayWidth_ / 2, y: dateHeaderBottom + 8),
+                         at: CGPoint(x: dayX, y: dateHeaderBottom + 8),
                          font: bold(11), color: .black, in: ctx)
             } else {
                 let label = monthYearFormatter.string(from: date)
                 let labelWidth = estimateWidth(label, font: bold(10))
+                let labelX: CGFloat
+                if isFirst {
+                    labelX = x + 3
+                } else if isLast {
+                    labelX = x - labelWidth - 3
+                } else {
+                    labelX = x - labelWidth / 2
+                }
                 drawText(label,
-                         at: CGPoint(x: x - labelWidth / 2, y: dateHeaderBottom + dateHeaderHeight / 2 - 4),
+                         at: CGPoint(x: labelX, y: dateHeaderBottom + dateHeaderHeight / 2 - 4),
                          font: bold(10), color: .black, in: ctx)
             }
 
@@ -330,11 +362,13 @@ struct GanttPDFRenderer {
                  at: CGPoint(x: x, y: centerY),
                  font: regular(9), color: gray(0.25), in: ctx)
 
-        // Days
+        // Days — right-aligned inside its column so the column reads as
+        // a number column, not a left-justified one.
         x += endColumnWidth
         let dur = "\(task.durationDays)"
+        let durWidth = estimateWidth(dur, font: bold(9))
         drawText(dur,
-                 at: CGPoint(x: x, y: centerY),
+                 at: CGPoint(x: x + daysColumnWidth - durWidth - 8, y: centerY),
                  font: bold(9), color: gray(0.2), in: ctx)
     }
 
@@ -358,14 +392,20 @@ struct GanttPDFRenderer {
         ctx.strokePath()
         ctx.restoreGState()
 
-        // "TODAY" label at the top of the line
+        // "TODAY" pill above the line. Anchor to whichever side of the line
+        // keeps the pill inside the timeline (left half → pill goes right,
+        // right half → pill goes left), so it never crowds an edge tick.
         let label = "TODAY"
         let lw = estimateWidth(label, font: bold(8))
-        let labelRect = CGRect(x: x - lw / 2 - 4, y: topY + 2, width: lw + 8, height: 12)
+        let pillWidth = lw + 8
+        let pillHeight: CGFloat = 12
+        let midX = (timelineLeft + timelineRight) / 2
+        let pillX: CGFloat = (x <= midX) ? x : x - pillWidth
+        let labelRect = CGRect(x: pillX, y: topY + 2, width: pillWidth, height: pillHeight)
         ctx.setFillColor(CGColor(srgbRed: 0.9, green: 0.2, blue: 0.2, alpha: 1.0))
         ctx.fill(labelRect)
         drawText(label,
-                 at: CGPoint(x: x - lw / 2, y: topY + 4),
+                 at: CGPoint(x: pillX + 4, y: topY + 4),
                  font: bold(8),
                  color: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1),
                  in: ctx)
