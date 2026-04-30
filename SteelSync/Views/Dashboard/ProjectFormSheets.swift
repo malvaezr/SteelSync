@@ -1,6 +1,290 @@
 import SwiftUI
 import CloudKit
 
+// MARK: - Change Order Form (shared by Add + Edit)
+//
+// Both AddChangeOrderView and EditChangeOrderSheet delegate to
+// `ChangeOrderFormBody` so they always expose the same set of editable
+// fields. The parent owns the @State and the save side-effect; the body
+// handles all rendering and per-field bindings.
+
+private struct ChangeOrderFormBody: View {
+    let project: Project?
+    let client: Client?
+    let allowEditingNumber: Bool
+    let siblingNumbers: Set<Int>      // Other CO numbers on this project (collision check)
+    let originalCONumber: Int?         // nil for Add, existing number for Edit
+
+    @Binding var numberText: String
+    @Binding var coDescription: String      // = title
+    @Binding var invoiceNumber: String
+    @Binding var invoiceDate: Date
+    @Binding var workOrderNumber: String
+    @Binding var poNumber: String
+    @Binding var scope: String
+    @Binding var laborLines: [LaborLineItem]
+    @Binding var additionalLines: [AdditionalChargeItem]
+    @Binding var taxRateString: String
+    @Binding var paymentTerms: String
+    @Binding var additionalNotes: String
+    @Binding var billedTo: COBilledTo
+    @Binding var isSigned: Bool
+    @Binding var signedDate: Date
+
+    var laborSubtotal: Decimal { laborLines.reduce(0) { $0 + $1.lineTotal } }
+    var additionalSubtotal: Decimal { additionalLines.reduce(0) { $0 + $1.lineTotal } }
+    var subtotal: Decimal { laborSubtotal + additionalSubtotal }
+    var taxRate: Decimal { Decimal(string: taxRateString) ?? 0 }
+    var taxAmount: Decimal {
+        var result = Decimal(); var val = subtotal * taxRate / 100
+        NSDecimalRound(&result, &val, 2, .plain); return result
+    }
+    var totalDue: Decimal { subtotal + taxAmount }
+
+    var parsedNumber: Int? { Int(numberText.trimmingCharacters(in: .whitespaces)) }
+    var numberCollision: Bool {
+        guard let n = parsedNumber else { return false }
+        if let original = originalCONumber, n == original { return false }
+        return siblingNumbers.contains(n)
+    }
+
+    var body: some View {
+        Form {
+            // Identification — CO Number, Title, Billed To
+            Section {
+                HStack {
+                    Text("CO Number")
+                    Spacer()
+                    TextField("e.g. 2", text: $numberText)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 80)
+                        .disabled(!allowEditingNumber)
+                        #if !os(macOS)
+                        .keyboardType(.numberPad)
+                        #endif
+                }
+                if allowEditingNumber {
+                    if numberCollision {
+                        Text("Another change order on this project already uses #\(parsedNumber ?? 0).")
+                            .font(.caption).foregroundColor(.red)
+                    } else if parsedNumber == nil || (parsedNumber ?? 0) < 1 {
+                        Text("Number must be a positive integer.")
+                            .font(.caption).foregroundColor(.red)
+                    }
+                }
+                TextField("Title (e.g. Beam relocation, owner request)", text: $coDescription)
+                Picker("Billed To", selection: $billedTo) {
+                    ForEach(COBilledTo.allCases, id: \.self) { type in
+                        Text(type.displayName).tag(type)
+                    }
+                }
+            } header: {
+                Label("Identification", systemImage: "number.square")
+            }
+
+            // Invoice Details
+            Section {
+                HStack {
+                    TextField("Invoice #", text: $invoiceNumber)
+                    DatePicker("Date", selection: $invoiceDate, displayedComponents: .date)
+                }
+                HStack {
+                    TextField("Work Order #", text: $workOrderNumber)
+                    TextField("PO Number", text: $poNumber)
+                }
+            } header: {
+                Label("Invoice Details", systemImage: "doc.text")
+            }
+
+            // Bill To & Project (auto-populated, read-only)
+            Section {
+                if let client = client {
+                    InfoRow(label: "Bill To", value: client.name, icon: "person")
+                    if !client.billingAddress.isEmpty {
+                        Text(client.billingAddress)
+                            .font(.caption).foregroundColor(.secondary)
+                    }
+                } else {
+                    Text("No client linked to this project")
+                        .font(.caption).foregroundColor(.secondary)
+                }
+                if let project = project {
+                    Divider()
+                    InfoRow(label: "Project", value: project.title, icon: "building.2")
+                    if !project.location.isEmpty {
+                        InfoRow(label: "Location", value: project.location, icon: AppIcons.location)
+                    }
+                }
+            } header: {
+                Label("Bill To / Project", systemImage: "person.text.rectangle")
+            }
+
+            // Scope
+            Section {
+                TextEditor(text: $scope)
+                    .frame(height: 80)
+                    .overlay(
+                        Group {
+                            if scope.isEmpty {
+                                Text("Describe work performed...")
+                                    .foregroundColor(AppTheme.tertiaryText)
+                                    .padding(.leading, 4).padding(.top, 8)
+                                    .allowsHitTesting(false)
+                            }
+                        }, alignment: .topLeading
+                    )
+            } header: {
+                Label("Work Description / Scope Performed", systemImage: "text.alignleft")
+            }
+
+            // Labor & Equipment Charges
+            Section {
+                HStack {
+                    Text("Description").font(.caption).fontWeight(.bold).frame(width: 140, alignment: .leading)
+                    Text("Qty").font(.caption).fontWeight(.bold).frame(width: 50)
+                    Text("Hours").font(.caption).fontWeight(.bold).frame(width: 55)
+                    Text("Rate").font(.caption).fontWeight(.bold).frame(width: 70)
+                    Text("Total").font(.caption).fontWeight(.bold).frame(width: 80, alignment: .trailing)
+                }
+                .padding(.vertical, 2)
+
+                ForEach(Array(laborLines.enumerated()), id: \.element.id) { index, line in
+                    HStack {
+                        Text(line.category.displayName)
+                            .font(.callout)
+                            .frame(width: 140, alignment: .leading)
+                        TextField("0", value: $laborLines[index].quantity, format: .number)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
+                            .textFieldStyle(.roundedBorder).frame(width: 50)
+                        TextField("0", value: $laborLines[index].hours, format: .number)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
+                            .textFieldStyle(.roundedBorder).frame(width: 55)
+                        TextField("0", value: $laborLines[index].rate, format: .number)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
+                            .textFieldStyle(.roundedBorder).frame(width: 70)
+                        Text(line.lineTotal.currencyWithCents)
+                            .font(.callout).fontWeight(.medium)
+                            .frame(width: 80, alignment: .trailing)
+                            .foregroundColor(line.lineTotal > 0 ? AppTheme.primaryOrange : .secondary)
+                    }
+                }
+
+                if laborSubtotal > 0 {
+                    HStack {
+                        Spacer()
+                        Text("Labor Subtotal: \(laborSubtotal.currencyWithCents)")
+                            .font(.callout).fontWeight(.semibold)
+                    }
+                }
+            } header: {
+                Label("Labor & Equipment Charges", systemImage: "wrench.and.screwdriver")
+            }
+
+            // Additional Charges / Materials
+            Section {
+                ForEach(Array(additionalLines.enumerated()), id: \.element.id) { index, line in
+                    HStack {
+                        TextField("Description", text: $additionalLines[index].description)
+                            .textFieldStyle(.roundedBorder)
+                        HStack(spacing: 4) {
+                            Text("$")
+                                .foregroundColor(.secondary)
+                            TextField("0", value: $additionalLines[index].rate, format: .number)
+                                #if !os(macOS)
+                                .keyboardType(.decimalPad)
+                                #endif
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 90)
+                        }
+                        Button { additionalLines.remove(at: index) } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundColor(.red.opacity(0.6))
+                        }.buttonStyle(.plain)
+                    }
+                }
+
+                Button {
+                    var item = AdditionalChargeItem()
+                    item.quantity = 1
+                    item.hours = 1
+                    additionalLines.append(item)
+                } label: {
+                    Label("Add Line Item", systemImage: "plus")
+                        .font(.callout).foregroundColor(AppTheme.primaryOrange)
+                }
+            } header: {
+                Label("Additional Charges / Materials", systemImage: "shippingbox")
+            }
+
+            // Totals
+            Section {
+                HStack {
+                    Text("Subtotal").fontWeight(.medium)
+                    Spacer()
+                    Text(subtotal.currencyWithCents).fontWeight(.semibold)
+                }
+                HStack {
+                    Text("Tax Rate (%)").foregroundColor(.secondary)
+                    TextField("0", text: $taxRateString)
+                        #if !os(macOS)
+                        .keyboardType(.decimalPad)
+                        #endif
+                        .textFieldStyle(.roundedBorder).frame(width: 60)
+                    Spacer()
+                    if taxAmount > 0 {
+                        Text(taxAmount.currencyWithCents).foregroundColor(.secondary)
+                    }
+                }
+                Divider()
+                HStack {
+                    Text("TOTAL DUE").font(.headline)
+                    Spacer()
+                    Text(totalDue.currencyWithCents)
+                        .font(.title3).fontWeight(.bold)
+                        .foregroundColor(AppTheme.primaryOrange)
+                }
+            } header: {
+                Label("Totals", systemImage: "dollarsign.circle")
+            }
+
+            // Payment Terms & Notes
+            Section {
+                TextField("Payment Terms", text: $paymentTerms)
+                TextEditor(text: $additionalNotes)
+                    .frame(height: 50)
+                    .overlay(
+                        Group {
+                            if additionalNotes.isEmpty {
+                                Text("Additional notes...")
+                                    .foregroundColor(AppTheme.tertiaryText)
+                                    .padding(.leading, 4).padding(.top, 8)
+                                    .allowsHitTesting(false)
+                            }
+                        }, alignment: .topLeading
+                    )
+            } header: {
+                Label("Payment Terms & Notes", systemImage: "note.text")
+            }
+
+            // Approval
+            Section {
+                Toggle("Mark as Signed", isOn: $isSigned)
+                if isSigned {
+                    DatePicker("Signed Date", selection: $signedDate, displayedComponents: .date)
+                }
+            } header: {
+                Label("Approval", systemImage: "checkmark.seal")
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
 // MARK: - Add Change Order / Work Order Invoice
 struct AddChangeOrderView: View {
     let projectID: CKRecord.ID
@@ -8,52 +292,46 @@ struct AddChangeOrderView: View {
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
 
-    // Invoice details
+    @State private var numberText = ""
+    @State private var coDescription = ""
     @State private var invoiceNumber = ""
     @State private var invoiceDate = Date()
     @State private var workOrderNumber = ""
     @State private var poNumber = ""
-    @State private var coDescription = ""
     @State private var scope = ""
-
-    // Line items
     @State private var laborLines: [LaborLineItem] = LaborLineItem.defaultSet()
     @State private var additionalLines: [AdditionalChargeItem] = []
-
-    // Totals & terms
     @State private var taxRateString = ""
     @State private var paymentTerms = "Net 30 Days"
     @State private var additionalNotes = ""
-
-    // Approval
+    @State private var billedTo: COBilledTo = .gc
     @State private var isSigned = false
     @State private var signedDate = Date()
 
     private var project: Project? {
         dataStore.projects.first { $0.id == projectID }
     }
-
     private var client: Client? {
         guard let p = project else { return nil }
         return dataStore.client(for: p.clientRef)
     }
-
-    private var laborSubtotal: Decimal { laborLines.reduce(0) { $0 + $1.lineTotal } }
-    private var additionalSubtotal: Decimal { additionalLines.reduce(0) { $0 + $1.lineTotal } }
-    private var subtotal: Decimal { laborSubtotal + additionalSubtotal }
-    private var taxRate: Decimal { Decimal(string: taxRateString) ?? 0 }
-    private var taxAmount: Decimal {
-        var result = Decimal(); var val = subtotal * taxRate / 100
-        NSDecimalRound(&result, &val, 2, .plain); return result
+    private var siblingNumbers: Set<Int> {
+        Set(dataStore.changeOrders(for: projectID).map(\.number))
     }
-    private var totalDue: Decimal { subtotal + taxAmount }
+    private var parsedNumber: Int? { Int(numberText.trimmingCharacters(in: .whitespaces)) }
+    private var numberCollision: Bool {
+        guard let n = parsedNumber else { return false }
+        return siblingNumbers.contains(n)
+    }
+    private var isSaveDisabled: Bool {
+        parsedNumber == nil || (parsedNumber ?? 0) < 1 || numberCollision
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 HStack(spacing: AppTheme.Spacing.sm) {
-                    Text("CO #\(nextNumber)")
+                    Text("CO #\(numberText.isEmpty ? "\(nextNumber)" : numberText)")
                         .font(.caption).fontWeight(.bold)
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(AppTheme.primaryOrange)
@@ -67,230 +345,61 @@ struct AddChangeOrderView: View {
                 Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.appPrimary)
+                    .disabled(isSaveDisabled)
             }
             .padding()
             Divider()
 
-            Form {
-                    // Invoice Details
-                    Section {
-                        HStack {
-                            TextField("Invoice #", text: $invoiceNumber)
-                            DatePicker("Date", selection: $invoiceDate, displayedComponents: .date)
-                        }
-                        HStack {
-                            TextField("Work Order #", text: $workOrderNumber)
-                            TextField("PO Number", text: $poNumber)
-                        }
-                    } header: {
-                        Label("Invoice Details", systemImage: "doc.text")
-                    }
-
-                    // Bill To & Project (auto-populated)
-                    Section {
-                        if let client = client {
-                            InfoRow(label: "Bill To", value: client.name, icon: "person")
-                            if !client.billingAddress.isEmpty {
-                                Text(client.billingAddress)
-                                    .font(.caption).foregroundColor(.secondary)
-                            }
-                        } else {
-                            Text("No client linked to this project")
-                                .font(.caption).foregroundColor(.secondary)
-                        }
-                        if let project = project {
-                            Divider()
-                            InfoRow(label: "Project", value: project.title, icon: "building.2")
-                            if !project.location.isEmpty {
-                                InfoRow(label: "Location", value: project.location, icon: AppIcons.location)
-                            }
-                        }
-                    } header: {
-                        Label("Bill To / Project", systemImage: "person.text.rectangle")
-                    }
-
-                    // Scope
-                    Section {
-                        TextField("Brief Description", text: $coDescription)
-                        TextEditor(text: $scope)
-                            .frame(height: 60)
-                            .overlay(
-                                Group {
-                                    if scope.isEmpty {
-                                        Text("Describe work performed...")
-                                            .foregroundColor(AppTheme.tertiaryText)
-                                            .padding(.leading, 4).padding(.top, 8)
-                                            .allowsHitTesting(false)
-                                    }
-                                }, alignment: .topLeading
-                            )
-                    } header: {
-                        Label("Work Description / Scope Performed", systemImage: "text.alignleft")
-                    }
-
-                    // Labor & Equipment Charges
-                    Section {
-                        // Header row
-                        HStack {
-                            Text("Description").font(.caption).fontWeight(.bold).frame(width: 140, alignment: .leading)
-                            Text("Qty").font(.caption).fontWeight(.bold).frame(width: 50)
-                            Text("Hours").font(.caption).fontWeight(.bold).frame(width: 55)
-                            Text("Rate").font(.caption).fontWeight(.bold).frame(width: 70)
-                            Text("Total").font(.caption).fontWeight(.bold).frame(width: 80, alignment: .trailing)
-                        }
-                        .padding(.vertical, 2)
-
-                        ForEach(Array(laborLines.enumerated()), id: \.element.id) { index, line in
-                            HStack {
-                                Text(line.category.displayName)
-                                    .font(.callout)
-                                    .frame(width: 140, alignment: .leading)
-                                TextField("0", value: $laborLines[index].quantity, format: .number)
-                                    #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                                    .textFieldStyle(.roundedBorder).frame(width: 50)
-                                TextField("0", value: $laborLines[index].hours, format: .number)
-                                    #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                                    .textFieldStyle(.roundedBorder).frame(width: 55)
-                                TextField("0", value: $laborLines[index].rate, format: .number)
-                                    #if !os(macOS)
-                                    .keyboardType(.decimalPad)
-                                    #endif
-                                    .textFieldStyle(.roundedBorder).frame(width: 70)
-                                Text(line.lineTotal.currencyWithCents)
-                                    .font(.callout).fontWeight(.medium)
-                                    .frame(width: 80, alignment: .trailing)
-                                    .foregroundColor(line.lineTotal > 0 ? AppTheme.primaryOrange : .secondary)
-                            }
-                        }
-
-                        if laborSubtotal > 0 {
-                            HStack {
-                                Spacer()
-                                Text("Labor Subtotal: \(laborSubtotal.currencyWithCents)")
-                                    .font(.callout).fontWeight(.semibold)
-                            }
-                        }
-                    } header: {
-                        Label("Labor & Equipment Charges", systemImage: "wrench.and.screwdriver")
-                    }
-
-                    // Additional Charges / Materials
-                    Section {
-                        ForEach(Array(additionalLines.enumerated()), id: \.element.id) { index, line in
-                            HStack {
-                                TextField("Description", text: $additionalLines[index].description)
-                                    .textFieldStyle(.roundedBorder)
-                                HStack(spacing: 4) {
-                                    Text("$")
-                                        .foregroundColor(.secondary)
-                                    TextField("0", value: $additionalLines[index].rate, format: .number)
-                                        #if !os(macOS)
-                                        .keyboardType(.decimalPad)
-                                        #endif
-                                        .textFieldStyle(.roundedBorder)
-                                        .frame(width: 90)
-                                }
-                                Button { additionalLines.remove(at: index) } label: {
-                                    Image(systemName: "xmark.circle.fill").foregroundColor(.red.opacity(0.6))
-                                }.buttonStyle(.plain)
-                            }
-                        }
-
-                        Button {
-                            var item = AdditionalChargeItem()
-                            item.quantity = 1
-                            item.hours = 1
-                            additionalLines.append(item)
-                        } label: {
-                            Label("Add Line Item", systemImage: "plus")
-                                .font(.callout).foregroundColor(AppTheme.primaryOrange)
-                        }
-                    } header: {
-                        Label("Additional Charges / Materials", systemImage: "shippingbox")
-                    }
-
-                    // Totals
-                    Section {
-                        HStack {
-                            Text("Subtotal").fontWeight(.medium)
-                            Spacer()
-                            Text(subtotal.currencyWithCents).fontWeight(.semibold)
-                        }
-                        HStack {
-                            Text("Tax Rate (%)").foregroundColor(.secondary)
-                            TextField("0", text: $taxRateString)
-                                #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                                .textFieldStyle(.roundedBorder).frame(width: 60)
-                            Spacer()
-                            if taxAmount > 0 {
-                                Text(taxAmount.currencyWithCents).foregroundColor(.secondary)
-                            }
-                        }
-                        Divider()
-                        HStack {
-                            Text("TOTAL DUE").font(.headline)
-                            Spacer()
-                            Text(totalDue.currencyWithCents)
-                                .font(.title3).fontWeight(.bold)
-                                .foregroundColor(AppTheme.primaryOrange)
-                        }
-                    } header: {
-                        Label("Totals", systemImage: "dollarsign.circle")
-                    }
-
-                    // Payment Terms & Notes
-                    Section {
-                        TextField("Payment Terms", text: $paymentTerms)
-                        TextEditor(text: $additionalNotes)
-                            .frame(height: 50)
-                            .overlay(
-                                Group {
-                                    if additionalNotes.isEmpty {
-                                        Text("Additional notes...")
-                                            .foregroundColor(AppTheme.tertiaryText)
-                                            .padding(.leading, 4).padding(.top, 8)
-                                            .allowsHitTesting(false)
-                                    }
-                                }, alignment: .topLeading
-                            )
-                    } header: {
-                        Label("Payment Terms & Notes", systemImage: "note.text")
-                    }
-
-                    // Approval
-                    Section {
-                        Toggle("Mark as Signed", isOn: $isSigned)
-                        if isSigned {
-                            DatePicker("Signed Date", selection: $signedDate, displayedComponents: .date)
-                        }
-                    } header: {
-                        Label("Approval", systemImage: "checkmark.seal")
-                    }
-                }
-                .formStyle(.grouped)
+            ChangeOrderFormBody(
+                project: project,
+                client: client,
+                allowEditingNumber: true,
+                siblingNumbers: siblingNumbers,
+                originalCONumber: nil,
+                numberText: $numberText,
+                coDescription: $coDescription,
+                invoiceNumber: $invoiceNumber,
+                invoiceDate: $invoiceDate,
+                workOrderNumber: $workOrderNumber,
+                poNumber: $poNumber,
+                scope: $scope,
+                laborLines: $laborLines,
+                additionalLines: $additionalLines,
+                taxRateString: $taxRateString,
+                paymentTerms: $paymentTerms,
+                additionalNotes: $additionalNotes,
+                billedTo: $billedTo,
+                isSigned: $isSigned,
+                signedDate: $signedDate
+            )
         }
         #if os(macOS)
-        .frame(width: 700, height: 800)
+        .frame(width: 720, height: 820)
         #endif
         .onAppear {
-            invoiceNumber = "INV-\(nextNumber)"
+            if numberText.isEmpty { numberText = "\(nextNumber)" }
+            if invoiceNumber.isEmpty { invoiceNumber = "INV-\(nextNumber)" }
         }
     }
 
     private func save() {
+        guard let n = parsedNumber, n > 0, !numberCollision else { return }
+        let laborSubtotal = laborLines.reduce(Decimal(0)) { $0 + $1.lineTotal }
+        let additionalSubtotal = additionalLines.reduce(Decimal(0)) { $0 + $1.lineTotal }
+        let subtotal = laborSubtotal + additionalSubtotal
+        let taxRate = Decimal(string: taxRateString) ?? 0
+        var taxAmount = Decimal(); var taxVal = subtotal * taxRate / 100
+        NSDecimalRound(&taxAmount, &taxVal, 2, .plain)
+        let total = subtotal + taxAmount
+
         let co = ChangeOrder(
-            number: nextNumber,
+            number: n,
             description: coDescription,
-            amount: totalDue,
+            amount: total,
             submittedDate: invoiceDate,
             signedDate: isSigned ? signedDate : nil,
             scope: scope,
+            billedTo: billedTo,
             invoiceNumber: invoiceNumber,
             invoiceDate: invoiceDate,
             workOrderNumber: workOrderNumber,
@@ -306,7 +415,14 @@ struct AddChangeOrderView: View {
     }
 }
 
-// MARK: - Edit Change Order (Simple Total Input)
+// MARK: - Edit Change Order (full Work Order Invoice form)
+//
+// Mirrors the Add sheet exactly via the shared `ChangeOrderFormBody` so the
+// PM can adjust line items, tax rate, payment terms, etc. — not just the
+// total. For COs created before line items were tracked (amount > 0 but
+// laborLineItems + additionalCharges both empty), we seed a synthetic
+// "Existing Total" line so the invoice math still adds up to the saved
+// amount and the user can see/edit it.
 struct EditChangeOrderSheet: View {
     let changeOrder: ChangeOrder
     let projectID: CKRecord.ID
@@ -314,127 +430,158 @@ struct EditChangeOrderSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var numberText: String
-    @State private var title: String
-    @State private var amount: String
+    @State private var coDescription: String
+    @State private var invoiceNumber: String
+    @State private var invoiceDate: Date
+    @State private var workOrderNumber: String
+    @State private var poNumber: String
     @State private var scope: String
+    @State private var laborLines: [LaborLineItem]
+    @State private var additionalLines: [AdditionalChargeItem]
+    @State private var taxRateString: String
+    @State private var paymentTerms: String
+    @State private var additionalNotes: String
+    @State private var billedTo: COBilledTo
     @State private var isSigned: Bool
     @State private var signedDate: Date
-    @State private var submittedDate: Date
-    @State private var billedTo: COBilledTo
 
     init(changeOrder: ChangeOrder, projectID: CKRecord.ID) {
         self.changeOrder = changeOrder
         self.projectID = projectID
         _numberText = State(initialValue: "\(changeOrder.number)")
-        _title = State(initialValue: changeOrder.description)
-        _amount = State(initialValue: NSDecimalNumber(decimal: changeOrder.amount).stringValue)
+        _coDescription = State(initialValue: changeOrder.description)
+        _invoiceNumber = State(initialValue: changeOrder.invoiceNumber)
+        _invoiceDate = State(initialValue: changeOrder.invoiceDate)
+        _workOrderNumber = State(initialValue: changeOrder.workOrderNumber)
+        _poNumber = State(initialValue: changeOrder.poNumber)
         _scope = State(initialValue: changeOrder.scope)
+
+        // Backward-compat: legacy COs only stored `amount` with no line
+        // breakdown. Seed an "Existing Total" line so the unified form's
+        // computed total matches what was saved.
+        let labor = changeOrder.laborLineItems
+        var additional = changeOrder.additionalCharges
+        let hasLineItems = labor.contains { $0.lineTotal > 0 } || additional.contains { $0.lineTotal > 0 }
+        if !hasLineItems && changeOrder.amount > 0 {
+            additional.append(AdditionalChargeItem(
+                description: "Existing Total",
+                quantity: 1, hours: 1,
+                rate: changeOrder.amount
+            ))
+        }
+        _laborLines = State(initialValue: labor.isEmpty ? LaborLineItem.defaultSet() : labor)
+        _additionalLines = State(initialValue: additional)
+
+        _taxRateString = State(initialValue: changeOrder.taxRate > 0
+            ? NSDecimalNumber(decimal: changeOrder.taxRate).stringValue
+            : "")
+        _paymentTerms = State(initialValue: changeOrder.paymentTerms.isEmpty ? "Net 30 Days" : changeOrder.paymentTerms)
+        _additionalNotes = State(initialValue: changeOrder.additionalNotes)
+        _billedTo = State(initialValue: changeOrder.billedTo)
         _isSigned = State(initialValue: changeOrder.isSigned)
         _signedDate = State(initialValue: changeOrder.signedDate ?? Date())
-        _submittedDate = State(initialValue: changeOrder.submittedDate)
-        _billedTo = State(initialValue: changeOrder.billedTo)
     }
 
-    /// Other change orders on the same project (for collision check).
+    private var project: Project? {
+        dataStore.projects.first { $0.id == projectID }
+    }
+    private var client: Client? {
+        guard let p = project else { return nil }
+        return dataStore.client(for: p.clientRef)
+    }
     private var siblingNumbers: Set<Int> {
         Set(dataStore.changeOrders(for: projectID)
             .filter { $0.id != changeOrder.id }
             .map(\.number))
     }
-
     private var parsedNumber: Int? { Int(numberText.trimmingCharacters(in: .whitespaces)) }
-
     private var numberCollision: Bool {
         guard let n = parsedNumber else { return false }
+        if n == changeOrder.number { return false }
         return siblingNumbers.contains(n)
     }
-
     private var isSaveDisabled: Bool {
         parsedNumber == nil || (parsedNumber ?? 0) < 1 || numberCollision
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Identification") {
-                    HStack {
-                        Text("CO Number")
-                        Spacer()
-                        TextField("e.g. 2", text: $numberText)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
-                            #if !os(macOS)
-                            .keyboardType(.numberPad)
-                            #endif
-                    }
-                    if numberCollision {
-                        Text("Another change order on this project already uses #\(parsedNumber ?? 0).")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    } else if parsedNumber == nil || (parsedNumber ?? 0) < 1 {
-                        Text("Number must be a positive integer.")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
-                    TextField("Title (e.g. Beam relocation, owner request)", text: $title)
+        VStack(spacing: 0) {
+            HStack {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Text("CO #\(numberText)")
+                        .font(.caption).fontWeight(.bold)
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(AppTheme.primaryOrange)
+                        .foregroundColor(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                    Text("Edit Work Order Invoice")
+                        .font(AppTheme.Typography.title3)
                 }
-                Section("Details") {
-                    HStack {
-                        Text("$")
-                        TextField("Total Amount", text: $amount)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                    }
-                    DatePicker("Date", selection: $submittedDate, displayedComponents: .date)
-                    Picker("Billed To", selection: $billedTo) {
-                        ForEach(COBilledTo.allCases, id: \.self) { type in
-                            Text(type.displayName).tag(type)
-                        }
-                    }
-                }
-                Section("Scope / Details") {
-                    TextEditor(text: $scope)
-                        .frame(height: 80)
-                }
-                Section("Approval") {
-                    Toggle("Signed / Approved", isOn: $isSigned)
-                    if isSigned {
-                        DatePicker("Signed Date", selection: $signedDate, displayedComponents: .date)
-                    }
-                }
+                Spacer()
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Save") { save() }
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.appPrimary)
+                    .disabled(isSaveDisabled)
             }
-            .formStyle(.grouped)
-            .navigationTitle("Edit CO #\(changeOrder.number)")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .buttonStyle(.appPrimary)
-                        .disabled(isSaveDisabled)
-                }
-            }
+            .padding()
+            Divider()
+
+            ChangeOrderFormBody(
+                project: project,
+                client: client,
+                allowEditingNumber: true,
+                siblingNumbers: siblingNumbers,
+                originalCONumber: changeOrder.number,
+                numberText: $numberText,
+                coDescription: $coDescription,
+                invoiceNumber: $invoiceNumber,
+                invoiceDate: $invoiceDate,
+                workOrderNumber: $workOrderNumber,
+                poNumber: $poNumber,
+                scope: $scope,
+                laborLines: $laborLines,
+                additionalLines: $additionalLines,
+                taxRateString: $taxRateString,
+                paymentTerms: $paymentTerms,
+                additionalNotes: $additionalNotes,
+                billedTo: $billedTo,
+                isSigned: $isSigned,
+                signedDate: $signedDate
+            )
         }
         #if os(macOS)
-        .frame(width: 480, height: 480)
+        .frame(width: 720, height: 820)
         #endif
     }
 
     private func save() {
         guard let n = parsedNumber, n > 0, !numberCollision else { return }
+        let laborSubtotal = laborLines.reduce(Decimal(0)) { $0 + $1.lineTotal }
+        let additionalSubtotal = additionalLines.reduce(Decimal(0)) { $0 + $1.lineTotal }
+        let subtotal = laborSubtotal + additionalSubtotal
+        let taxRate = Decimal(string: taxRateString) ?? 0
+        var taxAmount = Decimal(); var taxVal = subtotal * taxRate / 100
+        NSDecimalRound(&taxAmount, &taxVal, 2, .plain)
+        let total = subtotal + taxAmount
+
         var updated = changeOrder
         updated.number = n
-        updated.description = title
-        updated.amount = Decimal(string: amount) ?? changeOrder.amount
-        updated.scope = scope
-        updated.submittedDate = submittedDate
+        updated.description = coDescription
+        updated.amount = total
+        updated.submittedDate = invoiceDate
         updated.signedDate = isSigned ? signedDate : nil
+        updated.scope = scope
         updated.billedTo = billedTo
+        updated.invoiceNumber = invoiceNumber
+        updated.invoiceDate = invoiceDate
+        updated.workOrderNumber = workOrderNumber
+        updated.poNumber = poNumber
+        updated.laborLineItems = laborLines
+        updated.additionalCharges = additionalLines
+        updated.taxRate = taxRate
+        updated.paymentTerms = paymentTerms
+        updated.additionalNotes = additionalNotes
         dataStore.updateChangeOrder(updated, in: projectID)
         dismiss()
     }
