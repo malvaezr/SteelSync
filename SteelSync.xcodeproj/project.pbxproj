@@ -81,9 +81,11 @@
 		38639948FE776D64897DF5DA /* CrewPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBBCA5C8F455442C8C271728 /* CrewPreset.swift */; };
 		392B398CAD9A73ED089CD5A0 /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D1E8322F91B9CB44B59AC7 /* SharedComponents.swift */; };
 		3A247D839B405B336AB2FEE9 /* GanttViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8968AE25CF9FEFEBC09B15 /* GanttViewModel.swift */; };
+		3AD676CBA1AE39B7B04F0B23 /* SteelSyncWidgets-Mac.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CD5A3B801DD651F055597D78 /* SteelSyncWidgets-Mac.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3BE42FAC112F043B8D804161 /* GanttTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DF9906F7D629C310853F8C1 /* GanttTask.swift */; };
 		3D1F7C64AD1E357FFD2AC656 /* WidgetDataPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28948269C5BCDA6F4E28EED8 /* WidgetDataPublisher.swift */; };
 		3D5C0121883C4A8B1355A8D6 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07BA1BD89EC94E153CBC023 /* SampleData.swift */; };
+		3D6864EEA125240B6F086F6E /* InvoiceAgingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA963E7D349BE555D63F7EC9 /* InvoiceAgingWidget.swift */; };
 		3E5B75903E513C9C5709D9C3 /* TimeEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CEF8300A84E73A0EF9DF08 /* TimeEntry.swift */; };
 		3EAC78D04FFD5C380F56AE23 /* RFI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530A1552340FF002D1AB9A8C /* RFI.swift */; };
 		403F8D096C16B77C5CCEFF9D /* PDFExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 812971A7EA828E9BF47A7BB6 /* PDFExportService.swift */; };
@@ -111,6 +113,7 @@
 		4FE8EC2C37E83384B48A3231 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28562AE650F8CE57BFC51B94 /* NotificationService.swift */; };
 		533EEAE25497EE869A3A8F2A /* ProjectDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E400BF6C446F19B0101B2A3 /* ProjectDetailView.swift */; };
 		5383BC176E29F17643067E9F /* TodoItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EC530616AD5C1FA78544D40 /* TodoItem.swift */; };
+		53BEED8B95B797E692CC8AFB /* WidgetHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 186A0414E37E1B8158AB72AA /* WidgetHelpers.swift */; };
 		547E41F233616859FCF071BA /* DataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 382FFF1355B696458FB6E3D8 /* DataStore.swift */; };
 		55C2D9E3FDA1B680C3678297 /* EquipmentRental.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA34885EDE9A7BE1C05F3A42 /* EquipmentRental.swift */; };
 		55ED3BA0C30082D65B726097 /* PhoneInvoicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22115D54032CC94A25F95CD2 /* PhoneInvoicesView.swift */; };
@@ -145,6 +148,7 @@
 		709C22B318CBD0190B9957DE /* PencilCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E414F6FDD05FC4316E2ED3 /* PencilCanvasView.swift */; };
 		7163927A8ADB0114065794D2 /* CalendarMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD77C25FBFE22464C5E0183 /* CalendarMainView.swift */; };
 		71B940F460308C7A318A6C70 /* OverheadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A8E550E7DDAFD4619DE39D6 /* OverheadView.swift */; };
+		743B1BF2264ED558F7CB9B80 /* WidgetDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08744754F83C0EF0B550A65 /* WidgetDataProvider.swift */; };
 		74BF9E501E6BF3ED56E6368A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8DD979CA3D82559B1DCA65E /* ContentView.swift */; };
 		74CF3C75ED9458B5BFF4BA2C /* GanttTimelineGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7C2C4520D17CE6438BF0BF4 /* GanttTimelineGridView.swift */; };
 		75B233FE537827A867FD3BCE /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4653DF72B79DC7583A950CC8 /* TodayView.swift */; };
@@ -175,6 +179,7 @@
 		8B7A77CDB65D04C31329603E /* TimesheetEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D5CEF28092A786A2F20668 /* TimesheetEntry.swift */; };
 		8BF42D2C95FBFFA5C8BA9915 /* AuditEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDBB35CC1116B739A37685FC /* AuditEntry.swift */; };
 		8C390FB2D6544368454832E4 /* PhoneTasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5457B4910B697E9E929D192B /* PhoneTasksView.swift */; };
+		8D9C9FFD5559FE77642C5305 /* BidPipelineWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 474B8F17059E432765BE0F9B /* BidPipelineWidget.swift */; };
 		8F53C661A087D62137C4A8B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A34FD2CA99294B4131EAC97 /* Assets.xcassets */; };
 		902AFEDEE46533DC42E16094 /* ProjectFormSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C688ECAD2EB3B55FE5B19133 /* ProjectFormSheets.swift */; };
 		913896951CDA4C6F4F5BF537 /* PDFExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 812971A7EA828E9BF47A7BB6 /* PDFExportService.swift */; };
@@ -187,6 +192,7 @@
 		99B7A7A46BAC3EA4D24F8CAA /* llama.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9CBD37DF59091C54FB3DBA26 /* llama.xcframework */; };
 		9A2D48004AE4C99B506AD2C3 /* CrewPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBBCA5C8F455442C8C271728 /* CrewPreset.swift */; };
 		9A83C60E3EBC904D17164E61 /* WorkOrderInvoicePDFView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF20B46D8C773A462C02FB9E /* WorkOrderInvoicePDFView.swift */; };
+		9AFBFB4EAC47EFC479E934B8 /* SteelSyncWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F02A8419E7F23A58A8DA9A92 /* SteelSyncWidgetBundle.swift */; };
 		9B4944B4210723F96836E84F /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF057FE0994C4C5EA948780E /* Extensions.swift */; };
 		9C001B6912D023018CE7A507 /* InvoiceAgingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA963E7D349BE555D63F7EC9 /* InvoiceAgingWidget.swift */; };
 		9EBE2C4C5A504CB8A2D08324 /* PayAppPDFRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552E763F0EDDEF16D47F1055 /* PayAppPDFRenderer.swift */; };
@@ -244,6 +250,7 @@
 		D5E91D26A6590F1F069C53B9 /* GanttTaskBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A24368A58D2D9D49A30308 /* GanttTaskBarView.swift */; };
 		D6FF576A4D4C5CBAF27EFEBF /* BiddingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1011451B642A320E127016B5 /* BiddingView.swift */; };
 		D77CC958FF236DEACCF940D5 /* CloudKitConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E9683DA4F3B1ABA7AE3A72 /* CloudKitConvertible.swift */; };
+		D98F0C23FF04114BC7833EE7 /* SummaryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81F5EB7AB8F268B9A9112F38 /* SummaryWidget.swift */; };
 		DBFE0450772DB65FEF40FC52 /* BidFormViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A91D93A2FD30748D38C7512 /* BidFormViews.swift */; };
 		DC810E1FF5DA9D32DF1FBD45 /* CrewPresetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4033807B779BA39C7F61A1 /* CrewPresetsView.swift */; };
 		DCFEBB660E29510457E925F5 /* AssistantService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6802A78CD49EA90FA355F1A6 /* AssistantService.swift */; };
@@ -279,7 +286,9 @@
 		FAA29D3C90158405EF5914F3 /* PhoneLogPaymentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B907F19131C74D97A2392725 /* PhoneLogPaymentView.swift */; };
 		FAA6747B5C027528268923FF /* WorkOrderInvoicePDFView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF20B46D8C773A462C02FB9E /* WorkOrderInvoicePDFView.swift */; };
 		FAF48383C28507793451F047 /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7656A40ACE598E7DD865ED /* ActivityView.swift */; };
+		FB74651821D3D790652E95B4 /* GanttPreviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C29620A98DF4DA632CB4332 /* GanttPreviewWidget.swift */; };
 		FC1F7CA420ACB35CBEFF844B /* PhoneMoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7220A96843A08F66CEE450BB /* PhoneMoreView.swift */; };
+		FCDD897278C690FA5EA64EFA /* TodoOverviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B11124CBC093401AD48942 /* TodoOverviewWidget.swift */; };
 		FD00D112711A47DE4CF7A5DC /* WorkOrderInvoicePDFView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF20B46D8C773A462C02FB9E /* WorkOrderInvoicePDFView.swift */; };
 		FF167F1E5AD52014B45D080A /* CrewManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4FDB469A32E53EAB31384F /* CrewManagementView.swift */; };
 		FF7C3AE14704BF47635D7F7F /* HandwritingRecognitionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2953DF713912AE6F41BA1451 /* HandwritingRecognitionService.swift */; };
@@ -300,6 +309,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 1953E2939BE5F2C9D82A992A;
 			remoteInfo = "SteelSyncWidgets-iPad";
+		};
+		D91EB0D7D2B7EA99009E19B8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F1239FEFB67118169C778122 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D062CA596213B8EB3059D81B;
+			remoteInfo = "SteelSyncWidgets-Mac";
 		};
 /* End PBXContainerItemProxy section */
 
@@ -346,6 +362,17 @@
 				C071A9F009963BF69053850C /* llama.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F77E8D168AF90DD24F92326D /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				3AD676CBA1AE39B7B04F0B23 /* SteelSyncWidgets-Mac.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -396,6 +423,7 @@
 		530A1552340FF002D1AB9A8C /* RFI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RFI.swift; sourceTree = "<group>"; };
 		5457B4910B697E9E929D192B /* PhoneTasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneTasksView.swift; sourceTree = "<group>"; };
 		552E763F0EDDEF16D47F1055 /* PayAppPDFRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayAppPDFRenderer.swift; sourceTree = "<group>"; };
+		58039B0D622458137F62B4D4 /* SteelSyncWidgets-Mac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "SteelSyncWidgets-Mac.entitlements"; sourceTree = "<group>"; };
 		58398A718E943CC2D34502F3 /* ModelConversions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelConversions.swift; sourceTree = "<group>"; };
 		5C29620A98DF4DA632CB4332 /* GanttPreviewWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GanttPreviewWidget.swift; sourceTree = "<group>"; };
 		5C91103CD0FA9972FA89E3FE /* PhoneProjectsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneProjectsView.swift; sourceTree = "<group>"; };
@@ -447,6 +475,7 @@
 		C6B1F30E7135A898D7C439BB /* BidProject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BidProject.swift; sourceTree = "<group>"; };
 		C8D5CEF28092A786A2F20668 /* TimesheetEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimesheetEntry.swift; sourceTree = "<group>"; };
 		CA2FF42E0379902EEE230296 /* RFILogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RFILogView.swift; sourceTree = "<group>"; };
+		CD5A3B801DD651F055597D78 /* SteelSyncWidgets-Mac.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "SteelSyncWidgets-Mac.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		CED7423ECC173140145A872B /* SteelSync-Phone.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "SteelSync-Phone.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D07BA1BD89EC94E153CBC023 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		D247FD4AD3E327061C8B7D33 /* PhoneOverheadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneOverheadView.swift; sourceTree = "<group>"; };
@@ -510,6 +539,7 @@
 				CED7423ECC173140145A872B /* SteelSync-Phone.app */,
 				9728D516CFA0DCA3311890E4 /* SteelSync.app */,
 				AB2E2EF4FCA2EC8FD48F4C36 /* SteelSyncWidgets-iPad.appex */,
+				CD5A3B801DD651F055597D78 /* SteelSyncWidgets-Mac.appex */,
 				F8F1EA2DBACE66865331D899 /* SteelSyncWidgets.appex */,
 			);
 			name = Products;
@@ -913,6 +943,7 @@
 				A22D7545054C909577915F25 /* Info.plist */,
 				FA963E7D349BE555D63F7EC9 /* InvoiceAgingWidget.swift */,
 				F02A8419E7F23A58A8DA9A92 /* SteelSyncWidgetBundle.swift */,
+				58039B0D622458137F62B4D4 /* SteelSyncWidgets-Mac.entitlements */,
 				2E219DA3083B346857FFA6CF /* SteelSyncWidgets.entitlements */,
 				81F5EB7AB8F268B9A9112F38 /* SummaryWidget.swift */,
 				F7B11124CBC093401AD48942 /* TodoOverviewWidget.swift */,
@@ -1018,11 +1049,13 @@
 				BF684B6F0D7913971523FA20 /* Sources */,
 				A0FD467190680B9AE28D7012 /* Resources */,
 				8BCC9C85FBF5832BAF6BAA8A /* Frameworks */,
+				F77E8D168AF90DD24F92326D /* Embed Foundation Extensions */,
 				4018A36075C555209CA03383 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				5EC365AFE8D6B36C9FF20869 /* PBXTargetDependency */,
 			);
 			name = SteelSync;
 			packageProductDependencies = (
@@ -1050,6 +1083,23 @@
 			productName = "SteelSync-Phone";
 			productReference = CED7423ECC173140145A872B /* SteelSync-Phone.app */;
 			productType = "com.apple.product-type.application";
+		};
+		D062CA596213B8EB3059D81B /* SteelSyncWidgets-Mac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4E46BD6D5D175232016EEAE2 /* Build configuration list for PBXNativeTarget "SteelSyncWidgets-Mac" */;
+			buildPhases = (
+				FCD13865B5F852C36737A0B6 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "SteelSyncWidgets-Mac";
+			packageProductDependencies = (
+			);
+			productName = "SteelSyncWidgets-Mac";
+			productReference = CD5A3B801DD651F055597D78 /* SteelSyncWidgets-Mac.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		D8E613DD54F0D01679C13827 /* SteelSync-iPad */ = {
 			isa = PBXNativeTarget;
@@ -1111,6 +1161,10 @@
 						DevelopmentTeam = HN7D225STF;
 						ProvisioningStyle = Automatic;
 					};
+					D062CA596213B8EB3059D81B = {
+						DevelopmentTeam = HN7D225STF;
+						ProvisioningStyle = Automatic;
+					};
 					D8E613DD54F0D01679C13827 = {
 						DevelopmentTeam = HN7D225STF;
 						ProvisioningStyle = Automatic;
@@ -1139,6 +1193,7 @@
 				B809024E547CD0613A47E8A9 /* SteelSync-Phone */,
 				D8E613DD54F0D01679C13827 /* SteelSync-iPad */,
 				F89C6890988156D758BDE693 /* SteelSyncWidgets */,
+				D062CA596213B8EB3059D81B /* SteelSyncWidgets-Mac */,
 				1953E2939BE5F2C9D82A992A /* SteelSyncWidgets-iPad */,
 			);
 		};
@@ -1475,6 +1530,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FCD13865B5F852C36737A0B6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8D9C9FFD5559FE77642C5305 /* BidPipelineWidget.swift in Sources */,
+				FB74651821D3D790652E95B4 /* GanttPreviewWidget.swift in Sources */,
+				3D6864EEA125240B6F086F6E /* InvoiceAgingWidget.swift in Sources */,
+				9AFBFB4EAC47EFC479E934B8 /* SteelSyncWidgetBundle.swift in Sources */,
+				D98F0C23FF04114BC7833EE7 /* SummaryWidget.swift in Sources */,
+				FCDD897278C690FA5EA64EFA /* TodoOverviewWidget.swift in Sources */,
+				743B1BF2264ED558F7CB9B80 /* WidgetDataProvider.swift in Sources */,
+				53BEED8B95B797E692CC8AFB /* WidgetHelpers.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -1488,9 +1558,37 @@
 			target = 1953E2939BE5F2C9D82A992A /* SteelSyncWidgets-iPad */;
 			targetProxy = D059CA7DD0F9E390CC0C4104 /* PBXContainerItemProxy */;
 		};
+		5EC365AFE8D6B36C9FF20869 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D062CA596213B8EB3059D81B /* SteelSyncWidgets-Mac */;
+			targetProxy = D91EB0D7D2B7EA99009E19B8 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		0F94FB9B8AE9958A163BE685 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_ENTITLEMENTS = "SteelSyncWidgets/SteelSyncWidgets-Mac.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = HN7D225STF;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SteelSyncWidgets/Info.plist;
+				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../../../../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jrfv.SteelSync.MacWidgets;
+				PRODUCT_NAME = SteelSyncMacWidgets;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
 		34DC658EB507848597E5AA42 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1645,6 +1743,29 @@
 				PRODUCT_NAME = SteelSync;
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		649DF373F2876915D5F89436 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_ENTITLEMENTS = "SteelSyncWidgets/SteelSyncWidgets-Mac.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = HN7D225STF;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SteelSyncWidgets/Info.plist;
+				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../../../../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jrfv.SteelSync.MacWidgets;
+				PRODUCT_NAME = SteelSyncMacWidgets;
+				SDKROOT = macosx;
 			};
 			name = Debug;
 		};
@@ -1907,6 +2028,15 @@
 			buildConfigurations = (
 				478F730AD838B7BD4088C54B /* Debug */,
 				DF8B1841D7F1E67F4941617F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		4E46BD6D5D175232016EEAE2 /* Build configuration list for PBXNativeTarget "SteelSyncWidgets-Mac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				649DF373F2876915D5F89436 /* Debug */,
+				0F94FB9B8AE9958A163BE685 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

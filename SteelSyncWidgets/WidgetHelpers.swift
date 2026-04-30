@@ -92,13 +92,26 @@ func isDueSoon(_ date: Date) -> Bool {
 // MARK: - Widget Background Modifier
 
 import WidgetKit
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 extension View {
-    /// Applies containerBackground on iOS 17+ (required for widget rendering).
-    /// Deployment target is iOS 17.0, so containerBackground is always available.
+    /// Applies containerBackground (required for widget rendering on iOS 17+
+    /// and macOS 14+). Pulls a system surface color appropriate for each
+    /// platform so the widget looks native against Notification Center / the
+    /// macOS Desktop.
     func widgetBackground() -> some View {
-        self.containerBackground(for: .widget) {
+        #if os(macOS)
+        return self.containerBackground(for: .widget) {
+            Color(nsColor: .windowBackgroundColor)
+        }
+        #else
+        return self.containerBackground(for: .widget) {
             Color(UIColor.systemBackground)
         }
+        #endif
     }
 }

@@ -28,6 +28,10 @@ schemes:
     build:
       targets:
         SteelSyncWidgets: all
+  SteelSyncWidgets-Mac:
+    build:
+      targets:
+        SteelSyncWidgets-Mac: all
 
 settings:
   base:
@@ -42,6 +46,8 @@ targets:
         type: group
     dependencies:
       - framework: Frameworks/llama.xcframework
+        embed: true
+      - target: SteelSyncWidgets-Mac
         embed: true
     settings:
       base:
@@ -98,6 +104,8 @@ targets:
     sources:
       - path: SteelSyncWidgets
         type: group
+        excludes:
+          - "SteelSyncWidgets-Mac.entitlements"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jrfv.SteelSync.SteelSyncWidgets
@@ -113,6 +121,32 @@ targets:
         DEVELOPMENT_TEAM: "HN7D225STF"
         CODE_SIGN_ENTITLEMENTS: SteelSyncWidgets/SteelSyncWidgets.entitlements
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../../Frameworks"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    dependencies: []
+
+  SteelSyncWidgets-Mac:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: SteelSyncWidgets
+        type: group
+        excludes:
+          - "SteelSyncWidgets.entitlements"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jrfv.SteelSync.MacWidgets
+        PRODUCT_NAME: SteelSyncMacWidgets
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGNING_REQUIRED: "YES"
+        CODE_SIGNING_ALLOWED: "YES"
+        DEVELOPMENT_TEAM: "HN7D225STF"
+        CODE_SIGN_ENTITLEMENTS: SteelSyncWidgets/SteelSyncWidgets-Mac.entitlements
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../../../../Frameworks"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
     dependencies: []
