@@ -9,37 +9,51 @@ import UIKit
 
 /// Renders a date-range slice of the Gantt chart to a PDF.
 ///
-/// Output: US Letter landscape (792 × 612 pt). Each page has a title block,
-/// a date axis, and up to ~22 task rows. Long task lists paginate by row;
-/// the date scale stays consistent across pages so a task that spans the
-/// full range looks the same on page 1 and page 5.
+/// Output: US Letter landscape (792 × 612 pt). Each page has:
+/// - title block (project + date range + generated stamp)
+/// - date-axis header with month/day labels and tick marks
+/// - task table with Name / Start / End / Days columns
+/// - timeline bars colored by category, with "Today" line if in range
+/// - category legend on the last page
 ///
-/// Task bars are colored by `TaskCategory` to match the on-screen chart.
-/// Returns a temp-directory file URL that callers can hand to NSWorkspace
-/// or ShareLink.
+/// All drawing uses raw CGContext for precise positioning. Pagination is by
+/// task row; the date scale stays consistent across pages so a task that
+/// spans the full range looks identical on page 1 and page N.
 struct GanttPDFRenderer {
     let title: String
     let tasks: [GanttTask]
-    let projectsByID: [String: String]   // recordName → project title
+    let projectsByID: [String: String]   // recordName → project title (unused on page; kept in case legend needs it)
     let dateRange: ClosedRange<Date>
 
-    // MARK: - Layout
+    // MARK: - Layout (CG coordinates: y=0 is bottom of page)
 
     private let pageWidth: CGFloat = 792
     private let pageHeight: CGFloat = 612
     private let margin: CGFloat = 36
-    private let titleBlockHeight: CGFloat = 56
-    private let dateHeaderHeight: CGFloat = 32
+    private let titleBlockHeight: CGFloat = 60
+    private let dateHeaderHeight: CGFloat = 38
     private let rowHeight: CGFloat = 22
-    private let taskListWidth: CGFloat = 240
-    private let footerHeight: CGFloat = 22
+    private let footerHeight: CGFloat = 30   // legend strip on last page
+    private let taskListWidth: CGFloat = 320
 
-    private var contentTop: CGFloat { pageHeight - margin - titleBlockHeight }
-    private var dateHeaderTop: CGFloat { contentTop - dateHeaderHeight }
-    private var firstRowTop: CGFloat { dateHeaderTop - rowHeight }
+    // Column splits inside the task list (relative to task-list left edge)
+    private let nameColumnWidth: CGFloat = 180
+    private let startColumnWidth: CGFloat = 60
+    private let endColumnWidth: CGFloat = 60
+    private let daysColumnWidth: CGFloat = 20
+
+    // Reference y-values, top-down. All are CG y (bottom-origin).
+    private var pageTop: CGFloat { pageHeight - margin }
+    private var titleBlockBottom: CGFloat { pageTop - titleBlockHeight }
+    private var dateHeaderBottom: CGFloat { titleBlockBottom - dateHeaderHeight }
+    /// CG-y of the BOTTOM of the first task row (CGRect.y for that row).
+    /// Sits flush below the date header with no overlap.
+    private var firstRowBottom: CGFloat { dateHeaderBottom - rowHeight }
+    private var rowAreaBottom: CGFloat { margin + footerHeight }
     private var rowsPerPage: Int {
-        max(1, Int((dateHeaderTop - margin - footerHeight) / rowHeight))
+        max(1, Int((dateHeaderBottom - rowAreaBottom) / rowHeight))
     }
+
     private var timelineLeft: CGFloat { margin + taskListWidth }
     private var timelineRight: CGFloat { pageWidth - margin }
     private var timelineWidth: CGFloat { timelineRight - timelineLeft }
@@ -47,11 +61,6 @@ struct GanttPDFRenderer {
     // MARK: - Render
 
     func render() -> URL? {
-        // Render every task the caller passed in (already project-filtered).
-        // Bars get clipped to the date range, but tasks whose dates fall
-        // entirely outside the window still show up as rows so the export
-        // matches the on-screen list 1:1 — users expect "all tasks", not
-        // "all tasks that happen to overlap the window".
         let visibleTasks = tasks.sorted { $0.sortOrder < $1.sortOrder }
 
         let totalDays = max(1, daysBetween(dateRange.lowerBound, dateRange.upperBound))
@@ -69,11 +78,18 @@ struct GanttPDFRenderer {
             let start = pageIndex * rowsPerPage
             let end = min(start + rowsPerPage, visibleTasks.count)
             let pageTasks = Array(visibleTasks[start..<end])
+            let isLastPage = (pageIndex == pageCount - 1)
 
             context.beginPDFPage(nil)
             drawTitleBlock(in: context, pageIndex: pageIndex, pageCount: pageCount)
+            drawColumnHeaders(in: context)
             drawDateHeader(in: context, dayWidth: dayWidth, totalDays: totalDays)
+            drawGridlines(in: context, dayWidth: dayWidth, totalDays: totalDays, rowCount: pageTasks.count)
             drawTaskRows(in: context, pageTasks: pageTasks, dayWidth: dayWidth)
+            drawTodayLine(in: context, dayWidth: dayWidth, totalDays: totalDays, rowCount: pageTasks.count)
+            if isLastPage {
+                drawCategoryLegend(in: context, tasks: visibleTasks)
+            }
             context.endPDFPage()
         }
 
@@ -81,98 +97,158 @@ struct GanttPDFRenderer {
         return url
     }
 
-    // MARK: - Drawing primitives
+    // MARK: - Drawing — title block
 
     private func drawTitleBlock(in ctx: CGContext, pageIndex: Int, pageCount: Int) {
-        let rect = CGRect(x: margin, y: pageHeight - margin - titleBlockHeight,
-                          width: pageWidth - margin * 2, height: titleBlockHeight)
+        let topY = pageTop
+        // Project title
+        drawText(title, at: CGPoint(x: margin, y: topY - 22),
+                 font: bold(20), color: .black, in: ctx)
 
-        drawText(title, at: CGPoint(x: rect.minX, y: rect.maxY - 18),
-                 font: bold(18), color: .black, in: ctx)
+        // Date range subtitle
+        let dateLine = "\(formatLongDate(dateRange.lowerBound))  →  \(formatLongDate(dateRange.upperBound))   ·   \(daysBetween(dateRange.lowerBound, dateRange.upperBound)) days"
+        drawText(dateLine, at: CGPoint(x: margin, y: topY - 42),
+                 font: regular(11), color: gray(0.35), in: ctx)
 
-        let dateLine = "\(formatDate(dateRange.lowerBound)) — \(formatDate(dateRange.upperBound))"
-        drawText(dateLine, at: CGPoint(x: rect.minX, y: rect.maxY - 36),
-                 font: regular(11), color: gray(0.4), in: ctx)
-
+        // Right side: page count + generation stamp
         let pageLabel = "Page \(pageIndex + 1) of \(pageCount)"
         let pageWidthEst = estimateWidth(pageLabel, font: regular(10))
-        drawText(pageLabel, at: CGPoint(x: rect.maxX - pageWidthEst, y: rect.maxY - 18),
-                 font: regular(10), color: gray(0.5), in: ctx)
+        drawText(pageLabel, at: CGPoint(x: pageWidth - margin - pageWidthEst, y: topY - 22),
+                 font: regular(10), color: gray(0.4), in: ctx)
 
         let stamp = "Generated \(formatDateTime(Date()))"
         let stampWidth = estimateWidth(stamp, font: regular(9))
-        drawText(stamp, at: CGPoint(x: rect.maxX - stampWidth, y: rect.maxY - 36),
-                 font: regular(9), color: gray(0.55), in: ctx)
+        drawText(stamp, at: CGPoint(x: pageWidth - margin - stampWidth, y: topY - 42),
+                 font: regular(9), color: gray(0.5), in: ctx)
 
-        // Underline
-        ctx.setStrokeColor(gray(0.85))
-        ctx.setLineWidth(0.5)
-        ctx.move(to: CGPoint(x: rect.minX, y: rect.minY + 4))
-        ctx.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + 4))
+        // Underline rule
+        ctx.setStrokeColor(gray(0.7))
+        ctx.setLineWidth(0.6)
+        ctx.move(to: CGPoint(x: margin, y: titleBlockBottom + 4))
+        ctx.addLine(to: CGPoint(x: pageWidth - margin, y: titleBlockBottom + 4))
         ctx.strokePath()
     }
 
+    // MARK: - Drawing — column headers (Task / Start / End / Days)
+
+    private func drawColumnHeaders(in ctx: CGContext) {
+        // Sits in the same vertical band as the date header.
+        let centerY = dateHeaderBottom + dateHeaderHeight / 2 - 4
+
+        ctx.setFillColor(gray(0.93))
+        ctx.fill(CGRect(x: margin, y: dateHeaderBottom,
+                        width: taskListWidth, height: dateHeaderHeight))
+
+        var x = margin + 8
+        drawText("TASK", at: CGPoint(x: x, y: centerY),
+                 font: bold(9), color: gray(0.25), in: ctx)
+        x += nameColumnWidth
+        drawText("START", at: CGPoint(x: x, y: centerY),
+                 font: bold(9), color: gray(0.25), in: ctx)
+        x += startColumnWidth
+        drawText("END", at: CGPoint(x: x, y: centerY),
+                 font: bold(9), color: gray(0.25), in: ctx)
+        x += endColumnWidth
+        drawText("DAYS", at: CGPoint(x: x, y: centerY),
+                 font: bold(9), color: gray(0.25), in: ctx)
+    }
+
+    // MARK: - Drawing — date axis
+
     private func drawDateHeader(in ctx: CGContext, dayWidth: CGFloat, totalDays: Int) {
-        let topY = dateHeaderTop
-        let bottomY = dateHeaderTop - dateHeaderHeight + 4
-
-        // Background fill for the header strip
+        // Background fill for the timeline portion
         ctx.setFillColor(gray(0.96))
-        ctx.fill(CGRect(x: timelineLeft, y: bottomY, width: timelineWidth, height: dateHeaderHeight - 4))
+        ctx.fill(CGRect(x: timelineLeft, y: dateHeaderBottom,
+                        width: timelineWidth, height: dateHeaderHeight))
 
-        // Vertical column for the task-list label area
-        drawText("Task", at: CGPoint(x: margin + 4, y: topY - 18),
-                 font: bold(10), color: gray(0.3), in: ctx)
-        drawText("Dur.", at: CGPoint(x: margin + taskListWidth - 36, y: topY - 18),
-                 font: bold(10), color: gray(0.3), in: ctx)
+        // Bottom rule across the full header
+        ctx.setStrokeColor(gray(0.55))
+        ctx.setLineWidth(0.7)
+        ctx.move(to: CGPoint(x: margin, y: dateHeaderBottom))
+        ctx.addLine(to: CGPoint(x: pageWidth - margin, y: dateHeaderBottom))
+        ctx.strokePath()
 
-        // Tick interval: pick a stride so we get ~10–14 labels max
+        // Tick stride: pick day count between labels so we get ~6–14 labels max.
         let stride = tickStride(forDays: totalDays)
+        let cal = Calendar.current
         var day = 0
         while day <= totalDays {
             let x = timelineLeft + CGFloat(day) * dayWidth
-            ctx.setStrokeColor(gray(0.82))
-            ctx.setLineWidth(0.4)
+            let date = cal.date(byAdding: .day, value: day, to: dateRange.lowerBound) ?? dateRange.lowerBound
+
+            // Tick mark (extends slightly below the header rule)
+            ctx.setStrokeColor(gray(0.55))
+            ctx.setLineWidth(0.6)
+            ctx.move(to: CGPoint(x: x, y: dateHeaderBottom - 3))
+            ctx.addLine(to: CGPoint(x: x, y: dateHeaderBottom + 4))
+            ctx.strokePath()
+
+            // Two-line label: month above, day below (or just one line for sparse strides)
+            if stride < 30 {
+                let monthLabel = monthFormatter.string(from: date)
+                let dayLabel = dayFormatter.string(from: date)
+                let monthWidth = estimateWidth(monthLabel, font: regular(8))
+                let dayWidth_ = estimateWidth(dayLabel, font: bold(11))
+                drawText(monthLabel,
+                         at: CGPoint(x: x - monthWidth / 2, y: dateHeaderBottom + dateHeaderHeight - 14),
+                         font: regular(8), color: gray(0.4), in: ctx)
+                drawText(dayLabel,
+                         at: CGPoint(x: x - dayWidth_ / 2, y: dateHeaderBottom + 8),
+                         font: bold(11), color: .black, in: ctx)
+            } else {
+                let label = monthYearFormatter.string(from: date)
+                let labelWidth = estimateWidth(label, font: bold(10))
+                drawText(label,
+                         at: CGPoint(x: x - labelWidth / 2, y: dateHeaderBottom + dateHeaderHeight / 2 - 4),
+                         font: bold(10), color: .black, in: ctx)
+            }
+
+            day += stride
+        }
+    }
+
+    // MARK: - Drawing — gridlines extending into the chart area
+
+    private func drawGridlines(in ctx: CGContext, dayWidth: CGFloat, totalDays: Int, rowCount: Int) {
+        let stride = tickStride(forDays: totalDays)
+        let topY = dateHeaderBottom
+        let bottomY = topY - CGFloat(rowCount) * rowHeight
+        var day = 0
+        while day <= totalDays {
+            let x = timelineLeft + CGFloat(day) * dayWidth
+            ctx.setStrokeColor(gray(0.88))
+            ctx.setLineWidth(0.3)
             ctx.move(to: CGPoint(x: x, y: bottomY))
             ctx.addLine(to: CGPoint(x: x, y: topY))
             ctx.strokePath()
-
-            let date = Calendar.current.date(byAdding: .day, value: day, to: dateRange.lowerBound) ?? dateRange.lowerBound
-            let label = formatTickLabel(date, stride: stride)
-            drawText(label, at: CGPoint(x: x + 2, y: topY - 14),
-                     font: regular(8), color: gray(0.35), in: ctx)
             day += stride
         }
 
-        // Bottom rule
-        ctx.setStrokeColor(gray(0.7))
-        ctx.setLineWidth(0.6)
-        ctx.move(to: CGPoint(x: margin, y: bottomY))
-        ctx.addLine(to: CGPoint(x: pageWidth - margin, y: bottomY))
+        // Vertical separator between task list and timeline (above the header
+        // we already drew the underline rule, so this just continues it down
+        // through the row area).
+        ctx.setStrokeColor(gray(0.55))
+        ctx.setLineWidth(0.7)
+        ctx.move(to: CGPoint(x: timelineLeft, y: bottomY))
+        ctx.addLine(to: CGPoint(x: timelineLeft, y: dateHeaderBottom + dateHeaderHeight))
         ctx.strokePath()
     }
 
+    // MARK: - Drawing — task rows
+
     private func drawTaskRows(in ctx: CGContext, pageTasks: [GanttTask], dayWidth: CGFloat) {
-        var y = firstRowTop
+        var y = firstRowBottom
         for (i, task) in pageTasks.enumerated() {
             let rowRect = CGRect(x: margin, y: y, width: pageWidth - margin * 2, height: rowHeight)
 
-            // Zebra striping
+            // Zebra striping (subtle — light gray for even rows in task-list area only;
+            // the timeline gets a fully transparent stripe so gridlines remain visible)
             if i % 2 == 0 {
                 ctx.setFillColor(gray(0.97))
-                ctx.fill(rowRect)
+                ctx.fill(CGRect(x: margin, y: y, width: taskListWidth, height: rowHeight))
             }
 
-            // Task label column — task name only. Project title is in the
-            // page title block; repeating it per row is just visual noise.
-            drawText(task.name, at: CGPoint(x: margin + 4, y: y + rowHeight / 2 - 4),
-                     font: regular(10), color: .black, in: ctx,
-                     maxWidth: taskListWidth - 50, truncate: true)
-            // Duration on the right of the task column
-            let durLabel = "\(task.durationDays)d"
-            let durWidth = estimateWidth(durLabel, font: regular(9))
-            drawText(durLabel, at: CGPoint(x: margin + taskListWidth - durWidth - 6, y: y + rowHeight / 2 - 4),
-                     font: regular(9), color: gray(0.4), in: ctx)
+            drawTaskListColumns(in: ctx, task: task, rowY: y)
 
             // Bar
             let barRect = barRect(for: task, in: rowRect, dayWidth: dayWidth)
@@ -183,7 +259,7 @@ struct GanttPDFRenderer {
                 ctx.addPath(path)
                 ctx.fillPath()
 
-                // Progress overlay (darker shade over the completed portion)
+                // Progress overlay (darker shade over completed portion)
                 if task.progress > 0 && task.progress < 1 {
                     let progressRect = CGRect(x: barRect.minX, y: barRect.minY,
                                               width: barRect.width * CGFloat(min(max(task.progress, 0), 1)),
@@ -194,15 +270,22 @@ struct GanttPDFRenderer {
                     ctx.fillPath()
                 }
 
-                // Task name overlaid on bar if there's room
-                if barRect.width > 60 {
-                    let inset = barRect.insetBy(dx: 4, dy: 0)
-                    drawText(task.name, at: CGPoint(x: inset.minX, y: inset.minY + 5),
-                             font: bold(9),
-                             color: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1),
-                             in: ctx,
-                             maxWidth: inset.width, truncate: true)
+                // Percent label on bar (when completed bar is wide enough)
+                if barRect.width > 80, task.progress > 0 {
+                    let pctLabel = "\(Int(task.progress * 100))%"
+                    let pctWidth = estimateWidth(pctLabel, font: bold(8))
+                    drawText(pctLabel,
+                             at: CGPoint(x: barRect.maxX - pctWidth - 6, y: barRect.minY + 4),
+                             font: bold(8),
+                             color: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.85),
+                             in: ctx)
                 }
+            } else if let outOfRangeMark = outOfRangeMarker(for: task) {
+                // Task is fully outside the date window — show a small chevron at
+                // the appropriate edge so the PM knows it exists.
+                drawText(outOfRangeMark.symbol,
+                         at: CGPoint(x: outOfRangeMark.x, y: y + rowHeight / 2 - 5),
+                         font: regular(11), color: categoryColor(task.category), in: ctx)
             }
 
             // Row baseline rule
@@ -214,20 +297,111 @@ struct GanttPDFRenderer {
 
             y -= rowHeight
         }
-
-        // Vertical separator between task list and timeline
-        ctx.setStrokeColor(gray(0.75))
-        ctx.setLineWidth(0.5)
-        ctx.move(to: CGPoint(x: timelineLeft, y: margin + footerHeight))
-        ctx.addLine(to: CGPoint(x: timelineLeft, y: dateHeaderTop))
-        ctx.strokePath()
     }
 
-    // MARK: - Geometry
+    private func drawTaskListColumns(in ctx: CGContext, task: GanttTask, rowY: CGFloat) {
+        let centerY = rowY + rowHeight / 2 - 4
+        var x = margin + 8
+
+        // Status indicator dot
+        let statusColor = statusCGColor(task.status)
+        ctx.setFillColor(statusColor)
+        ctx.fillEllipse(in: CGRect(x: x, y: centerY + 1, width: 7, height: 7))
+        x += 12
+
+        // Task name (rest of the name column)
+        drawText(task.name,
+                 at: CGPoint(x: x, y: centerY),
+                 font: regular(10), color: .black, in: ctx,
+                 maxWidth: nameColumnWidth - 16, truncate: true)
+
+        // Start date
+        x = margin + 8 + nameColumnWidth
+        drawText(formatShortDate(task.startDate),
+                 at: CGPoint(x: x, y: centerY),
+                 font: regular(9), color: gray(0.25), in: ctx)
+
+        // End date (inclusive — the user thinks of "ends Apr 15" not "ends start of Apr 16")
+        let inclusiveEnd = Calendar.current.date(byAdding: .day,
+                                                  value: max(0, task.durationDays - 1),
+                                                  to: task.startDate) ?? task.startDate
+        x += startColumnWidth
+        drawText(formatShortDate(inclusiveEnd),
+                 at: CGPoint(x: x, y: centerY),
+                 font: regular(9), color: gray(0.25), in: ctx)
+
+        // Days
+        x += endColumnWidth
+        let dur = "\(task.durationDays)"
+        drawText(dur,
+                 at: CGPoint(x: x, y: centerY),
+                 font: bold(9), color: gray(0.2), in: ctx)
+    }
+
+    // MARK: - Drawing — Today line
+
+    private func drawTodayLine(in ctx: CGContext, dayWidth: CGFloat, totalDays: Int, rowCount: Int) {
+        let today = Date()
+        guard today >= dateRange.lowerBound && today <= dateRange.upperBound else { return }
+
+        let offset = CGFloat(daysBetween(dateRange.lowerBound, today))
+        let x = timelineLeft + offset * dayWidth
+        let topY = dateHeaderBottom + dateHeaderHeight
+        let bottomY = max(rowAreaBottom, dateHeaderBottom - CGFloat(rowCount) * rowHeight)
+
+        ctx.saveGState()
+        ctx.setStrokeColor(CGColor(srgbRed: 0.9, green: 0.2, blue: 0.2, alpha: 0.85))
+        ctx.setLineWidth(1.0)
+        ctx.setLineDash(phase: 0, lengths: [3, 2])
+        ctx.move(to: CGPoint(x: x, y: bottomY))
+        ctx.addLine(to: CGPoint(x: x, y: topY))
+        ctx.strokePath()
+        ctx.restoreGState()
+
+        // "TODAY" label at the top of the line
+        let label = "TODAY"
+        let lw = estimateWidth(label, font: bold(8))
+        let labelRect = CGRect(x: x - lw / 2 - 4, y: topY + 2, width: lw + 8, height: 12)
+        ctx.setFillColor(CGColor(srgbRed: 0.9, green: 0.2, blue: 0.2, alpha: 1.0))
+        ctx.fill(labelRect)
+        drawText(label,
+                 at: CGPoint(x: x - lw / 2, y: topY + 4),
+                 font: bold(8),
+                 color: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1),
+                 in: ctx)
+    }
+
+    // MARK: - Drawing — category legend
+
+    private func drawCategoryLegend(in ctx: CGContext, tasks: [GanttTask]) {
+        let y = margin + 6
+        let categories = Array(Set(tasks.map(\.category))).sorted { $0.rawValue < $1.rawValue }
+        guard !categories.isEmpty else { return }
+
+        var x = margin
+        drawText("LEGEND",
+                 at: CGPoint(x: x, y: y),
+                 font: bold(8), color: gray(0.4), in: ctx)
+        x += estimateWidth("LEGEND", font: bold(8)) + 12
+
+        for cat in categories {
+            ctx.setFillColor(categoryColor(cat))
+            ctx.fill(CGRect(x: x, y: y + 1, width: 10, height: 8))
+            x += 14
+            let label = cat.rawValue
+            drawText(label,
+                     at: CGPoint(x: x, y: y),
+                     font: regular(9), color: gray(0.25), in: ctx)
+            x += estimateWidth(label, font: regular(9)) + 14
+            // Wrap to a second line if we run out of room
+            if x > pageWidth - margin - 100 { break }
+        }
+    }
+
+    // MARK: - Geometry helpers
 
     private func barRect(for task: GanttTask, in rowRect: CGRect, dayWidth: CGFloat) -> CGRect {
-        // Task occupies [startDate, startDate + durationDays) — exclusive end so
-        // a 1-day task renders as one day of bar width, not zero.
+        // Task occupies [startDate, startDate + durationDays). Exclusive end.
         let taskEnd = endDate(for: task)
         let clippedStart = max(task.startDate, dateRange.lowerBound)
         let clippedEnd = min(taskEnd, dateRange.upperBound)
@@ -244,45 +418,73 @@ struct GanttPDFRenderer {
     }
 
     private func endDate(for task: GanttTask) -> Date {
-        // Exclusive end. A task that starts on Apr 1 with durationDays = 1
-        // ends at end-of-Apr-1 / start-of-Apr-2.
+        // Exclusive end; a 1-day task spans [start, start+1).
         Calendar.current.date(byAdding: .day, value: max(1, task.durationDays), to: task.startDate) ?? task.startDate
+    }
+
+    private func outOfRangeMarker(for task: GanttTask) -> (symbol: String, x: CGFloat)? {
+        let taskEnd = endDate(for: task)
+        if taskEnd < dateRange.lowerBound {
+            return ("◀", timelineLeft + 4)        // entirely before window
+        } else if task.startDate > dateRange.upperBound {
+            return ("▶", timelineRight - 14)      // entirely after window
+        }
+        return nil
     }
 
     private func daysBetween(_ a: Date, _ b: Date) -> Int {
         let cal = Calendar.current
-        let comps = cal.dateComponents([.day], from: cal.startOfDay(for: a), to: cal.startOfDay(for: b))
-        return comps.day ?? 0
+        return cal.dateComponents([.day], from: cal.startOfDay(for: a), to: cal.startOfDay(for: b)).day ?? 0
     }
 
     private func tickStride(forDays days: Int) -> Int {
         switch days {
-        case 0...14: return 1
-        case 15...60: return 7
-        case 61...180: return 14
-        case 181...365: return 30
+        case 0...10: return 1
+        case 11...30: return 3
+        case 31...60: return 7
+        case 61...120: return 14
+        case 121...365: return 30
         default: return 60
         }
     }
 
-    private func formatTickLabel(_ date: Date, stride: Int) -> String {
-        let f = DateFormatter()
-        f.dateFormat = stride < 7 ? "M/d" : (stride < 30 ? "M/d" : "MMM yy")
-        return f.string(from: date)
-    }
+    // MARK: - Date formatting
 
-    private func formatDate(_ date: Date) -> String {
+    private let monthFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM"
+        return f
+    }()
+    private let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d"
+        return f
+    }()
+    private let monthYearFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM yy"
+        return f
+    }()
+    private let shortDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        return f
+    }()
+    private let longDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .medium
-        return f.string(from: date)
-    }
-
-    private func formatDateTime(_ date: Date) -> String {
+        return f
+    }()
+    private let dateTimeFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .medium
         f.timeStyle = .short
-        return f.string(from: date)
-    }
+        return f
+    }()
+
+    private func formatLongDate(_ date: Date) -> String { longDateFormatter.string(from: date) }
+    private func formatShortDate(_ date: Date) -> String { shortDateFormatter.string(from: date) }
+    private func formatDateTime(_ date: Date) -> String { dateTimeFormatter.string(from: date) }
 
     private static var timestamp: String {
         let f = DateFormatter()
@@ -295,10 +497,11 @@ struct GanttPDFRenderer {
         return String(cleaned).prefix(40).description
     }
 
-    // MARK: - Color helpers (CGColor — bypasses SwiftUI Color since we draw with CG)
+    // MARK: - Color helpers
+    //
+    // Mirrors `TaskCategory.color` so the on-screen and exported colors
+    // match exactly. Updates here must update there.
 
-    /// Mirrors `TaskCategory.color` so the on-screen and exported colors
-    /// match exactly. Updates here must update there.
     private func categoryColor(_ cat: TaskCategory) -> CGColor {
         switch cat {
         case .leadTime: return cgColor(0x60, 0x7D, 0x8B)      // slate
@@ -314,6 +517,18 @@ struct GanttPDFRenderer {
         }
     }
 
+    /// Smaller dot palette for the per-row status indicator.
+    private func statusCGColor(_ status: TaskStatus) -> CGColor {
+        switch status {
+        case .notStarted: return gray(0.7)
+        case .inProgress: return cgColor(0x19, 0x76, 0xD2)    // blue
+        case .completed: return cgColor(0x2E, 0x7D, 0x32)     // green
+        case .delayed: return cgColor(0xC6, 0x28, 0x28)       // red
+        case .onHold: return cgColor(0xE6, 0x51, 0x00)        // orange
+        case .milestone: return cgColor(0x6A, 0x1B, 0x9A)     // purple
+        }
+    }
+
     private func cgColor(_ r: Int, _ g: Int, _ b: Int) -> CGColor {
         CGColor(srgbRed: CGFloat(r) / 255, green: CGFloat(g) / 255, blue: CGFloat(b) / 255, alpha: 1)
     }
@@ -321,6 +536,8 @@ struct GanttPDFRenderer {
     private func gray(_ value: CGFloat) -> CGColor {
         CGColor(srgbRed: value, green: value, blue: value, alpha: 1)
     }
+
+    private func gray(_ value: Double) -> CGColor { gray(CGFloat(value)) }
 
     private func darken(_ color: CGColor, by amount: CGFloat) -> CGColor {
         guard let comps = color.components, comps.count >= 3 else { return color }
@@ -367,12 +584,6 @@ struct GanttPDFRenderer {
             current.removeLast()
         }
         return current + "…"
-    }
-
-    private func gray(_ value: Double) -> CGColor { gray(CGFloat(value)) }
-
-    private var black: CGColor {
-        CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 1)
     }
 }
 
