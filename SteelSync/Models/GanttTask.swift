@@ -101,18 +101,21 @@ enum TaskCategory: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Per-category color used both on-screen and in the exported PDF. Hex
+    /// values are mirrored in `GanttPDFRenderer.categoryColor(_:)` — keep the
+    /// two in sync. Palette tuned for distinct hues on print.
     var color: Color {
         switch self {
-        case .leadTime: return Color(hex: "#78909C")
-        case .fabrication: return Color(hex: "#5C6BC0")
-        case .delivery: return Color(hex: "#26A69A")
-        case .erection: return Color(hex: "#FF7043")
-        case .inspection: return Color(hex: "#AB47BC")
-        case .rfiSubmittal: return Color(hex: "#42A5F5")
-        case .deadline: return Color(hex: "#EF5350")
-        case .meetings: return Color(hex: "#00897B")
-        case .payApp: return Color(hex: "#5E35B1")
-        case .other: return Color(hex: "#8D6E63")
+        case .leadTime: return Color(hex: "#607D8B")      // slate
+        case .fabrication: return Color(hex: "#6A1B9A")   // deep purple
+        case .delivery: return Color(hex: "#1976D2")      // blue
+        case .erection: return Color(hex: "#E65100")      // deep orange
+        case .inspection: return Color(hex: "#2E7D32")    // green
+        case .rfiSubmittal: return Color(hex: "#00838F")  // cyan
+        case .deadline: return Color(hex: "#C62828")      // red
+        case .meetings: return Color(hex: "#4527A0")      // indigo
+        case .payApp: return Color(hex: "#00695C")        // dark teal
+        case .other: return Color(hex: "#5D4037")         // brown
         }
     }
 

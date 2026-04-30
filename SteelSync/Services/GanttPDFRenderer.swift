@@ -47,12 +47,12 @@ struct GanttPDFRenderer {
     // MARK: - Render
 
     func render() -> URL? {
-        let visibleTasks = tasks
-            .filter { task in
-                let taskEnd = endDate(for: task)
-                return taskEnd >= dateRange.lowerBound && task.startDate <= dateRange.upperBound
-            }
-            .sorted { $0.sortOrder < $1.sortOrder }
+        // Render every task the caller passed in (already project-filtered).
+        // Bars get clipped to the date range, but tasks whose dates fall
+        // entirely outside the window still show up as rows so the export
+        // matches the on-screen list 1:1 — users expect "all tasks", not
+        // "all tasks that happen to overlap the window".
+        let visibleTasks = tasks.sorted { $0.sortOrder < $1.sortOrder }
 
         let totalDays = max(1, daysBetween(dateRange.lowerBound, dateRange.upperBound))
         let dayWidth = timelineWidth / CGFloat(totalDays)
@@ -74,7 +74,6 @@ struct GanttPDFRenderer {
             drawTitleBlock(in: context, pageIndex: pageIndex, pageCount: pageCount)
             drawDateHeader(in: context, dayWidth: dayWidth, totalDays: totalDays)
             drawTaskRows(in: context, pageTasks: pageTasks, dayWidth: dayWidth)
-            drawFooter(in: context, taskRange: (start + 1, end), totalTasks: visibleTasks.count)
             context.endPDFPage()
         }
 
@@ -164,21 +163,15 @@ struct GanttPDFRenderer {
                 ctx.fill(rowRect)
             }
 
-            // Task label column — project + name
-            let projectLabel = projectsByID[task.projectID] ?? ""
-            let primary = task.name
-            drawText(primary, at: CGPoint(x: margin + 4, y: y + rowHeight - 14),
+            // Task label column — task name only. Project title is in the
+            // page title block; repeating it per row is just visual noise.
+            drawText(task.name, at: CGPoint(x: margin + 4, y: y + rowHeight / 2 - 4),
                      font: regular(10), color: .black, in: ctx,
                      maxWidth: taskListWidth - 50, truncate: true)
-            if !projectLabel.isEmpty {
-                drawText(projectLabel, at: CGPoint(x: margin + 4, y: y + 2),
-                         font: regular(8), color: gray(0.5), in: ctx,
-                         maxWidth: taskListWidth - 50, truncate: true)
-            }
             // Duration on the right of the task column
             let durLabel = "\(task.durationDays)d"
             let durWidth = estimateWidth(durLabel, font: regular(9))
-            drawText(durLabel, at: CGPoint(x: margin + taskListWidth - durWidth - 6, y: y + rowHeight - 14),
+            drawText(durLabel, at: CGPoint(x: margin + taskListWidth - durWidth - 6, y: y + rowHeight / 2 - 4),
                      font: regular(9), color: gray(0.4), in: ctx)
 
             // Bar
@@ -230,17 +223,13 @@ struct GanttPDFRenderer {
         ctx.strokePath()
     }
 
-    private func drawFooter(in ctx: CGContext, taskRange: (Int, Int), totalTasks: Int) {
-        let line = "Tasks \(taskRange.0)–\(taskRange.1) of \(totalTasks) · SteelSync"
-        drawText(line, at: CGPoint(x: margin, y: margin + 6),
-                 font: regular(8), color: gray(0.55), in: ctx)
-    }
-
     // MARK: - Geometry
 
     private func barRect(for task: GanttTask, in rowRect: CGRect, dayWidth: CGFloat) -> CGRect {
-        let clippedStart = max(task.startDate, dateRange.lowerBound)
+        // Task occupies [startDate, startDate + durationDays) — exclusive end so
+        // a 1-day task renders as one day of bar width, not zero.
         let taskEnd = endDate(for: task)
+        let clippedStart = max(task.startDate, dateRange.lowerBound)
         let clippedEnd = min(taskEnd, dateRange.upperBound)
         guard clippedEnd > clippedStart else { return .zero }
 
@@ -255,7 +244,9 @@ struct GanttPDFRenderer {
     }
 
     private func endDate(for task: GanttTask) -> Date {
-        Calendar.current.date(byAdding: .day, value: max(0, task.durationDays - 1), to: task.startDate) ?? task.startDate
+        // Exclusive end. A task that starts on Apr 1 with durationDays = 1
+        // ends at end-of-Apr-1 / start-of-Apr-2.
+        Calendar.current.date(byAdding: .day, value: max(1, task.durationDays), to: task.startDate) ?? task.startDate
     }
 
     private func daysBetween(_ a: Date, _ b: Date) -> Int {
@@ -306,18 +297,20 @@ struct GanttPDFRenderer {
 
     // MARK: - Color helpers (CGColor — bypasses SwiftUI Color since we draw with CG)
 
+    /// Mirrors `TaskCategory.color` so the on-screen and exported colors
+    /// match exactly. Updates here must update there.
     private func categoryColor(_ cat: TaskCategory) -> CGColor {
         switch cat {
-        case .leadTime: return cgColor(0x78, 0x90, 0x9C)
-        case .fabrication: return cgColor(0x5C, 0x6B, 0xC0)
-        case .delivery: return cgColor(0x26, 0xA6, 0x9A)
-        case .erection: return cgColor(0xFF, 0x70, 0x43)
-        case .inspection: return cgColor(0xAB, 0x47, 0xBC)
-        case .rfiSubmittal: return cgColor(0x42, 0xA5, 0xF5)
-        case .deadline: return cgColor(0xEF, 0x53, 0x50)
-        case .meetings: return cgColor(0x00, 0x89, 0x7B)
-        case .payApp: return cgColor(0x5E, 0x35, 0xB1)
-        case .other: return cgColor(0x8D, 0x6E, 0x63)
+        case .leadTime: return cgColor(0x60, 0x7D, 0x8B)      // slate
+        case .fabrication: return cgColor(0x6A, 0x1B, 0x9A)   // deep purple
+        case .delivery: return cgColor(0x19, 0x76, 0xD2)      // blue
+        case .erection: return cgColor(0xE6, 0x51, 0x00)      // deep orange
+        case .inspection: return cgColor(0x2E, 0x7D, 0x32)    // green
+        case .rfiSubmittal: return cgColor(0x00, 0x83, 0x8F)  // cyan
+        case .deadline: return cgColor(0xC6, 0x28, 0x28)      // red
+        case .meetings: return cgColor(0x45, 0x27, 0xA0)      // indigo
+        case .payApp: return cgColor(0x00, 0x69, 0x5C)        // dark teal
+        case .other: return cgColor(0x5D, 0x40, 0x37)         // brown
         }
     }
 
