@@ -131,6 +131,8 @@
 		6466342E449031CAA980311B /* GanttTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DF9906F7D629C310853F8C1 /* GanttTask.swift */; };
 		64B56A414DC4F6989B39F154 /* CrewManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4FDB469A32E53EAB31384F /* CrewManagementView.swift */; };
 		659D914955FAA0BE9B5FA8A4 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28562AE650F8CE57BFC51B94 /* NotificationService.swift */; };
+		65CF704A07A44A799DC77FBA /* GanttExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A892989AA1EB9BDD692EFB8 /* GanttExportSheet.swift */; };
+		6663AE416A83F8038B923CC1 /* GanttExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A892989AA1EB9BDD692EFB8 /* GanttExportSheet.swift */; };
 		679A71A34C7AD40A584AE640 /* SteelSyncWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F8F1EA2DBACE66865331D899 /* SteelSyncWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		67EE0A5B065CE15BF1703F5B /* WeeklyAssignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9295F43337F5AB4398EC520E /* WeeklyAssignment.swift */; };
 		687C77138525833388FED55D /* RFILogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2FF42E0379902EEE230296 /* RFILogView.swift */; };
@@ -142,6 +144,7 @@
 		6C700BB0CFA6979B48E3D832 /* CalendarMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD77C25FBFE22464C5E0183 /* CalendarMainView.swift */; };
 		6D1E508D5EFBED8E59A4A0F0 /* BidProject.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B1F30E7135A898D7C439BB /* BidProject.swift */; };
 		6D44218E45225BB9ED30BE6C /* GanttViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8968AE25CF9FEFEBC09B15 /* GanttViewModel.swift */; };
+		6D6A38C850492709E8072602 /* GanttPDFRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D5F931E0B3057D6394D8BD6 /* GanttPDFRenderer.swift */; };
 		6DAC1B289ACF4D8DDE6072FF /* SnapshotService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77B10D2CBB3202FC8A534723 /* SnapshotService.swift */; };
 		6F735D526101D247F786072B /* OverheadExpense.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C2ADF3F7937DBF838CB48B /* OverheadExpense.swift */; };
 		706A1710F172094D5544FE71 /* AssistantMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B4736E176810AB66924CAB0 /* AssistantMessage.swift */; };
@@ -208,6 +211,7 @@
 		A915493DDBDDAD53A75BF84B /* AuditEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDBB35CC1116B739A37685FC /* AuditEntry.swift */; };
 		AB608F55E502AE5BD4D62EDA /* AssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFF376341208D9A91DACDCAB /* AssistantView.swift */; };
 		AC8A65D4FFF3769673A80C37 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9328DFEC95485FE83580A9FA /* DashboardView.swift */; };
+		AE18D9863D7AABBF664C1A27 /* GanttPDFRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D5F931E0B3057D6394D8BD6 /* GanttPDFRenderer.swift */; };
 		AE55A3D6730D5A9F7998BCD3 /* FileDropModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F937DB7367744CB2FD75497 /* FileDropModifier.swift */; };
 		B0A13B0A4FF1B011062E754B /* BidProject.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B1F30E7135A898D7C439BB /* BidProject.swift */; };
 		B0FCAE7F78F606264568E4BC /* PlatformHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6300CD8818402187D0ABD23A /* PlatformHelpers.swift */; };
@@ -248,9 +252,11 @@
 		D21F40A65B5572E4AD7E5E53 /* ResponseFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45C110DB5B14052C675D8B39 /* ResponseFormatter.swift */; };
 		D4ED81BE69288DFD06F93449 /* ClientsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E42E79F8F54FFD90C87D9CB /* ClientsView.swift */; };
 		D5E91D26A6590F1F069C53B9 /* GanttTaskBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A24368A58D2D9D49A30308 /* GanttTaskBarView.swift */; };
+		D60BC3D866694A28525483FC /* GanttPDFRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D5F931E0B3057D6394D8BD6 /* GanttPDFRenderer.swift */; };
 		D6FF576A4D4C5CBAF27EFEBF /* BiddingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1011451B642A320E127016B5 /* BiddingView.swift */; };
 		D77CC958FF236DEACCF940D5 /* CloudKitConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E9683DA4F3B1ABA7AE3A72 /* CloudKitConvertible.swift */; };
 		D98F0C23FF04114BC7833EE7 /* SummaryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81F5EB7AB8F268B9A9112F38 /* SummaryWidget.swift */; };
+		DB3ED0B4A3E3305088D9A11F /* GanttExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A892989AA1EB9BDD692EFB8 /* GanttExportSheet.swift */; };
 		DBFE0450772DB65FEF40FC52 /* BidFormViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A91D93A2FD30748D38C7512 /* BidFormViews.swift */; };
 		DC810E1FF5DA9D32DF1FBD45 /* CrewPresetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4033807B779BA39C7F61A1 /* CrewPresetsView.swift */; };
 		DCFEBB660E29510457E925F5 /* AssistantService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6802A78CD49EA90FA355F1A6 /* AssistantService.swift */; };
@@ -382,6 +388,7 @@
 		05F33D378A68D315E61C16E5 /* SteelSyncPhone.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SteelSyncPhone.entitlements; sourceTree = "<group>"; };
 		062E9F90EF9A227D6B3A84BA /* QueryParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryParser.swift; sourceTree = "<group>"; };
 		09F1E7862A298462D13FE606 /* SteelSync.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SteelSync.entitlements; sourceTree = "<group>"; };
+		0A892989AA1EB9BDD692EFB8 /* GanttExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GanttExportSheet.swift; sourceTree = "<group>"; };
 		0BDB71A2FF57BA549C7FDF68 /* PhoneProjectDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneProjectDetailView.swift; sourceTree = "<group>"; };
 		0CB1A29BC6181124FA4E4DDD /* CloudKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitService.swift; sourceTree = "<group>"; };
 		1011451B642A320E127016B5 /* BiddingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiddingView.swift; sourceTree = "<group>"; };
@@ -391,6 +398,7 @@
 		186A0414E37E1B8158AB72AA /* WidgetHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetHelpers.swift; sourceTree = "<group>"; };
 		186F26B3FD55ECAAB01BF101 /* PhoneTodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneTodayView.swift; sourceTree = "<group>"; };
 		1A34FD2CA99294B4131EAC97 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1D5F931E0B3057D6394D8BD6 /* GanttPDFRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GanttPDFRenderer.swift; sourceTree = "<group>"; };
 		21737A4F1A7835C79DF0F894 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		21EE9F075420DFE63E74A2C1 /* SteelSyncApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelSyncApp.swift; sourceTree = "<group>"; };
 		22115D54032CC94A25F95CD2 /* PhoneInvoicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneInvoicesView.swift; sourceTree = "<group>"; };
@@ -606,6 +614,7 @@
 			isa = PBXGroup;
 			children = (
 				10F93A2FDEE6423BA41E6064 /* GanttChartView.swift */,
+				0A892989AA1EB9BDD692EFB8 /* GanttExportSheet.swift */,
 				60A24368A58D2D9D49A30308 /* GanttTaskBarView.swift */,
 				7942C645F9E3BF0378EFFFBF /* GanttTaskEditSheet.swift */,
 				E7C2C4520D17CE6438BF0BF4 /* GanttTimelineGridView.swift */,
@@ -887,6 +896,7 @@
 				0CB1A29BC6181124FA4E4DDD /* CloudKitService.swift */,
 				382FFF1355B696458FB6E3D8 /* DataStore.swift */,
 				1457AB1F27C9C7902279360C /* FileStorageService.swift */,
+				1D5F931E0B3057D6394D8BD6 /* GanttPDFRenderer.swift */,
 				2953DF713912AE6F41BA1451 /* HandwritingRecognitionService.swift */,
 				28562AE650F8CE57BFC51B94 /* NotificationService.swift */,
 				552E763F0EDDEF16D47F1055 /* PayAppPDFRenderer.swift */,
@@ -1259,6 +1269,8 @@
 				87678CC2B8B5E0E701922C7B /* FileDropModifier.swift in Sources */,
 				9548C8FE61944EB9838B2A1C /* FileStorageService.swift in Sources */,
 				105EF638194B1693ED2A27FF /* GanttChartView.swift in Sources */,
+				65CF704A07A44A799DC77FBA /* GanttExportSheet.swift in Sources */,
+				6D6A38C850492709E8072602 /* GanttPDFRenderer.swift in Sources */,
 				3BE42FAC112F043B8D804161 /* GanttTask.swift in Sources */,
 				1E3D4C5A59786C1417AB4285 /* GanttTaskBarView.swift in Sources */,
 				0C09DA6A45D80F80EE199E8A /* GanttTaskEditSheet.swift in Sources */,
@@ -1361,6 +1373,8 @@
 				AE55A3D6730D5A9F7998BCD3 /* FileDropModifier.swift in Sources */,
 				56066DF2ECFFB5CF9D332942 /* FileStorageService.swift in Sources */,
 				0448B5ABFD2A58F5D8FB1883 /* GanttChartView.swift in Sources */,
+				6663AE416A83F8038B923CC1 /* GanttExportSheet.swift in Sources */,
+				D60BC3D866694A28525483FC /* GanttPDFRenderer.swift in Sources */,
 				6466342E449031CAA980311B /* GanttTask.swift in Sources */,
 				D5E91D26A6590F1F069C53B9 /* GanttTaskBarView.swift in Sources */,
 				36823C9B65827EE767080B6A /* GanttTaskEditSheet.swift in Sources */,
@@ -1479,6 +1493,8 @@
 				A7BA6453EA8056CA9D9BA418 /* FileDropModifier.swift in Sources */,
 				462D98274D416C74AC1BEA9A /* FileStorageService.swift in Sources */,
 				08E87568F449AB370891D82A /* GanttChartView.swift in Sources */,
+				DB3ED0B4A3E3305088D9A11F /* GanttExportSheet.swift in Sources */,
+				AE18D9863D7AABBF664C1A27 /* GanttPDFRenderer.swift in Sources */,
 				E53F6BD3B7E65FB0E91C0FE3 /* GanttTask.swift in Sources */,
 				6196D5CEF0521D5BCE5635E0 /* GanttTaskBarView.swift in Sources */,
 				C69A0E6BA7DE1E9391AF8B47 /* GanttTaskEditSheet.swift in Sources */,

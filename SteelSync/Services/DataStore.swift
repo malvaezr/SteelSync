@@ -927,6 +927,46 @@ class DataStore: ObservableObject {
         deleteFromCloud(task)
     }
 
+    /// Swap `task`'s sortOrder with the entry directly above it in
+    /// `visibleTasks`. The visible list (after filtering/sort) is what the
+    /// user sees, so swapping by visual neighbor matches their intent even
+    /// when other projects' tasks have intervening sortOrder values.
+    func moveGanttTaskUp(_ task: GanttTask, in visibleTasks: [GanttTask]) {
+        guard let idx = visibleTasks.firstIndex(where: { $0.id == task.id }), idx > 0 else { return }
+        swapGanttSortOrder(task, with: visibleTasks[idx - 1])
+    }
+
+    func moveGanttTaskDown(_ task: GanttTask, in visibleTasks: [GanttTask]) {
+        guard let idx = visibleTasks.firstIndex(where: { $0.id == task.id }),
+              idx < visibleTasks.count - 1 else { return }
+        swapGanttSortOrder(task, with: visibleTasks[idx + 1])
+    }
+
+    private func swapGanttSortOrder(_ a: GanttTask, with b: GanttTask) {
+        guard let aIdx = ganttTasks.firstIndex(where: { $0.id == a.id }),
+              let bIdx = ganttTasks.firstIndex(where: { $0.id == b.id }) else { return }
+        // Tasks can share sortOrder defaults (all zero); if so, seed them
+        // from current visible position before swapping so subsequent moves
+        // produce visible deltas.
+        if ganttTasks[aIdx].sortOrder == ganttTasks[bIdx].sortOrder {
+            normalizeGanttSortOrders()
+        }
+        ganttTasks[aIdx].sortOrder = b.sortOrder == a.sortOrder ? b.sortOrder + 1 : b.sortOrder
+        ganttTasks[bIdx].sortOrder = a.sortOrder
+        logAudit(.updated, type: "Gantt Task", name: a.name, details: "Reordered")
+        syncRecord(ganttTasks[aIdx])
+        syncRecord(ganttTasks[bIdx])
+    }
+
+    /// Reseeds sortOrder values to match current array order so subsequent
+    /// swaps have a unique value to swap against. Idempotent.
+    private func normalizeGanttSortOrders() {
+        for (i, task) in ganttTasks.enumerated() where task.sortOrder != i {
+            ganttTasks[i].sortOrder = i
+            syncRecord(ganttTasks[i])
+        }
+    }
+
     func generateSampleGanttTasks() {
         for project in projects {
             let tasks = GanttTask.sampleTasks(for: project.id.recordName)

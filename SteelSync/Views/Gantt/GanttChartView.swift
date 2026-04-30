@@ -5,6 +5,7 @@ struct GanttChartView: View {
     @EnvironmentObject var dataStore: DataStore
     @StateObject private var vm = GanttViewModel()
     @State private var showAddTask = false
+    @State private var showExportSheet = false
     @State private var editingTask: GanttTask?
     @State private var selectedProjectFilter: String? = nil
     @State private var currentDate = Date()
@@ -125,6 +126,13 @@ struct GanttChartView: View {
                 dataStore.addGanttTask(newTask)
             }
             .environmentObject(dataStore)
+        }
+        .sheet(isPresented: $showExportSheet) {
+            GanttExportSheet(
+                allTasks: allTasks,
+                projects: dataStore.projects,
+                initialProjectFilter: selectedProjectFilter
+            )
         }
         .sheet(item: $editingTask) { task in
             GanttTaskEditSheet(projects: dataStore.projects, editingTask: task) { updated in
@@ -332,6 +340,13 @@ struct GanttChartView: View {
                     .disabled(vm.availableWidth <= 0)
                 }
 
+                Button(action: { showExportSheet = true }) {
+                    Label("Export PDF", systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(.appSecondary)
+                .controlSize(.small)
+                .disabled(allTasks.isEmpty)
+
                 Button(action: { showAddTask = true }) {
                     Label("Add", systemImage: "plus")
                 }
@@ -413,6 +428,17 @@ struct GanttChartView: View {
                                     Button("Edit") { editingTask = task }
                                     Button(task.isPinned ? "Unpin" : "Pin") { togglePin(task) }
                                     Divider()
+                                    let siblings = projectSiblings(of: task)
+                                    let position = siblings.firstIndex(where: { $0.id == task.id })
+                                    Button("Move Up") {
+                                        dataStore.moveGanttTaskUp(task, in: siblings)
+                                    }
+                                    .disabled(position == nil || position == 0)
+                                    Button("Move Down") {
+                                        dataStore.moveGanttTaskDown(task, in: siblings)
+                                    }
+                                    .disabled(position == nil || position == siblings.count - 1)
+                                    Divider()
                                     Button("Delete", role: .destructive) { dataStore.deleteGanttTask(task) }
                                 }
                         }
@@ -423,6 +449,13 @@ struct GanttChartView: View {
     }
 
     // MARK: - Helpers
+
+    /// Tasks visible in the same project group as `task`, in display order.
+    /// Used to scope Move Up/Down so reordering only swaps with on-screen
+    /// neighbors of the same project.
+    private func projectSiblings(of task: GanttTask) -> [GanttTask] {
+        filteredTasks.filter { $0.projectID == task.projectID }
+    }
 
     private var timelineHeight: CGFloat {
         var height = vm.headerHeight
