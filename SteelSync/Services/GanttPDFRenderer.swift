@@ -353,12 +353,9 @@ struct GanttPDFRenderer {
                  at: CGPoint(x: x, y: centerY),
                  font: regular(9), color: gray(0.25), in: ctx)
 
-        // End date (inclusive — the user thinks of "ends Apr 15" not "ends start of Apr 16")
-        let inclusiveEnd = Calendar.current.date(byAdding: .day,
-                                                  value: max(0, task.durationDays - 1),
-                                                  to: task.startDate) ?? task.startDate
+        // End date (inclusive last working day, matching on-screen Gantt math)
         x += startColumnWidth
-        drawText(formatShortDate(inclusiveEnd),
+        drawText(formatShortDate(inclusiveEndDate(for: task)),
                  at: CGPoint(x: x, y: centerY),
                  font: regular(9), color: gray(0.25), in: ctx)
 
@@ -458,8 +455,22 @@ struct GanttPDFRenderer {
     }
 
     private func endDate(for task: GanttTask) -> Date {
-        // Exclusive end; a 1-day task spans [start, start+1).
-        Calendar.current.date(byAdding: .day, value: max(1, task.durationDays), to: task.startDate) ?? task.startDate
+        // Workday-aware exclusive end — same calculation the on-screen Gantt
+        // uses (`GanttTask.endDate`), which advances `durationDays` workdays
+        // past `startDate` skipping Sundays (and Saturdays unless the task
+        // opts in). Using plain calendar arithmetic here would draw shorter
+        // bars in the PDF than what the user sees on-screen for any task
+        // that crosses a weekend.
+        task.endDate
+    }
+
+    /// Last day the task is still in progress (inclusive). Used for the
+    /// End column display ("ends Apr 15") instead of the exclusive
+    /// start-of-next-day. Falls back to startDate for 0-duration tasks.
+    private func inclusiveEndDate(for task: GanttTask) -> Date {
+        let exclusiveEnd = task.endDate
+        let oneDayBack = Calendar.current.date(byAdding: .day, value: -1, to: exclusiveEnd) ?? task.startDate
+        return max(task.startDate, oneDayBack)
     }
 
     private func outOfRangeMarker(for task: GanttTask) -> (symbol: String, x: CGFloat)? {
