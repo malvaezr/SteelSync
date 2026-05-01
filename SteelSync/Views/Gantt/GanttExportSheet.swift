@@ -8,35 +8,37 @@ import UIKit
 
 /// Date-range PDF export for the Gantt chart.
 ///
-/// Lets the user pick a project filter (or "All Projects") plus a start/end
-/// date, then renders a slice of the chart through `GanttPDFRenderer`. Auto-
-/// fills the date range from the actual span of visible tasks so common
-/// "export everything" use cases require zero adjustment.
+/// Lets the user pick any subset of projects (1, several, or all) plus a
+/// start/end date, then renders a slice of the chart through
+/// `GanttPDFRenderer`. Auto-fills the date range from the actual span of
+/// visible tasks so common "export everything" use cases require zero
+/// adjustment.
 struct GanttExportSheet: View {
     let allTasks: [GanttTask]
     let projects: [Project]
-    let initialProjectFilter: String?
 
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedProjectID: String?
+    @State private var selectedProjectIDs: Set<String>
     @State private var startDate: Date
     @State private var endDate: Date
     @State private var isRendering = false
     @State private var renderError: String?
 
-    init(allTasks: [GanttTask], projects: [Project], initialProjectFilter: String?) {
+    /// Initialize with an explicit set of project IDs to pre-select.
+    /// Empty set means "no projects" — caller should usually pass either a
+    /// specific subset or the full set of project IDs (= "All Projects").
+    init(allTasks: [GanttTask], projects: [Project], initialSelectedProjects: Set<String>) {
         self.allTasks = allTasks
         self.projects = projects
-        self.initialProjectFilter = initialProjectFilter
-        _selectedProjectID = State(initialValue: initialProjectFilter)
+        _selectedProjectIDs = State(initialValue: initialSelectedProjects)
 
         // Default range: span of tasks matching the initial filter, padded a few days.
-        let scope: [GanttTask] = {
-            if let pid = initialProjectFilter {
-                return allTasks.filter { $0.projectID == pid }
-            }
-            return allTasks
-        }()
+        let scope: [GanttTask]
+        if initialSelectedProjects.isEmpty {
+            scope = []
+        } else {
+            scope = allTasks.filter { initialSelectedProjects.contains($0.projectID) }
+        }
         let cal = Calendar.current
         let starts = scope.map(\.startDate)
         let ends = scope.map { task in
@@ -48,9 +50,21 @@ struct GanttExportSheet: View {
         _endDate = State(initialValue: defaultEnd)
     }
 
+    /// Backward-compatible single-project initializer. Used by call sites
+    /// that haven't migrated to multi-select yet — either nil (= all projects)
+    /// or a single project ID.
+    init(allTasks: [GanttTask], projects: [Project], initialProjectFilter: String?) {
+        let initial: Set<String>
+        if let pid = initialProjectFilter {
+            initial = [pid]
+        } else {
+            initial = Set(projects.map { $0.id.recordName })
+        }
+        self.init(allTasks: allTasks, projects: projects, initialSelectedProjects: initial)
+    }
+
     private var filteredTasks: [GanttTask] {
-        guard let pid = selectedProjectID else { return allTasks }
-        return allTasks.filter { $0.projectID == pid }
+        allTasks.filter { selectedProjectIDs.contains($0.projectID) }
     }
 
     private var inRangeCount: Int {
@@ -62,7 +76,20 @@ struct GanttExportSheet: View {
     }
 
     private var canExport: Bool {
-        startDate <= endDate && inRangeCount > 0 && !isRendering
+        startDate <= endDate && !selectedProjectIDs.isEmpty && inRangeCount > 0 && !isRendering
+    }
+
+    private var projectFilterLabel: String {
+        let total = projects.count
+        let count = selectedProjectIDs.count
+        if count == 0 { return "No Projects" }
+        if count == total { return "All Projects" }
+        if count == 1,
+           let id = selectedProjectIDs.first,
+           let project = projects.first(where: { $0.id.recordName == id }) {
+            return project.title
+        }
+        return "\(count) of \(total) Projects"
     }
 
     var body: some View {
@@ -80,16 +107,9 @@ struct GanttExportSheet: View {
                     VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
                         SectionTitle(text: "Scope")
 
-                        LabeledField(label: "Project") {
-                            Picker("", selection: $selectedProjectID) {
-                                Text("All Projects").tag(nil as String?)
-                                ForEach(projects) { project in
-                                    Text(project.title).tag(project.id.recordName as String?)
-                                }
-                            }
-                            .labelsHidden()
-                            .pickerStyle(.menu)
-                            .appControlSurface()
+                        LabeledField(label: "Projects",
+                                     helpText: "Pick any combination of projects. Tasks from selected projects will appear together in the PDF.") {
+                            projectMultiSelectMenu
                         }
 
                         HStack(spacing: AppTheme.Spacing.md) {
@@ -127,8 +147,55 @@ struct GanttExportSheet: View {
             .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 540, height: 540)
+        .frame(width: 560, height: 580)
         #endif
+    }
+
+    @ViewBuilder private var projectMultiSelectMenu: some View {
+        Menu {
+            Button {
+                selectedProjectIDs = Set(projects.map { $0.id.recordName })
+            } label: {
+                Label("Select All", systemImage: "checkmark.circle.fill")
+            }
+            Button {
+                selectedProjectIDs.removeAll()
+            } label: {
+                Label("Clear All", systemImage: "xmark.circle")
+            }
+            Divider()
+            ForEach(projects) { project in
+                Button {
+                    let id = project.id.recordName
+                    if selectedProjectIDs.contains(id) {
+                        selectedProjectIDs.remove(id)
+                    } else {
+                        selectedProjectIDs.insert(id)
+                    }
+                } label: {
+                    if selectedProjectIDs.contains(project.id.recordName) {
+                        Label(project.title, systemImage: "checkmark")
+                    } else {
+                        Text(project.title)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "building.2")
+                    .font(.caption)
+                Text(projectFilterLabel)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .appControlSurface()
+        }
+        .menuStyle(.borderlessButton)
     }
 
     @ViewBuilder private var rangePresets: some View {
@@ -181,12 +248,9 @@ struct GanttExportSheet: View {
                 InfoRow(label: "Duration",
                         value: "\(daysBetween(startDate, endDate)) days",
                         icon: "clock")
-                if let pid = selectedProjectID,
-                   let project = projects.first(where: { $0.id.recordName == pid }) {
-                    InfoRow(label: "Project", value: project.title, icon: "building.2")
-                } else {
-                    InfoRow(label: "Project", value: "All Projects", icon: "building.2")
-                }
+                InfoRow(label: "Projects",
+                        value: projectFilterLabel,
+                        icon: "building.2")
             }
             .padding(AppTheme.Spacing.md)
             .background(
@@ -204,10 +268,26 @@ struct GanttExportSheet: View {
 
         let projectsByID = Dictionary(uniqueKeysWithValues: projects.map { ($0.id.recordName, $0.title) })
         let title: String
-        if let pid = selectedProjectID, let p = projects.first(where: { $0.id.recordName == pid }) {
+        if selectedProjectIDs.count == projects.count {
+            title = "SteelSync Schedule"
+        } else if selectedProjectIDs.count == 1,
+                  let id = selectedProjectIDs.first,
+                  let p = projects.first(where: { $0.id.recordName == id }) {
             title = "\(p.title) — Schedule"
         } else {
-            title = "SteelSync Schedule"
+            // Multi-project export: use the alphabetically-first selected
+            // project plus a "+ N others" suffix so the title fits on one line.
+            let selected = projects
+                .filter { selectedProjectIDs.contains($0.id.recordName) }
+                .sorted { $0.title < $1.title }
+            if let first = selected.first {
+                let othersCount = selected.count - 1
+                title = othersCount > 0
+                    ? "\(first.title) + \(othersCount) other\(othersCount == 1 ? "" : "s") — Schedule"
+                    : "\(first.title) — Schedule"
+            } else {
+                title = "SteelSync Schedule"
+            }
         }
 
         let renderer = GanttPDFRenderer(

@@ -168,7 +168,7 @@ struct GanttChartView: View {
             GanttExportSheet(
                 allTasks: allTasks,
                 projects: dataStore.projects,
-                initialProjectFilter: soleSelectedProjectID
+                initialSelectedProjects: selectedProjectFilters
             )
         }
         .sheet(item: $editingTask) { task in
