@@ -92,6 +92,10 @@ struct GanttPDFRenderer {
             drawTitleBlock(in: context, pageIndex: pageIndex, pageCount: pageCount)
             drawColumnHeaders(in: context)
             drawDateHeader(in: context, dayWidth: dayWidth, totalDays: totalDays)
+            // Weekend shading sits BELOW gridlines and bars but ABOVE the
+            // date header fill, so the chart background visibly differs on
+            // Sat/Sun without obscuring tick labels above.
+            drawWeekendShading(in: context, dayWidth: dayWidth, totalDays: totalDays, rowCount: pageTasks.count)
             drawGridlines(in: context, dayWidth: dayWidth, totalDays: totalDays, rowCount: pageTasks.count)
             drawTaskRows(in: context, pageTasks: pageTasks, dayWidth: dayWidth)
             drawTodayLine(in: context, dayWidth: dayWidth, totalDays: totalDays, rowCount: pageTasks.count)
@@ -242,6 +246,32 @@ struct GanttPDFRenderer {
             }
 
             day += stride
+        }
+    }
+
+    // MARK: - Drawing — weekend shading
+    //
+    // Light bluish-gray vertical bands behind every Saturday and Sunday in
+    // the chart row area. Helps the PM see at a glance which days are
+    // off-calendar so a bar that crosses a weekend is obvious.
+
+    private func drawWeekendShading(in ctx: CGContext, dayWidth: CGFloat, totalDays: Int, rowCount: Int) {
+        guard rowCount > 0 else { return }
+        let cal = Calendar.current
+        let topY = dateHeaderBottom
+        let bottomY = topY - CGFloat(rowCount) * rowHeight
+
+        // Cool-tinted gray so weekends read as "non-working time" and don't
+        // visually compete with the warmer category bar colors.
+        let weekendColor = CGColor(srgbRed: 0.91, green: 0.92, blue: 0.94, alpha: 1)
+        ctx.setFillColor(weekendColor)
+
+        for day in 0..<totalDays {
+            let date = cal.date(byAdding: .day, value: day, to: dateRange.lowerBound) ?? dateRange.lowerBound
+            let weekday = cal.component(.weekday, from: date)   // Sunday = 1, Saturday = 7
+            guard weekday == 1 || weekday == 7 else { continue }
+            let x = timelineLeft + CGFloat(day) * dayWidth
+            ctx.fill(CGRect(x: x, y: bottomY, width: dayWidth, height: topY - bottomY))
         }
     }
 
