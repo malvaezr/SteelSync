@@ -7,7 +7,12 @@ struct GanttChartView: View {
     @State private var showAddTask = false
     @State private var showExportSheet = false
     @State private var editingTask: GanttTask?
-    @State private var selectedProjectFilter: String? = nil
+    /// Multi-select project filter. Each entry is a `Project.id.recordName`.
+    /// The set always represents the *visible* projects — empty means
+    /// "nothing showing". On first appearance it's seeded with every project
+    /// so the default state matches the previous "All Projects" behavior.
+    @State private var selectedProjectFilters: Set<String> = []
+    @State private var didSeedProjectFilters = false
     @State private var currentDate = Date()
     @State private var isVisible = false
 
@@ -30,10 +35,7 @@ struct GanttChartView: View {
     /// Tasks that pass the current project + search + status filters.
     /// Search matches name, assignee, or category (case-insensitive).
     var filteredTasks: [GanttTask] {
-        var result = allTasks
-        if let filter = selectedProjectFilter {
-            result = result.filter { $0.projectID == filter }
-        }
+        var result = allTasks.filter { selectedProjectFilters.contains($0.projectID) }
         let q = vm.searchText.trimmingCharacters(in: .whitespaces).lowercased()
         if !q.isEmpty {
             result = result.filter { t in
@@ -70,9 +72,15 @@ struct GanttChartView: View {
         var groups: [(project: Project, tasks: [GanttTask])] = []
         let visibleTasks: [GanttTask] = filteredTasks
         for project in dataStore.projects {
+            // Skip projects the user has filtered out entirely.
+            guard selectedProjectFilters.contains(project.id.recordName) else { continue }
             let projTasks: [GanttTask] = visibleTasks.filter { $0.projectID == project.id.recordName }
             let sortedProjTasks: [GanttTask] = projTasks.sorted { $0.sortOrder < $1.sortOrder }
-            if !sortedProjTasks.isEmpty || selectedProjectFilter == project.id.recordName {
+            // When the user has narrowed down to ≤3 projects we show empty
+            // groups so they can see "this project has no tasks". For wider
+            // selections we hide empty ones to keep the chart compact.
+            let isNarrow = selectedProjectFilters.count <= 3
+            if !sortedProjTasks.isEmpty || isNarrow {
                 groups.append((project: project, tasks: sortedProjTasks))
             }
         }
@@ -93,7 +101,9 @@ struct GanttChartView: View {
     }
 
     var rows: [GanttRow] {
-        if selectedProjectFilter != nil {
+        // Single-project view skips headers — same as before, just keyed off
+        // the multi-select set having exactly one entry.
+        if selectedProjectFilters.count == 1 {
             return filteredTasks.map { .task($0) }
         }
         var result: [GanttRow] = []
@@ -102,6 +112,27 @@ struct GanttChartView: View {
             result += tasks.map { .task($0) }
         }
         return result
+    }
+
+    /// Single project ID when exactly one is selected, otherwise nil. Used to
+    /// hand a sensible default to the Add Task and Export sheets without
+    /// teaching them about multi-select (yet).
+    private var soleSelectedProjectID: String? {
+        selectedProjectFilters.count == 1 ? selectedProjectFilters.first : nil
+    }
+
+    /// Compact label shown on the toolbar's project menu button.
+    private var projectFilterLabel: String {
+        let total = dataStore.projects.count
+        let count = selectedProjectFilters.count
+        if count == 0 { return "No Projects" }
+        if count == total { return "All Projects" }
+        if count == 1,
+           let id = selectedProjectFilters.first,
+           let project = dataStore.projects.first(where: { $0.id.recordName == id }) {
+            return project.title
+        }
+        return "\(count) of \(total) Projects"
     }
 
     var body: some View {
@@ -113,16 +144,22 @@ struct GanttChartView: View {
                     .onAppear {
                         vm.availableWidth = geo.size.width - vm.taskListWidth
                         if allTasks.isEmpty { dataStore.generateSampleGanttTasks() }
+                        seedProjectFiltersIfNeeded()
                         vm.fitToWindow(tasks: filteredTasks,
                                        availableWidth: vm.availableWidth)
                     }
                     .onChange(of: geo.size.width) { _, newValue in
                         vm.availableWidth = newValue - vm.taskListWidth
                     }
+                    .onChange(of: dataStore.projects.count) { _, _ in
+                        // Seed once on first data, then leave alone — the
+                        // user owns the filter set after that.
+                        seedProjectFiltersIfNeeded()
+                    }
             }
         }
         .sheet(isPresented: $showAddTask) {
-            GanttTaskEditSheet(projects: dataStore.projects, selectedProjectID: selectedProjectFilter) { newTask in
+            GanttTaskEditSheet(projects: dataStore.projects, selectedProjectID: soleSelectedProjectID) { newTask in
                 dataStore.addGanttTask(newTask)
             }
             .environmentObject(dataStore)
@@ -131,7 +168,7 @@ struct GanttChartView: View {
             GanttExportSheet(
                 allTasks: allTasks,
                 projects: dataStore.projects,
-                initialProjectFilter: selectedProjectFilter
+                initialProjectFilter: soleSelectedProjectID
             )
         }
         .sheet(item: $editingTask) { task in
@@ -233,17 +270,7 @@ struct GanttChartView: View {
         VStack(spacing: 6) {
             // Row 1: project filter, search, filters, zoom, add
             HStack(spacing: AppTheme.Spacing.md) {
-                Picker("Project", selection: $selectedProjectFilter) {
-                    Text("All Projects").tag(String?.none)
-                    ForEach(dataStore.projects) { project in
-                        Text(project.title).tag(Optional(project.id.recordName))
-                    }
-                }
-                #if os(macOS)
-                .frame(width: 200)
-                #else
-                .frame(width: 180)
-                #endif
+                projectFilterMenu
 
                 // Search field
                 HStack(spacing: 4) {
@@ -455,6 +482,80 @@ struct GanttChartView: View {
     /// neighbors of the same project.
     private func projectSiblings(of task: GanttTask) -> [GanttTask] {
         filteredTasks.filter { $0.projectID == task.projectID }
+    }
+
+    /// Multi-select project filter menu. Each project is a row with a leading
+    /// checkmark; tapping toggles its membership in `selectedProjectFilters`.
+    /// "Show All" / "Show None" actions sit at the top for bulk toggling.
+    @ViewBuilder
+    private var projectFilterMenu: some View {
+        Menu {
+            Button {
+                selectedProjectFilters = Set(dataStore.projects.map { $0.id.recordName })
+            } label: {
+                Label("Show All Projects", systemImage: "checkmark.circle.fill")
+            }
+            Button {
+                selectedProjectFilters.removeAll()
+            } label: {
+                Label("Show None", systemImage: "xmark.circle")
+            }
+            Divider()
+            ForEach(dataStore.projects) { project in
+                Button {
+                    let id = project.id.recordName
+                    if selectedProjectFilters.contains(id) {
+                        selectedProjectFilters.remove(id)
+                    } else {
+                        selectedProjectFilters.insert(id)
+                    }
+                } label: {
+                    if selectedProjectFilters.contains(project.id.recordName) {
+                        Label(project.title, systemImage: "checkmark")
+                    } else {
+                        Text(project.title)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "building.2")
+                    .font(.caption)
+                Text(projectFilterLabel)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(AppTheme.secondaryBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(AppTheme.primaryText.opacity(0.1), lineWidth: 0.5)
+            )
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize(horizontal: false, vertical: true)
+        #if os(macOS)
+        .frame(width: 220)
+        #else
+        .frame(width: 200)
+        #endif
+    }
+
+    /// Seeds `selectedProjectFilters` with every project on first appearance
+    /// so the default state mirrors "All Projects". Idempotent — once the
+    /// user has interacted, we don't overwrite their selection.
+    private func seedProjectFiltersIfNeeded() {
+        guard !didSeedProjectFilters, !dataStore.projects.isEmpty else { return }
+        selectedProjectFilters = Set(dataStore.projects.map { $0.id.recordName })
+        didSeedProjectFilters = true
     }
 
     private var timelineHeight: CGFloat {
