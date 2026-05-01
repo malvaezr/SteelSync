@@ -32,9 +32,15 @@ struct GanttPDFRenderer {
     private let margin: CGFloat = 36
     private let titleBlockHeight: CGFloat = 60
     private let dateHeaderHeight: CGFloat = 38
-    private let rowHeight: CGFloat = 22
     private let footerHeight: CGFloat = 30   // legend strip on last page
     private let taskListWidth: CGFloat = 320
+
+    /// Multi-project exports get a project subtitle under each task name,
+    /// so each row is taller. Single-project exports stay compact.
+    private var showsProjectSubtitle: Bool {
+        Set(tasks.map(\.projectID)).count > 1
+    }
+    private var rowHeight: CGFloat { showsProjectSubtitle ? 30 : 22 }
 
     // Column splits inside the task list (relative to task-list left edge).
     // Sum + 8pt left padding = taskListWidth (320). Days column gets a wider
@@ -333,30 +339,54 @@ struct GanttPDFRenderer {
 
     private func drawTaskListColumns(in ctx: CGContext, task: GanttTask, rowY: CGFloat) {
         let centerY = rowY + rowHeight / 2 - 4
+        // When a subtitle is shown the task name sits in the upper half of
+        // the row, so dates/days align with it instead of the geometric
+        // centerline (which would make them visually droop below the name).
+        let textY = showsProjectSubtitle ? rowY + rowHeight - 14 : centerY
         var x = margin + 8
 
-        // Status indicator dot
+        // Status indicator dot — sits centered when there's no subtitle,
+        // nudged up a touch when there is so it lines up with the task name.
+        let dotY = showsProjectSubtitle ? rowY + rowHeight - 12 : centerY + 1
         let statusColor = statusCGColor(task.status)
         ctx.setFillColor(statusColor)
-        ctx.fillEllipse(in: CGRect(x: x, y: centerY + 1, width: 7, height: 7))
+        ctx.fillEllipse(in: CGRect(x: x, y: dotY, width: 7, height: 7))
         x += 12
 
-        // Task name (rest of the name column)
-        drawText(task.name,
-                 at: CGPoint(x: x, y: centerY),
-                 font: regular(10), color: .black, in: ctx,
-                 maxWidth: nameColumnWidth - 16, truncate: true)
+        // Task name. When the export covers multiple projects we draw a
+        // small project subtitle below the name so the PM can tell which
+        // job each row belongs to without flipping pages.
+        if showsProjectSubtitle {
+            let nameY = rowY + rowHeight - 14
+            let projectY = rowY + 4
+            drawText(task.name,
+                     at: CGPoint(x: x, y: nameY),
+                     font: regular(10), color: .black, in: ctx,
+                     maxWidth: nameColumnWidth - 16, truncate: true)
+            let projectTitle = projectsByID[task.projectID] ?? ""
+            if !projectTitle.isEmpty {
+                drawText(projectTitle,
+                         at: CGPoint(x: x, y: projectY),
+                         font: regular(7), color: gray(0.5), in: ctx,
+                         maxWidth: nameColumnWidth - 16, truncate: true)
+            }
+        } else {
+            drawText(task.name,
+                     at: CGPoint(x: x, y: centerY),
+                     font: regular(10), color: .black, in: ctx,
+                     maxWidth: nameColumnWidth - 16, truncate: true)
+        }
 
         // Start date
         x = margin + 8 + nameColumnWidth
         drawText(formatShortDate(task.startDate),
-                 at: CGPoint(x: x, y: centerY),
+                 at: CGPoint(x: x, y: textY),
                  font: regular(9), color: gray(0.25), in: ctx)
 
         // End date (inclusive last working day, matching on-screen Gantt math)
         x += startColumnWidth
         drawText(formatShortDate(inclusiveEndDate(for: task)),
-                 at: CGPoint(x: x, y: centerY),
+                 at: CGPoint(x: x, y: textY),
                  font: regular(9), color: gray(0.25), in: ctx)
 
         // Days — right-aligned inside its column so the column reads as
@@ -365,7 +395,7 @@ struct GanttPDFRenderer {
         let dur = "\(task.durationDays)"
         let durWidth = estimateWidth(dur, font: bold(9))
         drawText(dur,
-                 at: CGPoint(x: x + daysColumnWidth - durWidth - 8, y: centerY),
+                 at: CGPoint(x: x + daysColumnWidth - durWidth - 8, y: textY),
                  font: bold(9), color: gray(0.2), in: ctx)
     }
 
