@@ -19,6 +19,11 @@ struct GanttExportSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var selectedProjectIDs: Set<String>
+    /// Assignees to include. Stored as raw `assignedTo` strings; the empty
+    /// string represents "unassigned". `nil` means "no assignee filter
+    /// applied" (show every assignee, including assignees added later) —
+    /// distinct from "empty set" which means "show nothing".
+    @State private var selectedAssignees: Set<String>? = nil
     @State private var startDate: Date
     @State private var endDate: Date
     @State private var isRendering = false
@@ -63,8 +68,48 @@ struct GanttExportSheet: View {
         self.init(allTasks: allTasks, projects: projects, initialSelectedProjects: initial)
     }
 
+    /// Distinct assignees across the project-filtered task set, preserved
+    /// in insertion order. The `assignedTo` field is free-text on the task,
+    /// so we just dedupe the strings as-is. An empty string is preserved as
+    /// "Unassigned" in the menu.
+    private var availableAssignees: [String] {
+        var seen = Set<String>()
+        var ordered: [String] = []
+        for task in allTasks where selectedProjectIDs.contains(task.projectID) {
+            let name = task.assignedTo
+            if !seen.contains(name) {
+                seen.insert(name)
+                ordered.append(name)
+            }
+        }
+        // Sort: unassigned ("") first, then alphabetical
+        ordered.sort { lhs, rhs in
+            if lhs.isEmpty && !rhs.isEmpty { return true }
+            if !lhs.isEmpty && rhs.isEmpty { return false }
+            return lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+        }
+        return ordered
+    }
+
     private var filteredTasks: [GanttTask] {
-        allTasks.filter { selectedProjectIDs.contains($0.projectID) }
+        let projectMatches = allTasks.filter { selectedProjectIDs.contains($0.projectID) }
+        guard let assignees = selectedAssignees else { return projectMatches }
+        return projectMatches.filter { assignees.contains($0.assignedTo) }
+    }
+
+    private var assigneeFilterLabel: String {
+        let total = availableAssignees.count
+        guard let selected = selectedAssignees else { return "All Assignees" }
+        if selected.isEmpty { return "None" }
+        if selected.count == total { return "All Assignees" }
+        if selected.count == 1, let name = selected.first {
+            return name.isEmpty ? "Unassigned" : name
+        }
+        return "\(selected.count) of \(total) Assignees"
+    }
+
+    private func displayAssignee(_ raw: String) -> String {
+        raw.isEmpty ? "Unassigned" : raw
     }
 
     private var inRangeCount: Int {
@@ -110,6 +155,11 @@ struct GanttExportSheet: View {
                         LabeledField(label: "Projects",
                                      helpText: "Pick any combination of projects. Tasks from selected projects will appear together in the PDF.") {
                             projectMultiSelectMenu
+                        }
+
+                        LabeledField(label: "Assigned To",
+                                     helpText: "Optional. Narrow the export to specific people. Leave on \"All Assignees\" to include everyone, including assignees that haven't been added yet.") {
+                            assigneeMultiSelectMenu
                         }
 
                         HStack(spacing: AppTheme.Spacing.md) {
@@ -198,6 +248,63 @@ struct GanttExportSheet: View {
         .menuStyle(.borderlessButton)
     }
 
+    @ViewBuilder private var assigneeMultiSelectMenu: some View {
+        let assignees = availableAssignees
+        Menu {
+            Button {
+                selectedAssignees = nil   // nil = follow availability automatically
+            } label: {
+                Label("All Assignees", systemImage: "checkmark.circle.fill")
+            }
+            Button {
+                selectedAssignees = []    // explicit empty = filter out everyone
+            } label: {
+                Label("Clear Selection", systemImage: "xmark.circle")
+            }
+            if !assignees.isEmpty {
+                Divider()
+                ForEach(assignees, id: \.self) { name in
+                    Button {
+                        // First click after "All Assignees": initialize the
+                        // set to everyone, then toggle the chosen one. This
+                        // matches user intent — they tapped a name to narrow,
+                        // not to switch from "all" to "only this one".
+                        var current = selectedAssignees ?? Set(assignees)
+                        if current.contains(name) {
+                            current.remove(name)
+                        } else {
+                            current.insert(name)
+                        }
+                        selectedAssignees = current
+                    } label: {
+                        let active = selectedAssignees?.contains(name) ?? true
+                        if active {
+                            Label(displayAssignee(name), systemImage: "checkmark")
+                        } else {
+                            Text(displayAssignee(name))
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "person.2")
+                    .font(.caption)
+                Text(assigneeFilterLabel)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .appControlSurface()
+        }
+        .menuStyle(.borderlessButton)
+        .disabled(assignees.isEmpty)
+    }
+
     @ViewBuilder private var rangePresets: some View {
         HStack(spacing: AppTheme.Spacing.sm) {
             presetButton("This Month") {
@@ -251,6 +358,9 @@ struct GanttExportSheet: View {
                 InfoRow(label: "Projects",
                         value: projectFilterLabel,
                         icon: "building.2")
+                InfoRow(label: "Assigned To",
+                        value: assigneeFilterLabel,
+                        icon: "person.2")
             }
             .padding(AppTheme.Spacing.md)
             .background(
