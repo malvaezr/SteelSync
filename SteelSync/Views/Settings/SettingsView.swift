@@ -14,6 +14,12 @@ struct SettingsView: View {
     @State private var snapshotToRestore: SnapshotDescriptor?
     @State private var snapshotToDelete: SnapshotDescriptor?
 
+    // Confirmation PIN management
+    @State private var pinCurrentInput: String = ""
+    @State private var pinNewInput: String = ""
+    @State private var pinChangeStatus: String = ""
+    @State private var pinChangeStatusIsError: Bool = false
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
@@ -177,6 +183,72 @@ struct SettingsView: View {
                     .padding(.vertical, AppTheme.Spacing.sm)
                 }
 
+                // Confirmation PIN Section
+                GroupBox {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                        HStack {
+                            Text("Confirmation PIN")
+                                .font(AppTheme.Typography.headline)
+                            Spacer()
+                            if PinService.isUsingDefault {
+                                Text("Using default")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            } else {
+                                Text("Custom PIN")
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                            }
+                        }
+
+                        Text("Required when deleting payments and other destructive actions. The default is **\(PinService.defaultPin)** — change it below to something only you'll remember. If you forget your PIN, use **Reset to Default** to fall back to \(PinService.defaultPin) without losing any data.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        HStack(spacing: AppTheme.Spacing.sm) {
+                            SecureField("Current PIN", text: $pinCurrentInput)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 120)
+                                #if !os(macOS)
+                                .keyboardType(.numberPad)
+                                #endif
+                            SecureField("New PIN (4 digits)", text: $pinNewInput)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 160)
+                                #if !os(macOS)
+                                .keyboardType(.numberPad)
+                                #endif
+                            Button("Change PIN") { changePin() }
+                                .buttonStyle(.appPrimary)
+                                .disabled(!PinService.isValidPinFormat(pinNewInput) || pinCurrentInput.isEmpty)
+                            Spacer()
+                            Button {
+                                resetPin()
+                            } label: {
+                                Label("Reset to Default", systemImage: "arrow.counterclockwise")
+                            }
+                            .buttonStyle(.appSecondary)
+                        }
+
+                        if !pinChangeStatus.isEmpty {
+                            Text(pinChangeStatus)
+                                .font(.caption)
+                                .foregroundColor(pinChangeStatusIsError ? .red : .green)
+                        }
+                    }
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                    .onChange(of: pinCurrentInput) { _, new in
+                        let cleaned = String(new.filter(\.isNumber).prefix(4))
+                        if cleaned != new { pinCurrentInput = cleaned }
+                        pinChangeStatus = ""
+                    }
+                    .onChange(of: pinNewInput) { _, new in
+                        let cleaned = String(new.filter(\.isNumber).prefix(4))
+                        if cleaned != new { pinNewInput = cleaned }
+                        pinChangeStatus = ""
+                    }
+                }
+
                 // Diagnostics Section
                 GroupBox {
                     VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
@@ -277,6 +349,34 @@ struct SettingsView: View {
         } message: { snapshot in
             Text("The snapshot folder and all its attachments will be permanently removed. This cannot be undone.")
         }
+    }
+
+    // MARK: - Confirmation PIN helpers
+
+    private func changePin() {
+        guard PinService.verify(pinCurrentInput) else {
+            pinChangeStatus = "Current PIN is incorrect."
+            pinChangeStatusIsError = true
+            return
+        }
+        guard PinService.isValidPinFormat(pinNewInput) else {
+            pinChangeStatus = "New PIN must be exactly 4 digits."
+            pinChangeStatusIsError = true
+            return
+        }
+        PinService.setPin(pinNewInput)
+        pinCurrentInput = ""
+        pinNewInput = ""
+        pinChangeStatus = "PIN updated."
+        pinChangeStatusIsError = false
+    }
+
+    private func resetPin() {
+        PinService.resetToDefault()
+        pinCurrentInput = ""
+        pinNewInput = ""
+        pinChangeStatus = "PIN reset to \(PinService.defaultPin)."
+        pinChangeStatusIsError = false
     }
 
     // MARK: - Snapshot helpers

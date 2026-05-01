@@ -22,6 +22,7 @@
 		0BBCF851F9EDB92860313B0A /* PhoneReportsSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742AA5635AF4054F200123E4 /* PhoneReportsSummaryView.swift */; };
 		0BC92D0D54EF7E5286CB9D0C /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9328DFEC95485FE83580A9FA /* DashboardView.swift */; };
 		0C09DA6A45D80F80EE199E8A /* GanttTaskEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7942C645F9E3BF0378EFFFBF /* GanttTaskEditSheet.swift */; };
+		0CD4DB3894DCD7519DA4FAD0 /* ConfirmationPinSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF30F3359D69BBCAA9858C00 /* ConfirmationPinSheet.swift */; };
 		0D54CE80806F915E754BA8BD /* CalendarEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76ADDAF194FFEAE179F13A66 /* CalendarEvent.swift */; };
 		0E19588BE0507477FC892030 /* Client.swift in Sources */ = {isa = PBXBuildFile; fileRef = D94423C9C5229CC31078E9B3 /* Client.swift */; };
 		0EF2705BEFF256BA6D85E722 /* DataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 382FFF1355B696458FB6E3D8 /* DataStore.swift */; };
@@ -50,12 +51,14 @@
 		1F44C1CC82EDBE18B8E02690 /* InvoicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF19E9569CAF299AAEBC0ED /* InvoicesView.swift */; };
 		1FB3F764F5A7A83E59D3CDFC /* PlanningPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23F45CE67DC5A5F39DB10635 /* PlanningPad.swift */; };
 		202A95E092C61EEBAD32ADEA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A34FD2CA99294B4131EAC97 /* Assets.xcassets */; };
+		20DFD9E137050228356E56E1 /* ConfirmationPinSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF30F3359D69BBCAA9858C00 /* ConfirmationPinSheet.swift */; };
 		2138F4FFD74F1F006BD9C985 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9328DFEC95485FE83580A9FA /* DashboardView.swift */; };
 		236892F4F5205CD629403534 /* PDFExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 812971A7EA828E9BF47A7BB6 /* PDFExportService.swift */; };
 		2405A886CAD979A06CB39759 /* PhoneContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A51DBCAC0070BC1988CE5F3 /* PhoneContentView.swift */; };
 		24D3266C6DE1F255E9F37D75 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21737A4F1A7835C79DF0F894 /* AppTheme.swift */; };
 		2639B3E7BFC6238D4FCB99A4 /* WidgetDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08744754F83C0EF0B550A65 /* WidgetDataProvider.swift */; };
 		2774A4E85CD00742C2BECCAC /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA8123C4AA8DDD28AF866B85 /* SidebarView.swift */; };
+		2879A1A86FB1A6D90A6399AF /* PinService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34DE6E6E2BB8C72C6687F79 /* PinService.swift */; };
 		28A37F9D7EB3CEC2B77817C0 /* PhoneOverheadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D247FD4AD3E327061C8B7D33 /* PhoneOverheadView.swift */; };
 		29A3ED37F3F3099597392BB3 /* TimeEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CEF8300A84E73A0EF9DF08 /* TimeEntry.swift */; };
 		2A6F5BFF70A8EC7CFB265060 /* ChatBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF7CCD36013F2C98AAB86D4E /* ChatBubbleView.swift */; };
@@ -97,6 +100,7 @@
 		422C69359C1D08062C6A7BC5 /* SummaryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81F5EB7AB8F268B9A9112F38 /* SummaryWidget.swift */; };
 		430255F9B55BA48156F32CD2 /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7656A40ACE598E7DD865ED /* ActivityView.swift */; };
 		430D09B7A4C044B843A66A8F /* QueryIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E268B6D3996E866432356D2 /* QueryIntent.swift */; };
+		43167E26FD8AE739B9093AF8 /* PinService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34DE6E6E2BB8C72C6687F79 /* PinService.swift */; };
 		462D98274D416C74AC1BEA9A /* FileStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1457AB1F27C9C7902279360C /* FileStorageService.swift */; };
 		46D33D4276F9904235511044 /* BidPipelineWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 474B8F17059E432765BE0F9B /* BidPipelineWidget.swift */; };
 		4728108E4DAD3A8D3746931A /* BidPipelineWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 474B8F17059E432765BE0F9B /* BidPipelineWidget.swift */; };
@@ -186,6 +190,7 @@
 		8F53C661A087D62137C4A8B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A34FD2CA99294B4131EAC97 /* Assets.xcassets */; };
 		902AFEDEE46533DC42E16094 /* ProjectFormSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C688ECAD2EB3B55FE5B19133 /* ProjectFormSheets.swift */; };
 		913896951CDA4C6F4F5BF537 /* PDFExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 812971A7EA828E9BF47A7BB6 /* PDFExportService.swift */; };
+		9262AE753635BB1106F78285 /* PinService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34DE6E6E2BB8C72C6687F79 /* PinService.swift */; };
 		93F541157CA6635691298474 /* Employee.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92C10C75857F4F50E8DB20F0 /* Employee.swift */; };
 		946FF567392494818D20BB07 /* AppNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2380E2E3DB04FD3BFBBC87CB /* AppNavigation.swift */; };
 		9534D7F9A881D002FA90F860 /* DataContextBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD983F907DFBB240BC58830 /* DataContextBuilder.swift */; };
@@ -236,6 +241,7 @@
 		C193CA1D6916E67725CDF77F /* BidFormViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A91D93A2FD30748D38C7512 /* BidFormViews.swift */; };
 		C20F0E325E68739D5A4AACC2 /* Client.swift in Sources */ = {isa = PBXBuildFile; fileRef = D94423C9C5229CC31078E9B3 /* Client.swift */; };
 		C2A4B1C4986D7313497897B5 /* EquipmentOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 630778E6199E0CE162622606 /* EquipmentOverviewView.swift */; };
+		C36CFCAAFA52987745A65BBF /* ConfirmationPinSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF30F3359D69BBCAA9858C00 /* ConfirmationPinSheet.swift */; };
 		C4E37EB9E08366B2638D5110 /* WidgetDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08744754F83C0EF0B550A65 /* WidgetDataProvider.swift */; };
 		C5B9F442E5F553DA1CC0F6C7 /* CloudKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CB1A29BC6181124FA4E4DDD /* CloudKitService.swift */; };
 		C69A0E6BA7DE1E9391AF8B47 /* GanttTaskEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7942C645F9E3BF0378EFFFBF /* GanttTaskEditSheet.swift */; };
@@ -469,6 +475,7 @@
 		9CBD37DF59091C54FB3DBA26 /* llama.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = llama.xcframework; path = Frameworks/llama.xcframework; sourceTree = "<group>"; };
 		A22D7545054C909577915F25 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A2C2ADF3F7937DBF838CB48B /* OverheadExpense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverheadExpense.swift; sourceTree = "<group>"; };
+		A34DE6E6E2BB8C72C6687F79 /* PinService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinService.swift; sourceTree = "<group>"; };
 		A4FFFCC03C9E0ECCD289C86B /* ResourceType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceType.swift; sourceTree = "<group>"; };
 		A8D56045443EE049CDCFAF6A /* PersistenceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceService.swift; sourceTree = "<group>"; };
 		A9D1E8322F91B9CB44B59AC7 /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
@@ -485,6 +492,7 @@
 		CA2FF42E0379902EEE230296 /* RFILogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RFILogView.swift; sourceTree = "<group>"; };
 		CD5A3B801DD651F055597D78 /* SteelSyncWidgets-Mac.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "SteelSyncWidgets-Mac.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		CED7423ECC173140145A872B /* SteelSync-Phone.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "SteelSync-Phone.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF30F3359D69BBCAA9858C00 /* ConfirmationPinSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmationPinSheet.swift; sourceTree = "<group>"; };
 		D07BA1BD89EC94E153CBC023 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		D247FD4AD3E327061C8B7D33 /* PhoneOverheadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneOverheadView.swift; sourceTree = "<group>"; };
 		D94423C9C5229CC31078E9B3 /* Client.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Client.swift; sourceTree = "<group>"; };
@@ -634,6 +642,7 @@
 		39E2D00085AC8E3442E379BD /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				CF30F3359D69BBCAA9858C00 /* ConfirmationPinSheet.swift */,
 				5F937DB7367744CB2FD75497 /* FileDropModifier.swift */,
 				A9D1E8322F91B9CB44B59AC7 /* SharedComponents.swift */,
 			);
@@ -902,6 +911,7 @@
 				552E763F0EDDEF16D47F1055 /* PayAppPDFRenderer.swift */,
 				812971A7EA828E9BF47A7BB6 /* PDFExportService.swift */,
 				A8D56045443EE049CDCFAF6A /* PersistenceService.swift */,
+				A34DE6E6E2BB8C72C6687F79 /* PinService.swift */,
 				77B10D2CBB3202FC8A534723 /* SnapshotService.swift */,
 				2493EBC395F13A8EE6F94B4A /* WidgetBridge.swift */,
 				8924670EBB8793EEE84D6D75 /* Assistant */,
@@ -1257,6 +1267,7 @@
 				59282EE7A28041BC3C039D02 /* ClientsView.swift in Sources */,
 				D77CC958FF236DEACCF940D5 /* CloudKitConvertible.swift in Sources */,
 				BEE82A3C92B052516500FED1 /* CloudKitService.swift in Sources */,
+				20DFD9E137050228356E56E1 /* ConfirmationPinSheet.swift in Sources */,
 				2B70B45FD05AE85348720C00 /* CrewManagementView.swift in Sources */,
 				E8EE64664FB5290F8A528017 /* CrewPreset.swift in Sources */,
 				0B5C9F6451A40A91BCB2B8BB /* CrewPresetsView.swift in Sources */,
@@ -1307,6 +1318,7 @@
 				8C390FB2D6544368454832E4 /* PhoneTasksView.swift in Sources */,
 				6BB9200911C03587E9215F32 /* PhoneTimeClockView.swift in Sources */,
 				981C47AD2CD4F2B71D37A335 /* PhoneTodayView.swift in Sources */,
+				9262AE753635BB1106F78285 /* PinService.swift in Sources */,
 				F10AB57AEC8354B6D0AAE6E3 /* PlanningPad.swift in Sources */,
 				15AF82C9D498174471058AD6 /* PlanningPadView.swift in Sources */,
 				B0FCAE7F78F606264568E4BC /* PlatformHelpers.swift in Sources */,
@@ -1359,6 +1371,7 @@
 				342C95135BDA5FBCE2DDA7C3 /* ClientsView.swift in Sources */,
 				8113BFBBE57099641331865F /* CloudKitConvertible.swift in Sources */,
 				9FC623C31AF5EB84DC3A36B6 /* CloudKitService.swift in Sources */,
+				C36CFCAAFA52987745A65BBF /* ConfirmationPinSheet.swift in Sources */,
 				1CCD076936941CD2C9C77ACE /* ContentView.swift in Sources */,
 				64B56A414DC4F6989B39F154 /* CrewManagementView.swift in Sources */,
 				9A2D48004AE4C99B506AD2C3 /* CrewPreset.swift in Sources */,
@@ -1395,6 +1408,7 @@
 				CDECF2AE5E870DBF76F4459E /* PayApplication.swift in Sources */,
 				709C22B318CBD0190B9957DE /* PencilCanvasView.swift in Sources */,
 				B2BCEC9F28159D542DFF98C1 /* PersistenceService.swift in Sources */,
+				2879A1A86FB1A6D90A6399AF /* PinService.swift in Sources */,
 				1FB3F764F5A7A83E59D3CDFC /* PlanningPad.swift in Sources */,
 				30949225AAAD5D6959DABE89 /* PlanningPadView.swift in Sources */,
 				784D4B64EC5106EB02E154D6 /* PlatformHelpers.swift in Sources */,
@@ -1479,6 +1493,7 @@
 				D4ED81BE69288DFD06F93449 /* ClientsView.swift in Sources */,
 				F96CF958111ACFDB7E2ABF7E /* CloudKitConvertible.swift in Sources */,
 				C5B9F442E5F553DA1CC0F6C7 /* CloudKitService.swift in Sources */,
+				0CD4DB3894DCD7519DA4FAD0 /* ConfirmationPinSheet.swift in Sources */,
 				74BF9E501E6BF3ED56E6368A /* ContentView.swift in Sources */,
 				FF167F1E5AD52014B45D080A /* CrewManagementView.swift in Sources */,
 				38639948FE776D64897DF5DA /* CrewPreset.swift in Sources */,
@@ -1515,6 +1530,7 @@
 				19A6062F4253DEDA54ACF5C1 /* PayApplication.swift in Sources */,
 				6109246298FFB2E56B6EB311 /* PencilCanvasView.swift in Sources */,
 				492E407DF77C73C59CF88D76 /* PersistenceService.swift in Sources */,
+				43167E26FD8AE739B9093AF8 /* PinService.swift in Sources */,
 				6298C02F3B6F62665EA34C0E /* PlanningPad.swift in Sources */,
 				07C6F2E8188AF93F35F353EA /* PlanningPadView.swift in Sources */,
 				CD216864AB1517EA5F0C6E4C /* PlatformHelpers.swift in Sources */,

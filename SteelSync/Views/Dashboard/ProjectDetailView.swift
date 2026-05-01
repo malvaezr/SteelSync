@@ -68,6 +68,7 @@ struct ProjectDetailView: View {
     @State private var editingRFI: RFI?
     @State private var costToDelete: Cost?
     @State private var editingCost: Cost?
+    @State private var paymentToDelete: Payment?
     @State private var rfiToDelete: RFI?
     @State private var changeOrderToDelete: ChangeOrder?
     @State private var payrollEntryToDelete: PayrollEntry?
@@ -666,6 +667,17 @@ struct ProjectDetailView: View {
                     TableColumn("Amount") { p in Text(p.amount.currencyFormatted).fontWeight(.medium) }
                         .width(min: 80, max: 120)
                     TableColumn("Notes") { p in Text(p.notes).foregroundColor(.secondary) }
+                    TableColumn("") { p in
+                        Button {
+                            paymentToDelete = p
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundColor(.red)
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Delete this payment (PIN required)")
+                    }
+                    .width(40)
                 }
                 .frame(minHeight: 200)
 
@@ -675,6 +687,16 @@ struct ProjectDetailView: View {
                         .font(.headline)
                 }
             }
+        }
+        .sheet(item: $paymentToDelete) { payment in
+            ConfirmationPinSheet(
+                title: "Delete Payment",
+                detail: "\(payment.date.shortDate) — \(payment.amount.currencyFormatted)\(payment.notes.isEmpty ? "" : "\n\(payment.notes)")",
+                confirmLabel: "Delete",
+                onConfirm: {
+                    dataStore.deletePayment(payment, from: project.id)
+                }
+            )
         }
     }
 
