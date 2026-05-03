@@ -44,6 +44,14 @@ struct SteelSyncApp: App {
         .defaultSize(width: 1400, height: 900)
         #endif
         .commands {
+            // Global search — ⌘K opens the Spotlight-style search sheet.
+            CommandGroup(after: .toolbar) {
+                Button("Find Anything…") {
+                    navigationState.showGlobalSearch = true
+                }
+                .keyboardShortcut("k", modifiers: [.command])
+            }
+
             CommandGroup(replacing: .newItem) {
                 Menu("New") {
                     Button("New Project") {

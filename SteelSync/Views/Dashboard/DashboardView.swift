@@ -3,6 +3,7 @@ import CloudKit
 
 struct DashboardView: View {
     @EnvironmentObject var dataStore: DataStore
+    @EnvironmentObject var navigationState: NavigationState
     @State private var selectedFilter = "All"
     @State private var searchText = ""
     @State private var showAddProject = false
@@ -99,6 +100,12 @@ struct DashboardView: View {
                                     }
                                 }
                                 Divider()
+                                Button(navigationState.isPinned(projectID: project.id.recordName)
+                                       ? "Unpin from Sidebar"
+                                       : "Pin to Sidebar") {
+                                    navigationState.togglePin(projectID: project.id.recordName)
+                                }
+                                Divider()
                                 Button("Delete…", role: .destructive) { projectToDelete = project }
                             }
                     }
@@ -135,6 +142,10 @@ struct DashboardView: View {
         .sheet(isPresented: $showAddProject) {
             AddProjectView()
         }
+        .onAppear { applyRequestedProjectIfAny() }
+        .onChange(of: navigationState.requestedProjectID) { _, _ in
+            applyRequestedProjectIfAny()
+        }
         .sheet(item: $projectToDelete) { project in
             ConfirmationPinSheet(
                 title: "Delete Project",
@@ -147,6 +158,16 @@ struct DashboardView: View {
             )
         }
         .navigationTitle("Projects")
+    }
+
+    /// Honors a navigation request from a Pinned project tap. Picks the
+    /// project as the detail and clears the pending intent so the same
+    /// click doesn't fire repeatedly.
+    private func applyRequestedProjectIfAny() {
+        guard let id = navigationState.requestedProjectID,
+              let project = dataStore.projects.first(where: { $0.id.recordName == id }) else { return }
+        selectedProject = project
+        navigationState.requestedProjectID = nil
     }
 
     private func countFor(filter: String) -> Int? {

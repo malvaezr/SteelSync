@@ -5,9 +5,26 @@ struct SidebarView: View {
     @EnvironmentObject var navigationState: NavigationState
     @State private var showSyncOptions = false
 
+    /// Projects the user has pinned, resolved to live `Project` objects.
+    /// Filters out IDs that no longer exist (project deleted) so stale
+    /// pins disappear automatically.
+    private var pinnedProjects: [Project] {
+        navigationState.pinnedProjectIDs.compactMap { id in
+            dataStore.projects.first { $0.id.recordName == id }
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             List(selection: $navigationState.selectedSection) {
+                if !pinnedProjects.isEmpty {
+                    Section("PINNED") {
+                        ForEach(pinnedProjects) { project in
+                            pinnedProjectRow(project)
+                        }
+                    }
+                }
+
                 Section("TODAY") {
                     sidebarRow(.today, badge: todayBadgeCount)
                     sidebarRow(.schedule)
@@ -63,6 +80,41 @@ struct SidebarView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(syncDialogMessage)
+        }
+    }
+
+    /// Quick-access row for a pinned project. Tapping navigates straight to
+    /// the project's detail in the Projects section. Right-click → unpin
+    /// for fast cleanup.
+    @ViewBuilder
+    private func pinnedProjectRow(_ project: Project) -> some View {
+        Button {
+            navigationState.navigate(toProjectID: project.id.recordName)
+        } label: {
+            Label {
+                HStack {
+                    Text(project.title)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Spacer()
+                    StatusBadge(text: project.computedStatus,
+                                color: project.computedStatus == "Active" ? .green : .secondary)
+                        .opacity(0.85)
+                }
+            } icon: {
+                Image(systemName: "pin.fill")
+                    .foregroundColor(AppTheme.primaryOrange)
+            }
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button("Open") {
+                navigationState.navigate(toProjectID: project.id.recordName)
+            }
+            Divider()
+            Button("Unpin", role: .destructive) {
+                navigationState.togglePin(projectID: project.id.recordName)
+            }
         }
     }
 

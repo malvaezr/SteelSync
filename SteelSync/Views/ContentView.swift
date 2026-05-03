@@ -13,6 +13,11 @@ struct ContentView: View {
                 .modifier(IPadMenuCollapseToolbar(visibility: $navigationState.columnVisibility))
         }
         .navigationSplitViewStyle(.balanced)
+        .sheet(isPresented: $navigationState.showGlobalSearch) {
+            GlobalSearchSheet()
+                .environmentObject(dataStore)
+                .environmentObject(navigationState)
+        }
         #if os(iOS)
         // On iPad, picking a section auto-hides the sidebar so the inner
         // list+detail (which is itself two panes) gets the full screen. The

@@ -33,6 +33,7 @@
 		123286CC686B602493B5F98A /* AppNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2380E2E3DB04FD3BFBBC87CB /* AppNavigation.swift */; };
 		130AE1D68EBAAEC93B33AF9B /* QueryParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 062E9F90EF9A227D6B3A84BA /* QueryParser.swift */; };
 		1348029DBE42409885CC5D44 /* AddProjectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52278865AEFCBD823BDEC6C1 /* AddProjectView.swift */; };
+		13EA98E4228EB2E971FF940A /* GlobalSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23069DD6BB4B28FFACD931EF /* GlobalSearchService.swift */; };
 		14944B2C4D92BCEFA3115CE3 /* PhoneEquipmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05696EA88AFDF328A1548B80 /* PhoneEquipmentView.swift */; };
 		14BC3885EA461CB13B060178 /* DataContextBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD983F907DFBB240BC58830 /* DataContextBuilder.swift */; };
 		14CC8EEE31D389D4192A55AA /* WeeklyAssignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9295F43337F5AB4398EC520E /* WeeklyAssignment.swift */; };
@@ -116,6 +117,7 @@
 		4E1735C8ADE52AE4ADFECF41 /* Invoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 974F3DBE56C2C2D69C94EC91 /* Invoice.swift */; };
 		4E5AA43963F0AFBFF77112F6 /* GanttPreviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C29620A98DF4DA632CB4332 /* GanttPreviewWidget.swift */; };
 		4FE8EC2C37E83384B48A3231 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28562AE650F8CE57BFC51B94 /* NotificationService.swift */; };
+		51DBE6F157519A413DD8263A /* GlobalSearchSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE2EBEB487618192E7B94A1C /* GlobalSearchSheet.swift */; };
 		533EEAE25497EE869A3A8F2A /* ProjectDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E400BF6C446F19B0101B2A3 /* ProjectDetailView.swift */; };
 		5383BC176E29F17643067E9F /* TodoItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EC530616AD5C1FA78544D40 /* TodoItem.swift */; };
 		53BEED8B95B797E692CC8AFB /* WidgetHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 186A0414E37E1B8158AB72AA /* WidgetHelpers.swift */; };
@@ -138,6 +140,7 @@
 		659D914955FAA0BE9B5FA8A4 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28562AE650F8CE57BFC51B94 /* NotificationService.swift */; };
 		65CF704A07A44A799DC77FBA /* GanttExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A892989AA1EB9BDD692EFB8 /* GanttExportSheet.swift */; };
 		6663AE416A83F8038B923CC1 /* GanttExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A892989AA1EB9BDD692EFB8 /* GanttExportSheet.swift */; };
+		66FECCA12BD71BB79479C296 /* GlobalSearchSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE2EBEB487618192E7B94A1C /* GlobalSearchSheet.swift */; };
 		679A71A34C7AD40A584AE640 /* SteelSyncWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F8F1EA2DBACE66865331D899 /* SteelSyncWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		67EE0A5B065CE15BF1703F5B /* WeeklyAssignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9295F43337F5AB4398EC520E /* WeeklyAssignment.swift */; };
 		687C77138525833388FED55D /* RFILogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2FF42E0379902EEE230296 /* RFILogView.swift */; };
@@ -190,6 +193,7 @@
 		8C1673D00FC8CA0BEB043986 /* PDFShareButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADCA49EBF740AF2392D2B80 /* PDFShareButton.swift */; };
 		8C390FB2D6544368454832E4 /* PhoneTasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5457B4910B697E9E929D192B /* PhoneTasksView.swift */; };
 		8D9C9FFD5559FE77642C5305 /* BidPipelineWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 474B8F17059E432765BE0F9B /* BidPipelineWidget.swift */; };
+		8E1FB7DF35B0346F173902F1 /* GlobalSearchSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE2EBEB487618192E7B94A1C /* GlobalSearchSheet.swift */; };
 		8F53C661A087D62137C4A8B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A34FD2CA99294B4131EAC97 /* Assets.xcassets */; };
 		902AFEDEE46533DC42E16094 /* ProjectFormSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C688ECAD2EB3B55FE5B19133 /* ProjectFormSheets.swift */; };
 		913896951CDA4C6F4F5BF537 /* PDFExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 812971A7EA828E9BF47A7BB6 /* PDFExportService.swift */; };
@@ -212,6 +216,7 @@
 		A2D9055F8A3C8C6E0A01011B /* EquipmentRental.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA34885EDE9A7BE1C05F3A42 /* EquipmentRental.swift */; };
 		A499B40C156A3EE3E06CA71B /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28562AE650F8CE57BFC51B94 /* NotificationService.swift */; };
 		A4EE959C674B3420C1DE0429 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4653DF72B79DC7583A950CC8 /* TodayView.swift */; };
+		A5471316AE232E4FC7392A84 /* GlobalSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23069DD6BB4B28FFACD931EF /* GlobalSearchService.swift */; };
 		A59AF71B14DC14B6B6B53A1A /* ReportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFF1D8406912DF24AF71B5B7 /* ReportsView.swift */; };
 		A7BA6453EA8056CA9D9BA418 /* FileDropModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F937DB7367744CB2FD75497 /* FileDropModifier.swift */; };
 		A7D40DCEFA942B92797320EC /* RFILogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2FF42E0379902EEE230296 /* RFILogView.swift */; };
@@ -260,6 +265,7 @@
 		D176D034932B083513BE9CB9 /* SteelSyncWidgets-iPad.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AB2E2EF4FCA2EC8FD48F4C36 /* SteelSyncWidgets-iPad.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D21F40A65B5572E4AD7E5E53 /* ResponseFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45C110DB5B14052C675D8B39 /* ResponseFormatter.swift */; };
 		D4ED81BE69288DFD06F93449 /* ClientsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E42E79F8F54FFD90C87D9CB /* ClientsView.swift */; };
+		D5DE45A9C0BE7E0CEB2CCAAD /* GlobalSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23069DD6BB4B28FFACD931EF /* GlobalSearchService.swift */; };
 		D5E91D26A6590F1F069C53B9 /* GanttTaskBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A24368A58D2D9D49A30308 /* GanttTaskBarView.swift */; };
 		D60BC3D866694A28525483FC /* GanttPDFRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D5F931E0B3057D6394D8BD6 /* GanttPDFRenderer.swift */; };
 		D6FF576A4D4C5CBAF27EFEBF /* BiddingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1011451B642A320E127016B5 /* BiddingView.swift */; };
@@ -411,6 +417,7 @@
 		21737A4F1A7835C79DF0F894 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		21EE9F075420DFE63E74A2C1 /* SteelSyncApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelSyncApp.swift; sourceTree = "<group>"; };
 		22115D54032CC94A25F95CD2 /* PhoneInvoicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneInvoicesView.swift; sourceTree = "<group>"; };
+		23069DD6BB4B28FFACD931EF /* GlobalSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalSearchService.swift; sourceTree = "<group>"; };
 		2380E2E3DB04FD3BFBBC87CB /* AppNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNavigation.swift; sourceTree = "<group>"; };
 		23E414F6FDD05FC4316E2ED3 /* PencilCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilCanvasView.swift; sourceTree = "<group>"; };
 		23F45CE67DC5A5F39DB10635 /* PlanningPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanningPad.swift; sourceTree = "<group>"; };
@@ -510,6 +517,7 @@
 		E7C2C4520D17CE6438BF0BF4 /* GanttTimelineGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GanttTimelineGridView.swift; sourceTree = "<group>"; };
 		E8BD59F1AD2C45F5E18F52CE /* PayApplication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayApplication.swift; sourceTree = "<group>"; };
 		EA7656A40ACE598E7DD865ED /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
+		EE2EBEB487618192E7B94A1C /* GlobalSearchSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalSearchSheet.swift; sourceTree = "<group>"; };
 		EE55FFFA9E85076D77C95BC8 /* TodoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoView.swift; sourceTree = "<group>"; };
 		EF057FE0994C4C5EA948780E /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		EFF1D8406912DF24AF71B5B7 /* ReportsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportsView.swift; sourceTree = "<group>"; };
@@ -911,6 +919,7 @@
 				382FFF1355B696458FB6E3D8 /* DataStore.swift */,
 				1457AB1F27C9C7902279360C /* FileStorageService.swift */,
 				1D5F931E0B3057D6394D8BD6 /* GanttPDFRenderer.swift */,
+				23069DD6BB4B28FFACD931EF /* GlobalSearchService.swift */,
 				2953DF713912AE6F41BA1451 /* HandwritingRecognitionService.swift */,
 				28562AE650F8CE57BFC51B94 /* NotificationService.swift */,
 				552E763F0EDDEF16D47F1055 /* PayAppPDFRenderer.swift */,
@@ -1015,6 +1024,7 @@
 			isa = PBXGroup;
 			children = (
 				F8DD979CA3D82559B1DCA65E /* ContentView.swift */,
+				EE2EBEB487618192E7B94A1C /* GlobalSearchSheet.swift */,
 				E55380413F969D913840DEC9 /* Activity */,
 				3B81AEADCE1F43E04CB6E76A /* Assistant */,
 				2BB5320599DD31980C8B34B9 /* Bidding */,
@@ -1292,6 +1302,8 @@
 				0C09DA6A45D80F80EE199E8A /* GanttTaskEditSheet.swift in Sources */,
 				EE2FD36BC39A5B5B28F76472 /* GanttTimelineGridView.swift in Sources */,
 				ED104C62D201762EF33D37A0 /* GanttViewModel.swift in Sources */,
+				13EA98E4228EB2E971FF940A /* GlobalSearchService.swift in Sources */,
+				51DBE6F157519A413DD8263A /* GlobalSearchSheet.swift in Sources */,
 				E5CA94BE7937A80045EECC89 /* HandwritingRecognitionService.swift in Sources */,
 				86082208D4AC71348C1B5BF7 /* Invoice.swift in Sources */,
 				4101591E8A4F4FA5D12CB7EF /* InvoicesView.swift in Sources */,
@@ -1399,6 +1411,8 @@
 				36823C9B65827EE767080B6A /* GanttTaskEditSheet.swift in Sources */,
 				74CF3C75ED9458B5BFF4BA2C /* GanttTimelineGridView.swift in Sources */,
 				3A247D839B405B336AB2FEE9 /* GanttViewModel.swift in Sources */,
+				D5DE45A9C0BE7E0CEB2CCAAD /* GlobalSearchService.swift in Sources */,
+				66FECCA12BD71BB79479C296 /* GlobalSearchSheet.swift in Sources */,
 				FF7C3AE14704BF47635D7F7F /* HandwritingRecognitionService.swift in Sources */,
 				4E1735C8ADE52AE4ADFECF41 /* Invoice.swift in Sources */,
 				1F44C1CC82EDBE18B8E02690 /* InvoicesView.swift in Sources */,
@@ -1522,6 +1536,8 @@
 				C69A0E6BA7DE1E9391AF8B47 /* GanttTaskEditSheet.swift in Sources */,
 				B2408C1833EDB55AAE433B41 /* GanttTimelineGridView.swift in Sources */,
 				6D44218E45225BB9ED30BE6C /* GanttViewModel.swift in Sources */,
+				A5471316AE232E4FC7392A84 /* GlobalSearchService.swift in Sources */,
+				8E1FB7DF35B0346F173902F1 /* GlobalSearchSheet.swift in Sources */,
 				36FCD20FCD1D6F37B36CF87C /* HandwritingRecognitionService.swift in Sources */,
 				D040DD27A388705E13283174 /* Invoice.swift in Sources */,
 				869650EA4FA41117C92EDF7F /* InvoicesView.swift in Sources */,
