@@ -28,6 +28,10 @@ struct GanttExportSheet: View {
     @State private var endDate: Date
     @State private var isRendering = false
     @State private var renderError: String?
+    /// When set, the sheet shows a "PDF Ready" panel with Save / Share /
+    /// Reveal options anchored on this URL. Cleared on Cancel and when the
+    /// user picks Save (which dismisses).
+    @State private var renderedURL: URL?
 
     /// Initialize with an explicit set of project IDs to pre-select.
     /// Empty set means "no projects" — caller should usually pass either a
@@ -179,6 +183,10 @@ struct GanttExportSheet: View {
                     }
 
                     summaryCard
+
+                    if let url = renderedURL {
+                        readyCard(url: url)
+                    }
 
                     if let error = renderError {
                         Text(error)
@@ -344,6 +352,79 @@ struct GanttExportSheet: View {
             .controlSize(.small)
     }
 
+    @ViewBuilder
+    private func readyCard(url: URL) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionTitle(text: "PDF Ready")
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                HStack(spacing: 8) {
+                    Image(systemName: "doc.richtext.fill")
+                        .foregroundColor(AppTheme.primaryOrange)
+                    Text(url.lastPathComponent)
+                        .font(.callout)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Button {
+                        saveToDisk(url)
+                    } label: {
+                        Label("Save…", systemImage: "square.and.arrow.down")
+                    }
+                    .buttonStyle(.appPrimary)
+
+                    ShareLink(
+                        item: url,
+                        subject: Text("\(selectedProjectTitles.first ?? "Schedule") — Schedule PDF"),
+                        message: Text(shareMessage())
+                    ) {
+                        Label("Share with Client…", systemImage: "paperplane")
+                    }
+                    .buttonStyle(.appSecondary)
+
+                    #if os(macOS)
+                    Button {
+                        NSWorkspace.shared.activateFileViewerSelecting([url])
+                    } label: {
+                        Label("Reveal in Finder", systemImage: "folder")
+                    }
+                    .buttonStyle(.appOutline)
+                    #endif
+                    Spacer()
+                }
+            }
+            .padding(AppTheme.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(AppTheme.primaryOrange.opacity(0.1))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(AppTheme.primaryOrange.opacity(0.35), lineWidth: 1)
+            )
+        }
+    }
+
+    private func shareMessage() -> String {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        let projectsLabel: String
+        switch selectedProjectTitles.count {
+        case 0: projectsLabel = "Schedule"
+        case 1: projectsLabel = selectedProjectTitles[0]
+        default: projectsLabel = "\(selectedProjectTitles.count) projects"
+        }
+        var lines: [String] = []
+        lines.append("Hi,")
+        lines.append("")
+        lines.append("Attached is the schedule for \(projectsLabel).")
+        lines.append("Window: \(f.string(from: startDate)) → \(f.string(from: endDate)).")
+        lines.append("")
+        lines.append("— Ruben")
+        return lines.joined(separator: "\n")
+    }
+
     @ViewBuilder private var summaryCard: some View {
         VStack(alignment: .leading, spacing: 6) {
             SectionTitle(text: "Preview")
@@ -415,12 +496,15 @@ struct GanttExportSheet: View {
                     renderError = "Could not generate PDF. Try a smaller date range."
                     return
                 }
-                deliver(url)
+                renderedURL = url
             }
         }
     }
 
-    private func deliver(_ url: URL) {
+    /// Save the temp-file PDF to a permanent location of the user's choosing.
+    /// macOS uses NSSavePanel + reveal-in-Finder; iOS hands off to the
+    /// system share sheet so the user can save / share / AirDrop.
+    private func saveToDisk(_ url: URL) {
         #if os(macOS)
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.pdf]
@@ -432,7 +516,6 @@ struct GanttExportSheet: View {
                     NSWorkspace.shared.activateFileViewerSelecting([dest])
                 }
             } else {
-                // Cancel = still show the temp file in Finder so it isn't lost
                 NSWorkspace.shared.activateFileViewerSelecting([url])
             }
             dismiss()
@@ -441,6 +524,15 @@ struct GanttExportSheet: View {
         PlatformService.shareItems([url])
         dismiss()
         #endif
+    }
+
+    /// Titles of the projects in the current selection — used to build a
+    /// readable "Share" subject + body.
+    private var selectedProjectTitles: [String] {
+        projects
+            .filter { selectedProjectIDs.contains($0.id.recordName) }
+            .map(\.title)
+            .sorted()
     }
 
     // MARK: - Helpers

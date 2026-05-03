@@ -136,21 +136,15 @@ struct ProjectDetailView: View {
         } message: { rfi in
             Text("RFI #\(rfi.number) — \"\(rfi.subject)\" will be removed along with its attachments. This cannot be undone.")
         }
-        .confirmationDialog(
-            "Delete change order?",
-            isPresented: Binding(
-                get: { changeOrderToDelete != nil },
-                set: { if !$0 { changeOrderToDelete = nil } }
-            ),
-            presenting: changeOrderToDelete
-        ) { co in
-            Button("Delete", role: .destructive) {
-                dataStore.deleteChangeOrder(co, from: project.id)
-                changeOrderToDelete = nil
-            }
-            Button("Cancel", role: .cancel) { changeOrderToDelete = nil }
-        } message: { co in
-            Text("Change Order — \(co.description) (\(co.amount.currencyFormatted)) will be removed and the project balance will recalculate. This cannot be undone.")
+        .sheet(item: $changeOrderToDelete) { co in
+            ConfirmationPinSheet(
+                title: "Delete Change Order",
+                detail: "CO #\(co.number) — \(co.description.isEmpty ? "(no title)" : co.description)\n\(co.amount.currencyFormatted)\n\nProject balance will recalculate. This cannot be undone.",
+                confirmLabel: "Delete",
+                onConfirm: {
+                    dataStore.deleteChangeOrder(co, from: project.id)
+                }
+            )
         }
         .confirmationDialog(
             "Delete payroll entry?",
@@ -545,6 +539,25 @@ struct ProjectDetailView: View {
     }
 
     // MARK: - Change Orders Tab
+
+    /// Body for the "Share with Client" Mail handoff on a Work Order Invoice.
+    private func workOrderInvoiceShareMessage(co: ChangeOrder, project: Project, client: Client?) -> String {
+        var lines: [String] = []
+        if let name = client?.contactName, !name.isEmpty {
+            lines.append("Hi \(name),")
+        } else {
+            lines.append("Hi,")
+        }
+        lines.append("")
+        lines.append("Attached is the work order invoice for \(project.title) — Change Order #\(co.number) (\(co.amount.currencyFormatted)).")
+        if !co.description.isEmpty { lines.append("Scope: \(co.description)") }
+        lines.append("")
+        lines.append("Please let me know if you have any questions.")
+        lines.append("")
+        lines.append("— Ruben")
+        return lines.joined(separator: "\n")
+    }
+
     /// Computes the invoicing status for a change order by checking every pay
     /// application's line items. Status is derived, not stored — so adding a CO
     /// to a pay app and sending that pay app updates this automatically.
@@ -611,15 +624,37 @@ struct ProjectDetailView: View {
                                         color: co.isSigned ? .green : .orange)
                             let invStatus = invoicingStatus(for: co)
                             StatusBadge(text: invStatus.label, color: invStatus.color)
-                            Button {
-                                PDFExportService.exportWorkOrderInvoice(
+                            // Menu so the user can either download the PDF
+                            // (existing behavior) or hand it to the system
+                            // share sheet — Mail / Messages / AirDrop —
+                            // with subject + body prefilled.
+                            Menu {
+                                Button {
+                                    PDFExportService.exportWorkOrderInvoice(
+                                        changeOrder: co, project: project,
+                                        client: dataStore.client(for: project.clientRef))
+                                } label: {
+                                    Label("Save / Download PDF", systemImage: "arrow.down.doc")
+                                }
+                                if let url = PDFExportService.renderWorkOrderInvoiceToTempFile(
                                     changeOrder: co, project: project,
-                                    client: dataStore.client(for: project.clientRef))
+                                    client: dataStore.client(for: project.clientRef)) {
+                                    let client = dataStore.client(for: project.clientRef)
+                                    ShareLink(
+                                        item: url,
+                                        subject: Text("Work Order Invoice — \(project.title) — CO #\(co.number)"),
+                                        message: Text(workOrderInvoiceShareMessage(co: co, project: project, client: client))
+                                    ) {
+                                        Label("Share with Client…", systemImage: "paperplane")
+                                    }
+                                }
                             } label: {
                                 Image(systemName: "arrow.down.doc.fill")
                                     .foregroundColor(AppTheme.primaryOrange)
                             }
-                            .buttonStyle(.borderless)
+                            .menuStyle(.borderlessButton)
+                            .menuIndicator(.hidden)
+                            .fixedSize()
                         }
                         .contextMenu {
                             Button("Edit") { editingChangeOrder = co }
@@ -1007,23 +1042,15 @@ struct ProjectDetailView: View {
                 }
             }
         }
-        .confirmationDialog(
-            "Delete this cost?",
-            isPresented: Binding(
-                get: { costToDelete != nil },
-                set: { if !$0 { costToDelete = nil } }
-            ),
-            presenting: costToDelete
-        ) { cost in
-            Button("Delete", role: .destructive) {
-                dataStore.deleteCost(cost, from: project.id)
-                costToDelete = nil
-            }
-            Button("Cancel", role: .cancel) {
-                costToDelete = nil
-            }
-        } message: { cost in
-            Text("\"\(cost.description)\" — \(cost.amount.currencyFormatted)\nThis cannot be undone.")
+        .sheet(item: $costToDelete) { cost in
+            ConfirmationPinSheet(
+                title: "Delete Cost",
+                detail: "\(cost.description)\n\(cost.category.displayName) — \(cost.amount.currencyFormatted)\n\(cost.date.shortDate)\n\nThis cannot be undone.",
+                confirmLabel: "Delete",
+                onConfirm: {
+                    dataStore.deleteCost(cost, from: project.id)
+                }
+            )
         }
         .sheet(item: $editingCost) { cost in
             EditCostView(cost: cost, projectID: project.id)

@@ -48,22 +48,16 @@ struct TimekeepingView: View {
         .sheet(isPresented: $showAddEmployee) {
             AddEmployeeView()
         }
-        .confirmationDialog(
-            "Delete employee?",
-            isPresented: Binding(
-                get: { employeeToDelete != nil },
-                set: { if !$0 { employeeToDelete = nil } }
-            ),
-            presenting: employeeToDelete
-        ) { employee in
-            Button("Delete", role: .destructive) {
-                dataStore.deleteEmployee(employee)
-                if selectedEmployee?.id == employee.id { selectedEmployee = nil }
-                employeeToDelete = nil
-            }
-            Button("Cancel", role: .cancel) { employeeToDelete = nil }
-        } message: { employee in
-            Text("\"\(employee.fullName)\" will be removed. Their timesheet history will remain in the records but they won't be assignable to new entries. This cannot be undone.")
+        .sheet(item: $employeeToDelete) { employee in
+            ConfirmationPinSheet(
+                title: "Delete Employee",
+                detail: "\(employee.fullName)\n\nTheir timesheet history will remain in the records but they won't be assignable to new entries. This cannot be undone.",
+                confirmLabel: "Delete",
+                onConfirm: {
+                    dataStore.deleteEmployee(employee)
+                    if selectedEmployee?.id == employee.id { selectedEmployee = nil }
+                }
+            )
         }
         .navigationTitle("Timekeeping")
         .toolbar {

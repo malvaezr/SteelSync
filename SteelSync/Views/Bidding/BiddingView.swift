@@ -165,22 +165,16 @@ struct BiddingView: View {
         .sheet(item: $bidToConvert) { bid in
             ConvertBidToProjectView(bid: bid)
         }
-        .confirmationDialog(
-            "Delete bid?",
-            isPresented: Binding(
-                get: { bidToDelete != nil },
-                set: { if !$0 { bidToDelete = nil } }
-            ),
-            presenting: bidToDelete
-        ) { bid in
-            Button("Delete", role: .destructive) {
-                dataStore.deleteBid(bid)
-                if selectedBid?.id == bid.id { selectedBid = nil }
-                bidToDelete = nil
-            }
-            Button("Cancel", role: .cancel) { bidToDelete = nil }
-        } message: { bid in
-            Text("\"\(bid.projectName)\" for \(bid.clientName) will be removed. This cannot be undone.")
+        .sheet(item: $bidToDelete) { bid in
+            ConfirmationPinSheet(
+                title: "Delete Bid",
+                detail: "\(bid.projectName)\nfor \(bid.clientName)\n\(bid.bidAmount.currencyFormatted)\n\nThis cannot be undone.",
+                confirmLabel: "Delete",
+                onConfirm: {
+                    dataStore.deleteBid(bid)
+                    if selectedBid?.id == bid.id { selectedBid = nil }
+                }
+            )
         }
         .navigationTitle("Bidding")
     }

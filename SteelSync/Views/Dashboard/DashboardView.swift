@@ -135,22 +135,16 @@ struct DashboardView: View {
         .sheet(isPresented: $showAddProject) {
             AddProjectView()
         }
-        .confirmationDialog(
-            "Delete project?",
-            isPresented: Binding(
-                get: { projectToDelete != nil },
-                set: { if !$0 { projectToDelete = nil } }
-            ),
-            presenting: projectToDelete
-        ) { project in
-            Button("Delete", role: .destructive) {
-                dataStore.deleteProject(project)
-                if selectedProject?.id == project.id { selectedProject = nil }
-                projectToDelete = nil
-            }
-            Button("Cancel", role: .cancel) { projectToDelete = nil }
-        } message: { project in
-            Text("\"\(project.title)\" and all its costs, payments, payroll, RFIs, change orders, and equipment rentals will be removed. This cannot be undone.")
+        .sheet(item: $projectToDelete) { project in
+            ConfirmationPinSheet(
+                title: "Delete Project",
+                detail: "\(project.title)\n\nAll costs, payments, payroll, RFIs, change orders, and equipment rentals on this project will be removed. This cannot be undone.",
+                confirmLabel: "Delete",
+                onConfirm: {
+                    dataStore.deleteProject(project)
+                    if selectedProject?.id == project.id { selectedProject = nil }
+                }
+            )
         }
         .navigationTitle("Projects")
     }

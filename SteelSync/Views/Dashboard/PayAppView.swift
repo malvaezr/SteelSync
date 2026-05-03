@@ -941,11 +941,7 @@ struct ExportPayAppSheet: View {
                         Text(url.lastPathComponent)
                             .font(.caption)
                             .foregroundColor(.green)
-                        #if !os(macOS)
-                        ShareLink(item: url) {
-                            Label("Share PDF", systemImage: "square.and.arrow.up")
-                        }
-                        #endif
+                        PDFShareButton.payApp(url: url, payApp: payApp, project: project, client: billToClient)
                     }
                 }
             }

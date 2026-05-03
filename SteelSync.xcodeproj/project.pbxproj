@@ -18,6 +18,7 @@
 		085C55B62920AEA6D7E1F6BF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A34FD2CA99294B4131EAC97 /* Assets.xcassets */; };
 		08E87568F449AB370891D82A /* GanttChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F93A2FDEE6423BA41E6064 /* GanttChartView.swift */; };
 		08F61937870E57CFD2B36BB4 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21737A4F1A7835C79DF0F894 /* AppTheme.swift */; };
+		0B2C40DAF7DEA7BBDE7166AE /* PDFShareButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADCA49EBF740AF2392D2B80 /* PDFShareButton.swift */; };
 		0B5C9F6451A40A91BCB2B8BB /* CrewPresetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4033807B779BA39C7F61A1 /* CrewPresetsView.swift */; };
 		0BBCF851F9EDB92860313B0A /* PhoneReportsSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 742AA5635AF4054F200123E4 /* PhoneReportsSummaryView.swift */; };
 		0BC92D0D54EF7E5286CB9D0C /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9328DFEC95485FE83580A9FA /* DashboardView.swift */; };
@@ -167,6 +168,7 @@
 		792D0D68A1F891F87E615614 /* Client.swift in Sources */ = {isa = PBXBuildFile; fileRef = D94423C9C5229CC31078E9B3 /* Client.swift */; };
 		7A7343F4158A418966C6C8A9 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4653DF72B79DC7583A950CC8 /* TodayView.swift */; };
 		7AA05B3C12B72E6E07B7533D /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2493EBC395F13A8EE6F94B4A /* WidgetBridge.swift */; };
+		7AF1AE7531D1084D5BA4BD76 /* PDFShareButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADCA49EBF740AF2392D2B80 /* PDFShareButton.swift */; };
 		7C05D84B058747137119A243 /* AddProjectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52278865AEFCBD823BDEC6C1 /* AddProjectView.swift */; };
 		7F4E112517C650F3BB9DC264 /* CalendarMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD77C25FBFE22464C5E0183 /* CalendarMainView.swift */; };
 		80502C7C9B069BB083671525 /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D1E8322F91B9CB44B59AC7 /* SharedComponents.swift */; };
@@ -185,6 +187,7 @@
 		8B741AFEBB6842E34C33693C /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F988730EAC002233173ACC1 /* LLMService.swift */; };
 		8B7A77CDB65D04C31329603E /* TimesheetEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D5CEF28092A786A2F20668 /* TimesheetEntry.swift */; };
 		8BF42D2C95FBFFA5C8BA9915 /* AuditEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDBB35CC1116B739A37685FC /* AuditEntry.swift */; };
+		8C1673D00FC8CA0BEB043986 /* PDFShareButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADCA49EBF740AF2392D2B80 /* PDFShareButton.swift */; };
 		8C390FB2D6544368454832E4 /* PhoneTasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5457B4910B697E9E929D192B /* PhoneTasksView.swift */; };
 		8D9C9FFD5559FE77642C5305 /* BidPipelineWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 474B8F17059E432765BE0F9B /* BidPipelineWidget.swift */; };
 		8F53C661A087D62137C4A8B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A34FD2CA99294B4131EAC97 /* Assets.xcassets */; };
@@ -483,6 +486,7 @@
 		AB2E2EF4FCA2EC8FD48F4C36 /* SteelSyncWidgets-iPad.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "SteelSyncWidgets-iPad.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B08744754F83C0EF0B550A65 /* WidgetDataProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetDataProvider.swift; sourceTree = "<group>"; };
 		B907F19131C74D97A2392725 /* PhoneLogPaymentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneLogPaymentView.swift; sourceTree = "<group>"; };
+		BADCA49EBF740AF2392D2B80 /* PDFShareButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFShareButton.swift; sourceTree = "<group>"; };
 		BDBB35CC1116B739A37685FC /* AuditEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditEntry.swift; sourceTree = "<group>"; };
 		BE1318901BA63C8633CB7436 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		BFF19E9569CAF299AAEBC0ED /* InvoicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoicesView.swift; sourceTree = "<group>"; };
@@ -644,6 +648,7 @@
 			children = (
 				CF30F3359D69BBCAA9858C00 /* ConfirmationPinSheet.swift */,
 				5F937DB7367744CB2FD75497 /* FileDropModifier.swift */,
+				BADCA49EBF740AF2392D2B80 /* PDFShareButton.swift */,
 				A9D1E8322F91B9CB44B59AC7 /* SharedComponents.swift */,
 			);
 			path = Components;
@@ -1296,6 +1301,7 @@
 				4A910D9550C9B1C5C76E5AE3 /* OverheadFormSheets.swift in Sources */,
 				71B940F460308C7A318A6C70 /* OverheadView.swift in Sources */,
 				236892F4F5205CD629403534 /* PDFExportService.swift in Sources */,
+				8C1673D00FC8CA0BEB043986 /* PDFShareButton.swift in Sources */,
 				05B06EF1ABA1DB9037FBBE41 /* PayAppPDFRenderer.swift in Sources */,
 				69A98901ACF23C7FC918D169 /* PayAppView.swift in Sources */,
 				303C11EFFB1A61451058E2AB /* PayApplication.swift in Sources */,
@@ -1403,6 +1409,7 @@
 				32E6D1FCA1143E58957E9364 /* OverheadFormSheets.swift in Sources */,
 				84F149D84ABD65F831E3EF23 /* OverheadView.swift in Sources */,
 				403F8D096C16B77C5CCEFF9D /* PDFExportService.swift in Sources */,
+				7AF1AE7531D1084D5BA4BD76 /* PDFShareButton.swift in Sources */,
 				9EBE2C4C5A504CB8A2D08324 /* PayAppPDFRenderer.swift in Sources */,
 				4C039FA5BBE0222A1421ED7F /* PayAppView.swift in Sources */,
 				CDECF2AE5E870DBF76F4459E /* PayApplication.swift in Sources */,
@@ -1525,6 +1532,7 @@
 				B1496C1A66AA8C7742F20A36 /* OverheadFormSheets.swift in Sources */,
 				19EBE1B4E827A35E79CF2E94 /* OverheadView.swift in Sources */,
 				913896951CDA4C6F4F5BF537 /* PDFExportService.swift in Sources */,
+				0B2C40DAF7DEA7BBDE7166AE /* PDFShareButton.swift in Sources */,
 				BD07F7C8E8FC2EA32AAFA27D /* PayAppPDFRenderer.swift in Sources */,
 				C8CDA35C866FBBB5EEB3639A /* PayAppView.swift in Sources */,
 				19A6062F4253DEDA54ACF5C1 /* PayApplication.swift in Sources */,
