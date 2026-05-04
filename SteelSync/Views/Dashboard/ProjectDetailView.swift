@@ -12,6 +12,7 @@ enum ProjectDetailSection: String, CaseIterable, Identifiable {
     case payroll = "Payroll"
     case equipment = "Equipment"
     case rfis = "RFIs"
+    case dailyLogs = "Daily Logs"
 
     var id: String { rawValue }
 
@@ -25,6 +26,7 @@ enum ProjectDetailSection: String, CaseIterable, Identifiable {
         case .payroll: return "person.2.fill"
         case .equipment: return "shippingbox.fill"
         case .rfis: return "questionmark.bubble.fill"
+        case .dailyLogs: return "calendar.badge.clock"
         }
     }
 
@@ -32,7 +34,7 @@ enum ProjectDetailSection: String, CaseIterable, Identifiable {
         switch self {
         case .overview: return .overview
         case .payments, .payApps, .costs, .payroll: return .money
-        case .equipment, .rfis: return .field
+        case .equipment, .rfis, .dailyLogs: return .field
         case .changeOrders: return .changes
         }
     }
@@ -69,6 +71,9 @@ struct ProjectDetailView: View {
     @State private var costToDelete: Cost?
     @State private var editingCost: Cost?
     @State private var paymentToDelete: Payment?
+    @State private var showAddDailyLog = false
+    @State private var editingDailyLog: DailyLog?
+    @State private var dailyLogToDelete: DailyLog?
     @State private var rfiToDelete: RFI?
     @State private var changeOrderToDelete: ChangeOrder?
     @State private var payrollEntryToDelete: PayrollEntry?
@@ -351,6 +356,7 @@ struct ProjectDetailView: View {
             let rfis = dataStore.rfis(for: project.id)
             let open = rfis.filter { $0.status != .closed }.count
             return open > 0 ? open : rfis.count
+        case .dailyLogs: return dataStore.dailyLogs(for: project.id).count
         }
     }
 
@@ -375,6 +381,8 @@ struct ProjectDetailView: View {
             equipmentTab
         case .rfis:
             rfiTab
+        case .dailyLogs:
+            dailyLogsTab
         }
     }
 
@@ -920,6 +928,125 @@ struct ProjectDetailView: View {
                 .frame(minHeight: 200)
             }
         }
+    }
+
+    // MARK: - Daily Logs Tab
+
+    private var dailyLogsTab: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionHeaderView(title: "Daily Site Logs", action: { showAddDailyLog = true })
+
+            let logs = dataStore.dailyLogs(for: project.id)
+            if logs.isEmpty {
+                EmptyStateView(
+                    icon: "calendar.badge.clock",
+                    title: "No Logs Yet",
+                    message: "Daily logs capture weather, crew on site, work completed, and issues — useful for end-of-week reporting and CO substantiation.",
+                    buttonTitle: "Add Today's Log"
+                ) { showAddDailyLog = true }
+                .frame(maxHeight: 240)
+            } else {
+                let totalCrewHours = logs.reduce(Decimal.zero) { $0 + $1.totalCrewHours }
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    MetricCard(title: "Logs", value: "\(logs.count)",
+                               icon: "calendar.badge.clock", color: .blue)
+                    MetricCard(title: "Crew Hours", value: NSDecimalNumber(decimal: totalCrewHours).stringValue,
+                               icon: "clock.fill", color: AppTheme.primaryOrange)
+                    if let last = logs.first {
+                        MetricCard(title: "Most Recent", value: last.date.shortDate,
+                                   icon: "calendar", color: .green)
+                    }
+                }
+
+                List {
+                    ForEach(logs) { log in
+                        dailyLogRow(log)
+                            .onTapGesture { editingDailyLog = log }
+                            .contextMenu {
+                                Button("Edit") { editingDailyLog = log }
+                                Divider()
+                                Button("Delete…", role: .destructive) {
+                                    dailyLogToDelete = log
+                                }
+                            }
+                    }
+                }
+                .listStyle(.inset)
+                .frame(minHeight: 240)
+            }
+        }
+        .sheet(isPresented: $showAddDailyLog) {
+            AddDailyLogSheet(projectID: project.id)
+        }
+        .sheet(item: $editingDailyLog) { log in
+            EditDailyLogSheet(log: log, projectID: project.id)
+        }
+        .sheet(item: $dailyLogToDelete) { log in
+            ConfirmationPinSheet(
+                title: "Delete Daily Log",
+                detail: "\(log.date.shortDate)\(log.workCompleted.isEmpty ? "" : "\n\(log.workCompleted)")\n\nPhotos attached to this log will also be deleted. This cannot be undone.",
+                confirmLabel: "Delete",
+                onConfirm: {
+                    dataStore.deleteDailyLog(log, from: project.id)
+                }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func dailyLogRow(_ log: DailyLog) -> some View {
+        HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+            VStack(alignment: .center, spacing: 2) {
+                Text(log.date.formatted(.dateTime.month(.abbreviated)))
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                Text(log.date.formatted(.dateTime.day()))
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(AppTheme.primaryOrange)
+            }
+            .frame(width: 50)
+
+            VStack(alignment: .leading, spacing: 3) {
+                if !log.workCompleted.isEmpty {
+                    Text(log.workCompleted)
+                        .font(.callout)
+                        .lineLimit(2)
+                }
+                HStack(spacing: 8) {
+                    if !log.weather.isEmpty {
+                        Label(log.weather, systemImage: "thermometer.medium")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    if log.totalCrewHours > 0 {
+                        Label("\(NSDecimalNumber(decimal: log.totalCrewHours).stringValue) hrs",
+                              systemImage: "clock")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    if !log.crewOnSiteIDs.isEmpty {
+                        Label("\(log.crewOnSiteIDs.count)",
+                              systemImage: "person.2")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    if !log.photos.isEmpty {
+                        Label("\(log.photos.count)",
+                              systemImage: "photo")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    if !log.issuesEncountered.isEmpty {
+                        Label("Issues", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                }
+            }
+            Spacer()
+        }
+        .padding(.vertical, 4)
     }
 
     // MARK: - Costs Tab

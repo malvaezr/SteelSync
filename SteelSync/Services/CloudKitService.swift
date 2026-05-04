@@ -242,6 +242,7 @@ class CloudKitService {
             store.costs = groupChildRecords(byType[Cost.ckRecordType] ?? [], as: Cost.self)
             store.equipmentRentals = groupChildRecords(byType[EquipmentRental.ckRecordType] ?? [], as: EquipmentRental.self)
             store.rfis = groupChildRecords(byType[RFI.ckRecordType] ?? [], as: RFI.self)
+            store.dailyLogs = groupChildRecords(byType[DailyLog.ckRecordType] ?? [], as: DailyLog.self)
             store.payApplications = groupChildRecords(byType[PayApplication.ckRecordType] ?? [], as: PayApplication.self)
             store.invoices = groupChildRecords(byType[Invoice.ckRecordType] ?? [], as: Invoice.self)
 
@@ -322,6 +323,10 @@ class CloudKitService {
         for (projectID, items) in store.rfis {
             let ref = CKRecord.Reference(recordID: CKRecord.ID(recordName: projectID.recordName, zoneID: zoneID), action: .none)
             for rfi in items { let r = rfi.toCKRecord(in: zoneID); r["projectRef"] = ref; allRecords.append(r) }
+        }
+        for (projectID, items) in store.dailyLogs {
+            let ref = CKRecord.Reference(recordID: CKRecord.ID(recordName: projectID.recordName, zoneID: zoneID), action: .none)
+            for log in items { let r = log.toCKRecord(in: zoneID); r["projectRef"] = ref; allRecords.append(r) }
         }
         for (projectID, items) in store.payApplications {
             let ref = CKRecord.Reference(recordID: CKRecord.ID(recordName: projectID.recordName, zoneID: zoneID), action: .none)

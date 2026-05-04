@@ -22,6 +22,7 @@ class DataStore: ObservableObject {
     @Published var timesheetEntries: [TimesheetEntry] = []
     @Published var crewPresets: [CrewPreset] = []
     @Published var rfis: [CKRecord.ID: [RFI]] = [:]
+    @Published var dailyLogs: [CKRecord.ID: [DailyLog]] = [:]
     @Published var overheadExpenses: [OverheadExpense] = []
     @Published var planningPads: [PlanningPad] = []
     @Published var assistantMessages: [AssistantMessage] = []
@@ -129,6 +130,7 @@ class DataStore: ObservableObject {
         for (_, items) in payApplications { for pa in items { localIDs.insert(pa.ckRecordName) } }
         for (_, items) in invoices { for inv in items { localIDs.insert(inv.ckRecordName) } }
         for (_, items) in rfis { for r in items { localIDs.insert(r.ckRecordName) } }
+        for (_, items) in dailyLogs { for d in items { localIDs.insert(d.ckRecordName) } }
 
         // Defensive: if a collection is locally empty, protect that record
         // type from the orphan sweep. This prevents a freshly installed device
@@ -1291,6 +1293,61 @@ class DataStore: ObservableObject {
 
     func nextRFINumber(for projectID: CKRecord.ID) -> Int {
         (rfis[projectID]?.map(\.number).max() ?? 0) + 1
+    }
+
+    // MARK: - Daily Log Operations
+
+    /// Logs for a project, sorted newest-first (which is the natural review
+    /// order — PMs scan recent days then drill back).
+    func dailyLogs(for projectID: CKRecord.ID) -> [DailyLog] {
+        (dailyLogs[projectID] ?? []).sorted { $0.date > $1.date }
+    }
+
+    func addDailyLog(_ log: DailyLog, to projectID: CKRecord.ID) {
+        var list = dailyLogs[projectID] ?? []
+        list.append(log)
+        dailyLogs[projectID] = list
+        logAudit(.created, type: "DailyLog", name: log.date.shortDate)
+        syncChild(log, projectID: projectID)
+    }
+
+    func updateDailyLog(_ log: DailyLog, in projectID: CKRecord.ID) {
+        guard var list = dailyLogs[projectID],
+              let idx = list.firstIndex(where: { $0.id == log.id }) else { return }
+        list[idx] = log
+        dailyLogs[projectID] = list
+        logAudit(.updated, type: "DailyLog", name: log.date.shortDate)
+        syncChild(log, projectID: projectID)
+    }
+
+    func deleteDailyLog(_ log: DailyLog, from projectID: CKRecord.ID) {
+        dailyLogs[projectID]?.removeAll { $0.id == log.id }
+        // Clean up local photo files so we don't leak disk.
+        for photo in log.photos {
+            FileStorageService.deleteFile(photo)
+        }
+        logAudit(.deleted, type: "DailyLog", name: log.date.shortDate)
+        deleteFromCloud(log)
+    }
+
+    func addDailyLogAttachment(_ attachment: Attachment, to logID: UUID, in projectID: CKRecord.ID) {
+        guard var list = dailyLogs[projectID],
+              let idx = list.firstIndex(where: { $0.id == logID }) else { return }
+        list[idx].photos.append(attachment)
+        dailyLogs[projectID] = list
+        logAudit(.created, type: "Attachment", name: attachment.filename,
+                 details: "Daily log \(list[idx].date.shortDate)")
+        syncChild(list[idx], projectID: projectID)
+    }
+
+    func removeDailyLogAttachment(_ attachment: Attachment, from logID: UUID, in projectID: CKRecord.ID) {
+        guard var list = dailyLogs[projectID],
+              let idx = list.firstIndex(where: { $0.id == logID }) else { return }
+        list[idx].photos.removeAll { $0.id == attachment.id }
+        FileStorageService.deleteFile(attachment)
+        dailyLogs[projectID] = list
+        logAudit(.deleted, type: "Attachment", name: attachment.filename)
+        syncChild(list[idx], projectID: projectID)
     }
 
     // MARK: - Planning Pad Operations

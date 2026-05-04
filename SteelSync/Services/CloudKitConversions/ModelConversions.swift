@@ -787,3 +787,82 @@ extension OverheadExpense: CloudKitConvertible {
         )
     }
 }
+
+// MARK: - Daily Log
+
+extension DailyLog: CloudKitConvertible {
+    static let ckRecordType = "SS_DailyLog"
+    var ckRecordName: String { id.uuidString }
+
+    func toCKRecord(in zoneID: CKRecordZone.ID) -> CKRecord {
+        let r = CKRecord(recordType: Self.ckRecordType,
+                         recordID: CKRecord.ID(recordName: ckRecordName, zoneID: zoneID))
+        r["uuid"] = id.uuidString as CKRecordValue
+        r["date"] = date as CKRecordValue
+        r["weather"] = weather as CKRecordValue
+        r["workCompleted"] = workCompleted as CKRecordValue
+        r["issuesEncountered"] = issuesEncountered as CKRecordValue
+        r["crewOnSiteIDsJSON"] = CKField.encodeJSON(crewOnSiteIDs) as CKRecordValue
+        CKField.setDecimal(r, "totalCrewHours", totalCrewHours)
+        r["safetyIncidentsNote"] = safetyIncidentsNote as CKRecordValue
+        r["notes"] = notes as CKRecordValue
+        r["photosJSON"] = CKField.encodeJSON(photos) as CKRecordValue
+        if let ref = projectRef { r["projectRef"] = ref }
+
+        // Photo bytes ride along as CKAssets so they sync across devices —
+        // matches the OverheadExpense pattern. Photos with no local fileURL
+        // (or unreadable files) are skipped silently; their JSON metadata
+        // is still on the record.
+        let assets: [CKAsset] = photos.compactMap { photo in
+            guard let url = photo.fileURL,
+                  FileManager.default.isReadableFile(atPath: url.path) else { return nil }
+            return CKAsset(fileURL: url)
+        }
+        if !assets.isEmpty {
+            r["photoAssets"] = assets as CKRecordValue
+        }
+        return r
+    }
+
+    static func from(_ record: CKRecord) -> DailyLog? {
+        var photos = CKField.decodeJSON(record, "photosJSON", as: [Attachment].self) ?? []
+
+        // Reify attached CKAssets back into local files keyed by filename so
+        // FileStorageService.openFile / .deleteFile keep working post-pull.
+        let assets = record["photoAssets"] as? [CKAsset] ?? []
+        let logID = record.recordID.recordName
+        if !assets.isEmpty {
+            let folder = (try? FileStorageService.dailyLogFolder(for: logID)) ?? FileStorageService.documentsRoot
+            for i in 0..<min(assets.count, photos.count) {
+                guard let tempURL = assets[i].fileURL else { continue }
+                let destURL = folder.appendingPathComponent(photos[i].filename)
+                if !FileManager.default.fileExists(atPath: destURL.path) {
+                    try? FileManager.default.copyItem(at: tempURL, to: destURL)
+                }
+                let attrs = try? FileManager.default.attributesOfItem(atPath: destURL.path)
+                let fileSize = attrs?[.size] as? Int64 ?? photos[i].fileSize
+                photos[i] = Attachment(
+                    id: photos[i].id,
+                    filename: photos[i].filename,
+                    fileSize: fileSize,
+                    fileURL: destURL,
+                    uploadedDate: photos[i].uploadedDate
+                )
+            }
+        }
+
+        return DailyLog(
+            id: CKField.uuid(record, "uuid"),
+            date: CKField.date(record, "date"),
+            weather: CKField.string(record, "weather"),
+            workCompleted: CKField.string(record, "workCompleted"),
+            issuesEncountered: CKField.string(record, "issuesEncountered"),
+            crewOnSiteIDs: CKField.decodeJSON(record, "crewOnSiteIDsJSON", as: [String].self) ?? [],
+            totalCrewHours: CKField.decimal(record, "totalCrewHours"),
+            safetyIncidentsNote: CKField.string(record, "safetyIncidentsNote"),
+            notes: CKField.string(record, "notes"),
+            photos: photos,
+            recordID: record.recordID
+        )
+    }
+}

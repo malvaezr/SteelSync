@@ -58,6 +58,16 @@ struct FileStorageService {
         return folder
     }
 
+    /// Per-log folder for daily site log photos, kept under a `dailyLogs/`
+    /// subdirectory of the shared Documents root.
+    static func dailyLogFolder(for logID: String) throws -> URL {
+        let root = documentsRoot.appendingPathComponent("dailyLogs", isDirectory: true)
+        try ensureDirectory(root)
+        let folder = root.appendingPathComponent(logID, isDirectory: true)
+        try ensureDirectory(folder)
+        return folder
+    }
+
     // MARK: - File Operations
 
     /// Copies a file into the bid's local storage. Returns Result with Attachment or error.
@@ -69,6 +79,11 @@ struct FileStorageService {
     /// as `importFile(from:bidID:)` but writes into the overhead subtree.
     static func importFile(from sourceURL: URL, overheadID: String) -> Result<Attachment, Error> {
         importFile(from: sourceURL, intoFolder: { try overheadFolder(for: overheadID) })
+    }
+
+    /// Copies a photo / doc into a daily-log's local storage.
+    static func importFile(from sourceURL: URL, dailyLogID: String) -> Result<Attachment, Error> {
+        importFile(from: sourceURL, intoFolder: { try dailyLogFolder(for: dailyLogID) })
     }
 
     /// Shared implementation — takes a folder-resolver closure so bid/overhead

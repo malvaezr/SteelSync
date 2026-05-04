@@ -277,6 +277,7 @@ struct PersistenceService {
         save(store.timesheetEntries, as: "timesheetEntries")
         save(store.crewPresets, as: "crewPresets")
         save(encodeDict(store.rfis), as: "rfis")
+        save(encodeDict(store.dailyLogs), as: "dailyLogs")
         save(store.planningPads, as: "planningPads")
         save(store.assistantMessages, as: "assistantMessages")
         save(store.overheadExpenses.map { CodableOverhead($0) }, as: "overheadExpenses")
@@ -327,6 +328,9 @@ struct PersistenceService {
         if let cp = load([CrewPreset].self, from: "crewPresets") { store.crewPresets = cp }
         if let ri: [CodableDictEntry<RFI>] = load([CodableDictEntry<RFI>].self, from: "rfis") {
             store.rfis = decodeDict(ri)
+        }
+        if let dl: [CodableDictEntry<DailyLog>] = load([CodableDictEntry<DailyLog>].self, from: "dailyLogs") {
+            store.dailyLogs = decodeDict(dl)
         }
         if let pp = load([PlanningPad].self, from: "planningPads") { store.planningPads = pp }
         if let am = load([AssistantMessage].self, from: "assistantMessages") { store.assistantMessages = am }

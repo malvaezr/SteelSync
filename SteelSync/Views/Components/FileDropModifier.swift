@@ -120,4 +120,18 @@ extension View {
             onImport: onImport
         ))
     }
+
+    /// Adds file drag-and-drop support that routes drops into the daily-log
+    /// photo hierarchy.
+    func fileDropDailyLog(
+        logID: String,
+        showHint: Bool = true,
+        onImport: @escaping (Attachment) -> Void
+    ) -> some View {
+        modifier(FileDropModifier(
+            importer: { FileStorageService.importFile(from: $0, dailyLogID: logID) },
+            showHint: showHint,
+            onImport: onImport
+        ))
+    }
 }
