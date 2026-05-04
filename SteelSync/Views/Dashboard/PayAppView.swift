@@ -304,57 +304,99 @@ struct CreatePayAppSheet: View {
     @State private var periodTo = Date()
     @State private var retainageRate = "10"
 
+    private var nextNum: Int {
+        (dataStore.payApps(for: project.id).map(\.applicationNumber).max() ?? 0) + 1
+    }
+
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Application Details") {
-                    let nextNum = (dataStore.payApps(for: project.id).map(\.applicationNumber).max() ?? 0) + 1
-                    InfoRow(label: "Application #", value: "\(nextNum)")
-                    InfoRow(label: "Project", value: project.title)
-                    DatePicker("Period To", selection: $periodTo, displayedComponents: .date)
-                    HStack {
-                        Text("Retainage Rate")
-                        Spacer()
-                        TextField("10", text: $retainageRate)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 60)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                        Text("%")
-                    }
-                }
+        VStack(spacing: 0) {
+            SheetHeader(
+                title: "New Pay Application",
+                saveTitle: "Create",
+                onCancel: { dismiss() },
+                onSave: create
+            )
 
-                Section("What will be included") {
-                    let allCOs = dataStore.changeOrders(for: project.id)
-                    let eligibleCOs = allCOs.filter { $0.submittedDate <= periodTo }
-                    InfoRow(label: "Contract Amount", value: project.contractAmount.currencyFormatted)
-                    InfoRow(label: "Change Orders (by \(periodTo.shortDate))", value: "\(eligibleCOs.count) (\(eligibleCOs.reduce(0) { $0 + $1.amount }.currencyFormatted))")
-                    InfoRow(label: "Total Scheduled Value", value: (project.contractAmount + eligibleCOs.reduce(0) { $0 + $1.amount }).currencyFormatted)
-
-                    let previousApps = dataStore.payApps(for: project.id)
-                    if let last = previousApps.last {
-                        InfoRow(label: "Previously Billed", value: last.totalCompletedToDate.currencyFormatted)
-                        InfoRow(label: "Remaining", value: (last.totalScheduledValue - last.totalCompletedToDate).currencyFormatted)
-                    }
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    detailsSection
+                    inclusionSection
                 }
+                .padding(AppTheme.Spacing.lg)
             }
-            .formStyle(.grouped)
-            .navigationTitle("New Pay Application")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") { create() }
-                        .buttonStyle(.appPrimary)
+            .background(AppTheme.background)
+        }
+        #if os(macOS)
+        .frame(width: 540, height: 460)
+        #endif
+    }
+
+    @ViewBuilder private var detailsSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Application Details")
+            VStack(spacing: AppTheme.Spacing.sm) {
+                InfoRow(label: "Application #", value: "\(nextNum)")
+                InfoRow(label: "Project", value: project.title)
+            }
+            .padding(AppTheme.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(AppTheme.secondaryBackground)
+            )
+
+            HStack(spacing: AppTheme.Spacing.md) {
+                LabeledField(label: "Period To") {
+                    DatePicker("", selection: $periodTo, displayedComponents: .date)
+                        .labelsHidden()
+                        .appControlSurface()
+                }
+                LabeledField(label: "Retainage Rate (%)",
+                             helpText: "Typical AIA G702 default is 10%.") {
+                    TextField("10", text: $retainageRate)
+                        .textFieldStyle(.appField)
+                        #if !os(macOS)
+                        .keyboardType(.decimalPad)
+                        #endif
                 }
             }
         }
-        #if os(macOS)
-        .frame(width: 500, height: 400)
-        #endif
+    }
+
+    @ViewBuilder private var inclusionSection: some View {
+        let allCOs = dataStore.changeOrders(for: project.id)
+        let eligibleCOs = allCOs.filter { $0.submittedDate <= periodTo }
+        let coTotal = eligibleCOs.reduce(Decimal(0)) { $0 + $1.amount }
+        let scheduledValue = project.contractAmount + coTotal
+        let previousApps = dataStore.payApps(for: project.id)
+
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "What Will Be Included")
+            VStack(spacing: AppTheme.Spacing.sm) {
+                InfoRow(label: "Contract Amount",
+                        value: project.contractAmount.currencyFormatted,
+                        icon: "doc.text.fill")
+                InfoRow(label: "Change Orders (by \(periodTo.shortDate))",
+                        value: "\(eligibleCOs.count) · \(coTotal.currencyFormatted)",
+                        icon: "arrow.triangle.branch")
+                InfoRow(label: "Total Scheduled Value",
+                        value: scheduledValue.currencyFormatted,
+                        icon: "sum")
+                if let last = previousApps.last {
+                    Divider().padding(.vertical, 2)
+                    InfoRow(label: "Previously Billed",
+                            value: last.totalCompletedToDate.currencyFormatted,
+                            icon: "checkmark.circle")
+                    InfoRow(label: "Remaining",
+                            value: (last.totalScheduledValue - last.totalCompletedToDate).currencyFormatted,
+                            icon: "circle")
+                }
+            }
+            .padding(AppTheme.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(AppTheme.secondaryBackground)
+            )
+        }
     }
 
     private func create() {
@@ -375,60 +417,86 @@ struct EditPayAppSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Header info
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Application #\(payApp.applicationNumber)")
-                            .font(.headline)
-                        Text("Period to: \(payApp.periodTo.shortDate)")
-                            .font(.caption).foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing) {
-                        Text("Retainage: \(Int(Double(truncating: payApp.retainageRate * 100 as NSDecimalNumber)))%")
-                            .font(.caption).foregroundColor(.secondary)
-                        Text("Total: \(payApp.totalCompletedToDate.currencyFormatted)")
-                            .font(.callout).fontWeight(.bold).foregroundColor(.green)
-                    }
-                }
-                .padding()
+        VStack(spacing: 0) {
+            SheetHeader(
+                title: "Schedule of Values — App #\(payApp.applicationNumber)",
+                saveTitle: "Save",
+                onCancel: { dismiss() },
+                onSave: save
+            )
 
-                Divider()
-
-                // G703 Column Headers
-                ScrollView(.horizontal) {
-                    VStack(spacing: 0) {
-                        sovHeaderRow
-                        Divider()
-
-                        ForEach(Array(payApp.lineItems.enumerated()), id: \.element.id) { index, item in
-                            sovDataRow(index: index, item: item)
-                            Divider()
-                        }
-
-                        // Grand totals
-                        sovTotalRow
-                    }
-                    .frame(minWidth: 800)
-                }
+            // Summary header card — application metadata that doesn't belong
+            // in the table itself (period, retainage rate, running total).
+            HStack(spacing: AppTheme.Spacing.md) {
+                summaryStat(
+                    label: "Period To",
+                    value: payApp.periodTo.shortDate,
+                    icon: "calendar"
+                )
+                summaryStat(
+                    label: "Retainage",
+                    value: "\(Int(Double(truncating: payApp.retainageRate * 100 as NSDecimalNumber)))%",
+                    icon: "lock.fill"
+                )
+                summaryStat(
+                    label: "Total Completed",
+                    value: payApp.totalCompletedToDate.currencyFormatted,
+                    icon: "sum",
+                    accent: .green
+                )
+                summaryStat(
+                    label: "This Period",
+                    value: payApp.totalThisPeriod.currencyFormatted,
+                    icon: "arrow.up.right",
+                    accent: AppTheme.primaryOrange
+                )
+                Spacer()
             }
-            .navigationTitle("Schedule of Values")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .buttonStyle(.appPrimary)
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.vertical, AppTheme.Spacing.md)
+
+            Divider()
+
+            // G703 table — kept on a horizontal scroll because the column
+            // count is fixed by the form (A through I). On large screens
+            // the whole table fits without scrolling.
+            ScrollView(.horizontal) {
+                VStack(spacing: 0) {
+                    sovHeaderRow
+                    Divider()
+
+                    ForEach(Array(payApp.lineItems.enumerated()), id: \.element.id) { index, item in
+                        sovDataRow(index: index, item: item)
+                        Divider()
+                    }
+
+                    sovTotalRow
                 }
+                .frame(minWidth: 800)
             }
         }
         #if os(macOS)
-        .frame(width: 900, height: 600)
+        .frame(width: 960, height: 640)
         #endif
+    }
+
+    @ViewBuilder
+    private func summaryStat(label: String, value: String, icon: String, accent: Color = .primary) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .foregroundColor(accent == .primary ? AppTheme.secondaryText : accent)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(label.uppercased())
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(AppTheme.secondaryText)
+                    .tracking(0.4)
+                Text(value)
+                    .font(.callout)
+                    .fontWeight(.semibold)
+                    .foregroundColor(accent)
+            }
+        }
     }
 
     // MARK: - G703 Header Row
@@ -471,20 +539,41 @@ struct EditPayAppSheet: View {
                 .sovCell(width: 100)
                 .foregroundColor(.secondary)
 
-            // E: This period (EDITABLE)
+            // E: This period (EDITABLE) — slightly highlighted so the
+            // editable cells stand out from the read-only ones.
             TextField("0", value: $payApp.lineItems[index].thisPeriodCompleted, format: .currency(code: "USD"))
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.plain)
+                .multilineTextAlignment(.trailing)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
                 .frame(width: 95)
-                .padding(.horizontal, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(AppTheme.primaryOrange.opacity(0.08))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .strokeBorder(AppTheme.primaryOrange.opacity(0.25), lineWidth: 0.5)
+                )
                 #if !os(macOS)
                 .keyboardType(.decimalPad)
                 #endif
 
             // F: Materials stored (EDITABLE)
             TextField("0", value: $payApp.lineItems[index].materialsStored, format: .currency(code: "USD"))
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.plain)
+                .multilineTextAlignment(.trailing)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
                 .frame(width: 85)
-                .padding(.horizontal, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(AppTheme.primaryOrange.opacity(0.08))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .strokeBorder(AppTheme.primaryOrange.opacity(0.25), lineWidth: 0.5)
+                )
                 #if !os(macOS)
                 .keyboardType(.decimalPad)
                 #endif
