@@ -102,9 +102,9 @@ struct AppPrimaryButtonStyle: ButtonStyle {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: AppButtonMetrics.radius, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
+                    .strokeBorder(AppTheme.accentForeground.opacity(0.12), lineWidth: 0.5)
             )
-            .foregroundColor(.white)
+            .foregroundColor(AppTheme.accentForeground)
             .shadow(color: AppTheme.primaryOrange.opacity(configuration.isPressed ? 0.0 : 0.22),
                     radius: 6, x: 0, y: 2)
             .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
@@ -307,6 +307,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
     case flame = "Flame"
     case steelBlue = "Steel Blue"
     case ironForge = "Iron Forge"
+    case rose = "Rose"
 
     // MARK: - Accent (same in light/dark)
     var accent: Color {
@@ -314,6 +315,17 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#FF6B35")
         case .steelBlue: return Color(hex: "#4A90D9")
         case .ironForge: return Color(hex: "#2ECC71")
+        case .rose: return Color(hex: "#DB2777")
+        }
+    }
+
+    /// Foreground color to use ON the accent (e.g. button text on a primary
+    /// button). White on every saturated current accent passes contrast, but
+    /// this exists so a future light/pastel accent can opt out without
+    /// chasing every button-style call site.
+    var accentForeground: Color {
+        switch self {
+        case .flame, .steelBlue, .ironForge, .rose: return .white
         }
     }
 
@@ -322,6 +334,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#1B4332")
         case .steelBlue: return Color(hex: "#1A3A5C")
         case .ironForge: return Color(hex: "#2C3E50")
+        case .rose: return Color(hex: "#831843")
         }
     }
 
@@ -359,6 +372,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#1C1C1E")
         case .steelBlue: return Color(hex: "#0F1923")
         case .ironForge: return Color(hex: "#1A1F16")
+        case .rose: return Color(hex: "#1E1015")
         }
     }
     private var darkSecBg: Color {
@@ -366,6 +380,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#2C2C2E")
         case .steelBlue: return Color(hex: "#162030")
         case .ironForge: return Color(hex: "#242B1E")
+        case .rose: return Color(hex: "#2A1820")
         }
     }
     private var darkTerBg: Color {
@@ -373,6 +388,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#3A3A3C")
         case .steelBlue: return Color(hex: "#1E2D42")
         case .ironForge: return Color(hex: "#2E3726")
+        case .rose: return Color(hex: "#3A1F2E")
         }
     }
     private var darkCardBg: Color {
@@ -380,6 +396,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#2C2C2E")
         case .steelBlue: return Color(hex: "#1A2940")
         case .ironForge: return Color(hex: "#273020")
+        case .rose: return Color(hex: "#2E1A24")
         }
     }
     private var darkSidebarBg: Color {
@@ -387,6 +404,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#1C1C1E")
         case .steelBlue: return Color(hex: "#0C1520")
         case .ironForge: return Color(hex: "#151A12")
+        case .rose: return Color(hex: "#180B11")
         }
     }
     private var darkPrimaryText: Color {
@@ -394,6 +412,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return .white
         case .steelBlue: return Color(hex: "#E8EDF2")
         case .ironForge: return Color(hex: "#E8F0E0")
+        case .rose: return Color(hex: "#F5E3EB")
         }
     }
     private var darkSecondaryText: Color {
@@ -401,6 +420,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#EBEBF5").opacity(0.6)
         case .steelBlue: return Color(hex: "#8EACC8")
         case .ironForge: return Color(hex: "#9CB088")
+        case .rose: return Color(hex: "#C8A0B0")
         }
     }
     private var darkTertiaryText: Color {
@@ -408,6 +428,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#EBEBF5").opacity(0.3)
         case .steelBlue: return Color(hex: "#5A7A98")
         case .ironForge: return Color(hex: "#6E8060")
+        case .rose: return Color(hex: "#8E6878")
         }
     }
 
@@ -418,6 +439,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#F5F5F7")
         case .steelBlue: return Color(hex: "#EFF4F9")
         case .ironForge: return Color(hex: "#F0F5EC")
+        case .rose: return Color(hex: "#FBF5F8")
         }
     }
     private var lightSecBg: Color {
@@ -425,6 +447,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#ECECEE")
         case .steelBlue: return Color(hex: "#E0EAF3")
         case .ironForge: return Color(hex: "#E2EBD8")
+        case .rose: return Color(hex: "#F4E5EC")
         }
     }
     private var lightTerBg: Color {
@@ -432,6 +455,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#E0E0E2")
         case .steelBlue: return Color(hex: "#D0DFEE")
         case .ironForge: return Color(hex: "#D4E0C8")
+        case .rose: return Color(hex: "#EAD2DD")
         }
     }
     private var lightCardBg: Color {
@@ -439,6 +463,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return .white
         case .steelBlue: return Color(hex: "#F5F8FC")
         case .ironForge: return Color(hex: "#F5FAF0")
+        case .rose: return Color(hex: "#FFF7FA")
         }
     }
     private var lightSidebarBg: Color {
@@ -446,6 +471,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#ECECEE")
         case .steelBlue: return Color(hex: "#DDE8F2")
         case .ironForge: return Color(hex: "#DCE8D2")
+        case .rose: return Color(hex: "#F0DCE5")
         }
     }
     private var lightPrimaryText: Color {
@@ -453,6 +479,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#1C1C1E")
         case .steelBlue: return Color(hex: "#0F1923")
         case .ironForge: return Color(hex: "#1A1F16")
+        case .rose: return Color(hex: "#2A0F1A")
         }
     }
     private var lightSecondaryText: Color {
@@ -460,6 +487,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#636366")
         case .steelBlue: return Color(hex: "#4A6A88")
         case .ironForge: return Color(hex: "#5A7048")
+        case .rose: return Color(hex: "#8B4A65")
         }
     }
     private var lightTertiaryText: Color {
@@ -467,6 +495,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return Color(hex: "#AEAEB2")
         case .steelBlue: return Color(hex: "#8AA0B8")
         case .ironForge: return Color(hex: "#8CA078")
+        case .rose: return Color(hex: "#B888A0")
         }
     }
 
@@ -476,6 +505,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return .green
         case .steelBlue: return Color(hex: "#4ADE80")
         case .ironForge: return Color(hex: "#2ECC71")
+        case .rose: return Color(hex: "#10B981")
         }
     }
 
@@ -485,6 +515,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return "flame.fill"
         case .steelBlue: return "drop.fill"
         case .ironForge: return "hammer.fill"
+        case .rose: return "heart.fill"
         }
     }
 
@@ -493,6 +524,7 @@ enum AppColorTheme: String, CaseIterable, Codable {
         case .flame: return "Bold orange — the original"
         case .steelBlue: return "Cool blue — professional & clean"
         case .ironForge: return "Green — industrial & grounded"
+        case .rose: return "Hot pink — bold & distinctive"
         }
     }
 }
@@ -526,6 +558,11 @@ struct AppTheme {
     // MARK: - Brand Colors (dynamic)
     static var primaryOrange: Color { theme.accent }
     static var primaryGreen: Color { theme.secondaryAccent }
+    /// Foreground color that contrasts cleanly against `primaryOrange`
+    /// (the theme accent). Used by primary / destructive button styles
+    /// instead of a hardcoded `.white` so future themes with light
+    /// accents can override.
+    static var accentForeground: Color { theme.accentForeground }
 
     // MARK: - Full Palette (dynamic per theme + mode)
     static var background: Color { theme.background(dark: dark) }
