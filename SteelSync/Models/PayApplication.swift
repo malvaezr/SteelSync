@@ -165,10 +165,16 @@ struct SOVLineItem: Identifiable, Codable, Hashable {
         scheduledValue - totalCompletedToDate
     }
 
-    /// Column I: Retainage at given rate
+    /// Column I: Retainage withheld THIS application — 10% (or whatever the
+    /// rate is) of just the new work + materials stored in this period.
+    /// Previously calculated on `totalCompletedToDate` (cumulative running
+    /// retainage); that broke per-app invoice math because the pay-app
+    /// "net due" formula subtracts `totalRetainage` from `netAmountThisPeriod`.
+    /// Cumulative retainage minus period billing under-pays by the prior
+    /// apps' retainage every time a new app is filed.
     func retainage(at rate: Decimal) -> Decimal {
         var result = Decimal()
-        var val = totalCompletedToDate * rate
+        var val = (thisPeriodCompleted + materialsStored) * rate
         NSDecimalRound(&result, &val, 2, .plain)
         return result
     }
