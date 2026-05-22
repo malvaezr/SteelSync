@@ -9,8 +9,23 @@ struct DashboardView: View {
     @State private var showAddProject = false
     @State private var selectedProject: Project?
     @State private var projectToDelete: Project?
+    @State private var sortMode: ProjectSortMode = .startDate
 
     private let filters = ["All", "Active", "Upcoming", "Completed"]
+
+    enum ProjectSortMode: String, CaseIterable, Identifiable {
+        case startDate = "Start Date"
+        case alphabetical = "Alphabetical"
+        case completion = "Completion"
+        var id: String { rawValue }
+        var icon: String {
+            switch self {
+            case .startDate: return "calendar"
+            case .alphabetical: return "textformat.abc"
+            case .completion: return "chart.bar.fill"
+            }
+        }
+    }
 
     var filteredProjects: [Project] {
         var result = dataStore.projects
@@ -23,7 +38,14 @@ struct DashboardView: View {
                 $0.location.localizedCaseInsensitiveContains(searchText)
             }
         }
-        return result.sorted { ($0.startDate ?? .distantPast) > ($1.startDate ?? .distantPast) }
+        switch sortMode {
+        case .startDate:
+            return result.sorted { ($0.startDate ?? .distantPast) > ($1.startDate ?? .distantPast) }
+        case .alphabetical:
+            return result.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        case .completion:
+            return result.sorted { $0.progress > $1.progress }
+        }
     }
 
     var body: some View {
@@ -59,16 +81,19 @@ struct DashboardView: View {
                 }
                 .frame(height: 120)
 
-                // Filters
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: AppTheme.Spacing.sm) {
-                        ForEach(filters, id: \.self) { filter in
-                            FilterPill(filter, isSelected: selectedFilter == filter,
-                                       count: countFor(filter: filter)) {
-                                selectedFilter = filter
+                // Filters + sort
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: AppTheme.Spacing.sm) {
+                            ForEach(filters, id: \.self) { filter in
+                                FilterPill(filter, isSelected: selectedFilter == filter,
+                                           count: countFor(filter: filter)) {
+                                    selectedFilter = filter
+                                }
                             }
                         }
                     }
+                    sortMenu
                 }
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.bottom, AppTheme.Spacing.sm)
@@ -178,6 +203,46 @@ struct DashboardView: View {
         case "Completed": return dataStore.completedProjects.count
         default: return nil
         }
+    }
+
+    /// Dropdown to arrange the project list by start date, name, or completion.
+    private var sortMenu: some View {
+        Menu {
+            ForEach(ProjectSortMode.allCases) { mode in
+                Button {
+                    sortMode = mode
+                } label: {
+                    if sortMode == mode {
+                        Label(mode.rawValue, systemImage: "checkmark")
+                    } else {
+                        Label(mode.rawValue, systemImage: mode.icon)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.up.arrow.down")
+                Text(sortMode.rawValue)
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9))
+            }
+            .font(.caption)
+            .foregroundColor(AppTheme.secondaryText)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(AppTheme.secondaryBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(AppTheme.primaryText.opacity(0.1), lineWidth: 0.5)
+            )
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help("Sort projects")
     }
 }
 

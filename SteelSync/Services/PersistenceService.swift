@@ -105,6 +105,7 @@ struct PersistenceService {
         var isSubmitted: Bool; var submittedDate: Date?; var awardedProjectID: String?
         var isReadyToSubmit: Bool; var isLost: Bool
         var isWorkingOn: Bool
+        var priority: String?
         var squareFeet: Int; var numberOfBeams: Int; var numberOfColumns: Int
         var numberOfJoists: Int; var numberOfWallPanels: Int; var estimatedTons: Double
         var touchpoints: [Touchpoint]; var nextFollowUp: Date?; var reminderDate: Date?
@@ -117,6 +118,7 @@ struct PersistenceService {
             isSubmitted = b.isSubmitted; submittedDate = b.submittedDate
             awardedProjectID = b.awardedProjectID; isReadyToSubmit = b.isReadyToSubmit; isLost = b.isLost
             isWorkingOn = b.isWorkingOn
+            priority = b.priority.rawValue
             squareFeet = b.squareFeet; numberOfBeams = b.numberOfBeams
             numberOfColumns = b.numberOfColumns; numberOfJoists = b.numberOfJoists
             numberOfWallPanels = b.numberOfWallPanels; estimatedTons = b.estimatedTons
@@ -141,6 +143,7 @@ struct PersistenceService {
             isReadyToSubmit = try c.decode(Bool.self, forKey: .isReadyToSubmit)
             isLost = try c.decode(Bool.self, forKey: .isLost)
             isWorkingOn = try c.decodeIfPresent(Bool.self, forKey: .isWorkingOn) ?? false
+            priority = try c.decodeIfPresent(String.self, forKey: .priority)
             squareFeet = try c.decode(Int.self, forKey: .squareFeet)
             numberOfBeams = try c.decode(Int.self, forKey: .numberOfBeams)
             numberOfColumns = try c.decode(Int.self, forKey: .numberOfColumns)
@@ -163,6 +166,7 @@ struct PersistenceService {
                 isSubmitted: isSubmitted, submittedDate: submittedDate,
                 awardedProjectID: awardedProjectID, isReadyToSubmit: isReadyToSubmit, isLost: isLost,
                 isWorkingOn: isWorkingOn,
+                priority: priority.flatMap(BidPriority.init(rawValue:)) ?? .normal,
                 squareFeet: squareFeet, numberOfBeams: numberOfBeams, numberOfColumns: numberOfColumns,
                 numberOfJoists: numberOfJoists, numberOfWallPanels: numberOfWallPanels,
                 estimatedTons: estimatedTons, touchpoints: touchpoints, nextFollowUp: nextFollowUp,
@@ -281,6 +285,7 @@ struct PersistenceService {
         save(store.planningPads, as: "planningPads")
         save(store.assistantMessages, as: "assistantMessages")
         save(store.overheadExpenses.map { CodableOverhead($0) }, as: "overheadExpenses")
+        save(Array(store.pendingCloudDeletes), as: "pendingCloudDeletes")
     }
 
     // MARK: - Load All
@@ -336,6 +341,9 @@ struct PersistenceService {
         if let am = load([AssistantMessage].self, from: "assistantMessages") { store.assistantMessages = am }
         if let oh: [CodableOverhead] = load([CodableOverhead].self, from: "overheadExpenses") {
             store.overheadExpenses = oh.map { $0.toExpense() }
+        }
+        if let pcd = load([String].self, from: "pendingCloudDeletes") {
+            store.pendingCloudDeletes = Set(pcd)
         }
         return true
     }

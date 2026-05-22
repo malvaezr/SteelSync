@@ -3,9 +3,29 @@ import SwiftUI
 @MainActor
 class GanttViewModel: ObservableObject {
     @Published var dayWidth: CGFloat = 24
-    @Published var selectedTaskID: UUID?
+    /// Multi-selection. Marquee selection and modifier-click both write here.
+    @Published var selectedTaskIDs: Set<UUID> = []
     @Published var showingAddTask = false
     @Published var showingEditTask = false
+
+    /// Live horizontal offset while group-dragging a multi-selection. Every
+    /// selected bar reads this so they move together. Reset on drag end.
+    @Published var groupDragOffsetX: CGFloat = 0
+    @Published var isGroupDragging = false
+
+    /// Backward-compatible single-selection accessor used by callers that
+    /// only deal with one task at a time.
+    var selectedTaskID: UUID? {
+        get { selectedTaskIDs.count == 1 ? selectedTaskIDs.first : nil }
+        set { selectedTaskIDs = newValue.map { [$0] } ?? [] }
+    }
+
+    func isSelected(_ id: UUID) -> Bool { selectedTaskIDs.contains(id) }
+
+    func toggleSelection(_ id: UUID) {
+        if selectedTaskIDs.contains(id) { selectedTaskIDs.remove(id) }
+        else { selectedTaskIDs.insert(id) }
+    }
 
     // MARK: - Filter / Search
     @Published var searchText: String = ""

@@ -28,6 +28,35 @@ struct BidDetailView: View {
         }
     }
 
+    private var shareableAttachmentURLs: [URL] {
+        bid.attachments.compactMap { att in
+            guard let url = att.fileURL,
+                  FileManager.default.isReadableFile(atPath: url.path) else { return nil }
+            return url
+        }
+    }
+
+    private var shareAllMessage: String {
+        var lines: [String] = []
+        lines.append("Hi,")
+        lines.append("")
+        lines.append("Sharing the plans for \(bid.projectName) (\(bid.clientName)).")
+        lines.append("\(bid.attachments.count) file\(bid.attachments.count == 1 ? "" : "s") attached.")
+        lines.append("")
+        lines.append("— Ruben")
+        return lines.joined(separator: "\n")
+    }
+
+    private func shareSingleMessage(for attachment: Attachment) -> String {
+        var lines: [String] = []
+        lines.append("Hi,")
+        lines.append("")
+        lines.append("Sharing \(attachment.filename) for \(bid.projectName) (\(bid.clientName)).")
+        lines.append("")
+        lines.append("— Ruben")
+        return lines.joined(separator: "\n")
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
@@ -47,6 +76,18 @@ struct BidDetailView: View {
                         }
                     }
                     Spacer()
+                    HStack(spacing: 4) {
+                        Image(systemName: bid.priority.icon)
+                            .font(.caption)
+                        Text(bid.priority.rawValue)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(bid.priority.color.opacity(0.15))
+                    .foregroundColor(bid.priority.color)
+                    .clipShape(Capsule())
                     StatusBadge(text: bid.status.rawValue, color: statusColor)
 
                     Menu {
@@ -129,6 +170,17 @@ struct BidDetailView: View {
                             Text("\(bid.attachments.count) file\(bid.attachments.count == 1 ? "" : "s")")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                            if !shareableAttachmentURLs.isEmpty {
+                                ShareLink(
+                                    items: shareableAttachmentURLs,
+                                    subject: Text("Plans — \(bid.projectName)"),
+                                    message: Text(shareAllMessage)
+                                ) {
+                                    Label("Share All", systemImage: "square.and.arrow.up")
+                                        .font(.callout)
+                                }
+                                .buttonStyle(.borderless)
+                            }
                             if isUploading {
                                 ProgressView()
                                     .controlSize(.small)
@@ -192,6 +244,20 @@ struct BidDetailView: View {
                                     }
 
                                     Spacer()
+
+                                    if let url = attachment.fileURL,
+                                       FileManager.default.isReadableFile(atPath: url.path) {
+                                        ShareLink(
+                                            item: url,
+                                            subject: Text("\(bid.projectName) — \(attachment.filename)"),
+                                            message: Text(shareSingleMessage(for: attachment))
+                                        ) {
+                                            Image(systemName: "square.and.arrow.up")
+                                                .foregroundColor(AppTheme.primaryOrange)
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .help("Share via Mail, Messages, AirDrop…")
+                                    }
 
                                     Button { FileStorageService.openFile(attachment) } label: {
                                         Image(systemName: "eye.fill")

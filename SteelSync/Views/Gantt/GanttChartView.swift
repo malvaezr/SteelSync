@@ -1,5 +1,6 @@
 import SwiftUI
 import CloudKit
+import UniformTypeIdentifiers
 
 struct GanttChartView: View {
     @EnvironmentObject var dataStore: DataStore
@@ -15,6 +16,11 @@ struct GanttChartView: View {
     @State private var didSeedProjectFilters = false
     @State private var currentDate = Date()
     @State private var isVisible = false
+    // Marquee (rubber-band) selection — content-space points while dragging.
+    @State private var marqueeStart: CGPoint?
+    @State private var marqueeCurrent: CGPoint?
+    // Drag-to-reorder in the task list.
+    @State private var draggingTaskID: UUID?
 
     // Distinct colors for each project
     private let projectPalette: [Color] = [
@@ -210,6 +216,13 @@ struct GanttChartView: View {
                 GanttTimelineGridView(vm: vm, tasks: filteredTasks)
                     .frame(width: timelineWidth, height: contentTimelineHeight)
 
+                #if os(macOS)
+                // Drag-catcher for marquee selection on empty timeline space.
+                // Sits above the grid but below the bars, so dragging a bar
+                // still moves the bar; dragging blank space rubber-bands.
+                marqueeCatcher(width: timelineWidth, height: contentTimelineHeight)
+                #endif
+
                 GanttDependencyOverlay(
                     rows: rows,
                     filteredTasks: filteredTasks,
@@ -222,6 +235,10 @@ struct GanttChartView: View {
                 taskBarsLayer()
 
                 GanttTodayMarkerView(vm: vm, tasks: filteredTasks, height: contentTimelineHeight, now: currentDate)
+
+                #if os(macOS)
+                marqueeOverlay()
+                #endif
             }
         }
         .frame(height: availHeight)
@@ -253,7 +270,8 @@ struct GanttChartView: View {
                     onEdit: { editingTask = task },
                     onUpdate: { updated in dataStore.updateGanttTask(updated) },
                     onTogglePin: { togglePin(task) },
-                    onDelete: { dataStore.deleteGanttTask(task) }
+                    onDelete: { dataStore.deleteGanttTask(task) },
+                    onGroupMove: { days in dataStore.moveGanttTasks(ids: vm.selectedTaskIDs, byDays: days) }
                 )
                 .position(
                     x: vm.xPosition(for: task.startDate, tasks: filteredTasks) + vm.barWidth(for: task) / 2,
@@ -263,6 +281,68 @@ struct GanttChartView: View {
                 projectHeaderBar(project: project, yPos: yOffset(for: index))
             }
         }
+    }
+
+    // MARK: - Marquee Selection (macOS)
+
+    /// Current rubber-band rect in timeline content coordinates, or nil when
+    /// not dragging.
+    private var marqueeRect: CGRect? {
+        guard let s = marqueeStart, let c = marqueeCurrent else { return nil }
+        return CGRect(x: min(s.x, c.x), y: min(s.y, c.y),
+                      width: abs(s.x - c.x), height: abs(s.y - c.y))
+    }
+
+    /// Transparent full-content layer that turns an empty-space click-drag
+    /// into a selection rectangle, and a plain click into "clear selection".
+    @ViewBuilder
+    private func marqueeCatcher(width: CGFloat, height: CGFloat) -> some View {
+        Rectangle()
+            .fill(Color.clear)
+            .contentShape(Rectangle())
+            .frame(width: width, height: height)
+            .gesture(
+                DragGesture(minimumDistance: 4)
+                    .onChanged { value in
+                        if marqueeStart == nil { marqueeStart = value.startLocation }
+                        marqueeCurrent = value.location
+                    }
+                    .onEnded { _ in
+                        if let rect = marqueeRect {
+                            vm.selectedTaskIDs = tasksIntersecting(rect)
+                        }
+                        marqueeStart = nil
+                        marqueeCurrent = nil
+                    }
+            )
+            .onTapGesture { vm.selectedTaskIDs = [] }
+    }
+
+    /// Visible rubber-band rectangle drawn on top of the bars.
+    @ViewBuilder
+    private func marqueeOverlay() -> some View {
+        if let rect = marqueeRect {
+            Rectangle()
+                .fill(Color.accentColor.opacity(0.12))
+                .overlay(Rectangle().stroke(Color.accentColor.opacity(0.8), lineWidth: 1))
+                .frame(width: rect.width, height: rect.height)
+                .position(x: rect.midX, y: rect.midY)
+                .allowsHitTesting(false)
+        }
+    }
+
+    /// Task IDs whose bar frame intersects `rect` (timeline content coords).
+    private func tasksIntersecting(_ rect: CGRect) -> Set<UUID> {
+        var result: Set<UUID> = []
+        for (index, row) in rows.enumerated() {
+            guard case .task(let task) = row else { continue }
+            let x = vm.xPosition(for: task.startDate, tasks: filteredTasks)
+            let w = max(vm.barWidth(for: task), vm.rowHeight)  // milestones are ~square
+            let y = yOffset(for: index)
+            let frame = CGRect(x: x, y: y, width: w, height: vm.rowHeight)
+            if frame.intersects(rect) { result.insert(task.id) }
+        }
+        return result
     }
 
     // MARK: - Toolbar
@@ -318,6 +398,27 @@ struct GanttChartView: View {
 
                 Spacer()
 
+                // Multi-selection count + quick clear.
+                if vm.selectedTaskIDs.count > 1 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("\(vm.selectedTaskIDs.count) selected")
+                        Button {
+                            vm.selectedTaskIDs = []
+                        } label: {
+                            Image(systemName: "xmark")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .font(.caption2)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(AppTheme.primaryOrange.opacity(0.9))
+                    .clipShape(Capsule())
+                    .help("Tasks selected — drag any one to move the group")
+                }
+
                 // Critical path toggle
                 Toggle(isOn: $vm.showCriticalPathOnly) {
                     Label("Critical", systemImage: "bolt.fill")
@@ -366,6 +467,14 @@ struct GanttChartView: View {
                     .controlSize(.small)
                     .disabled(vm.availableWidth <= 0)
                 }
+
+                Button(action: { dataStore.sortGanttTasksByStartDate() }) {
+                    Label("Sort by Date", systemImage: "arrow.up.arrow.down")
+                }
+                .buttonStyle(.appSecondary)
+                .controlSize(.small)
+                .disabled(allTasks.isEmpty)
+                .help("Reorder all tasks top-to-bottom by start date")
 
                 Button(action: { showExportSheet = true }) {
                     Label("Export PDF", systemImage: "square.and.arrow.up")
@@ -448,26 +557,7 @@ struct GanttChartView: View {
                             .background(Color.gray.opacity(0.08))
 
                         case .task(let task):
-                            GanttTaskListRow(task: task, isSelected: vm.selectedTaskID == task.id)
-                                .frame(height: vm.rowHeight)
-                                .onTapGesture { vm.selectedTaskID = task.id }
-                                .contextMenu {
-                                    Button("Edit") { editingTask = task }
-                                    Button(task.isPinned ? "Unpin" : "Pin") { togglePin(task) }
-                                    Divider()
-                                    let siblings = projectSiblings(of: task)
-                                    let position = siblings.firstIndex(where: { $0.id == task.id })
-                                    Button("Move Up") {
-                                        dataStore.moveGanttTaskUp(task, in: siblings)
-                                    }
-                                    .disabled(position == nil || position == 0)
-                                    Button("Move Down") {
-                                        dataStore.moveGanttTaskDown(task, in: siblings)
-                                    }
-                                    .disabled(position == nil || position == siblings.count - 1)
-                                    Divider()
-                                    Button("Delete", role: .destructive) { dataStore.deleteGanttTask(task) }
-                                }
+                            taskListRow(task)
                         }
                     }
                 }
@@ -476,6 +566,62 @@ struct GanttChartView: View {
     }
 
     // MARK: - Helpers
+
+    /// One task row with reorder controls + context menu. Computes the task's
+    /// position among its project siblings once and feeds it to both the
+    /// inline up/down buttons and the right-click menu.
+    @ViewBuilder
+    private func taskListRow(_ task: GanttTask) -> some View {
+        let siblings = projectSiblings(of: task)
+        let position = siblings.firstIndex(where: { $0.id == task.id })
+        let canUp = position != nil && position! > 0
+        let canDown = position != nil && position! < siblings.count - 1
+
+        GanttTaskListRow(
+            task: task,
+            isSelected: vm.isSelected(task.id),
+            canMoveUp: canUp,
+            canMoveDown: canDown,
+            onMoveUp: { dataStore.moveGanttTaskUp(task, in: siblings) },
+            onMoveDown: { dataStore.moveGanttTaskDown(task, in: siblings) }
+        )
+        .frame(height: vm.rowHeight)
+        .onTapGesture { vm.selectedTaskID = task.id }
+        .contextMenu {
+            Button("Edit") { editingTask = task }
+            Button(task.isPinned ? "Unpin" : "Pin") { togglePin(task) }
+            Divider()
+            Button("Move Up") { dataStore.moveGanttTaskUp(task, in: siblings) }
+                .disabled(!canUp)
+            Button("Move Down") { dataStore.moveGanttTaskDown(task, in: siblings) }
+                .disabled(!canDown)
+            Divider()
+            Button("Delete", role: .destructive) { dataStore.deleteGanttTask(task) }
+        }
+        .opacity(draggingTaskID == task.id ? 0.5 : 1)
+        .onDrag {
+            draggingTaskID = task.id
+            return NSItemProvider(object: task.id.uuidString as NSString)
+        }
+        .onDrop(of: [.text], delegate: RowReorderDropDelegate(
+            targetID: task.id,
+            draggingID: $draggingTaskID,
+            onReorder: { from, to in reorderTasksByDrag(from: from, to: to) }
+        ))
+    }
+
+    /// Drag-reorder within a project: move task `from` to the slot of `to`.
+    /// Cross-project drags are ignored so reordering stays scoped to a job.
+    private func reorderTasksByDrag(from: UUID, to: UUID) {
+        guard let fromTask = dataStore.ganttTasks.first(where: { $0.id == from }),
+              let toTask = dataStore.ganttTasks.first(where: { $0.id == to }),
+              fromTask.projectID == toTask.projectID else { return }
+        var sibs = projectSiblings(of: fromTask)
+        guard let f = sibs.firstIndex(where: { $0.id == from }),
+              let t = sibs.firstIndex(where: { $0.id == to }), f != t else { return }
+        sibs.move(fromOffsets: IndexSet(integer: f), toOffset: t > f ? t + 1 : t)
+        dataStore.reorderGanttSiblings(sibs)
+    }
 
     /// Tasks visible in the same project group as `task`, in display order.
     /// Used to scope Move Up/Down so reordering only swaps with on-screen
@@ -610,6 +756,10 @@ struct GanttChartView: View {
 struct GanttTaskListRow: View {
     let task: GanttTask
     let isSelected: Bool
+    var canMoveUp: Bool = false
+    var canMoveDown: Bool = false
+    var onMoveUp: () -> Void = {}
+    var onMoveDown: () -> Void = {}
 
     var body: some View {
         HStack(spacing: 4) {
@@ -629,6 +779,27 @@ struct GanttTaskListRow: View {
             }
 
             Spacer()
+
+            // Reorder controls — only on the selected row to avoid clutter.
+            if isSelected {
+                HStack(spacing: 1) {
+                    Button(action: onMoveUp) {
+                        Image(systemName: "chevron.up")
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canMoveUp)
+                    .foregroundColor(canMoveUp ? .secondary : Color.secondary.opacity(0.3))
+
+                    Button(action: onMoveDown) {
+                        Image(systemName: "chevron.down")
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canMoveDown)
+                    .foregroundColor(canMoveDown ? .secondary : Color.secondary.opacity(0.3))
+                }
+                .font(.system(size: 11, weight: .semibold))
+                .help("Move task up or down in the list")
+            }
 
             Text("\(task.durationDays)d")
                 .font(.system(size: 10, design: .monospaced))

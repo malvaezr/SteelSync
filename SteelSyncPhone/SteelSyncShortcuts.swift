@@ -122,9 +122,5 @@ struct SteelSyncShortcutsProvider: AppShortcutsProvider {
     }
 }
 
-// MARK: - Shared DataStore accessor (Phone target only)
-
-extension DataStore: @unchecked Sendable {
-    @MainActor
-    static let shared = DataStore()
-}
+// DataStore.shared is declared in the shared SteelSync source tree so all
+// three targets (Mac, iPad, Phone) reference the same singleton.

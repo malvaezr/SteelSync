@@ -22,6 +22,9 @@ xcuserdata/
 # Claude Code
 .claude/
 
+# AI memory vault (local tooling like .claude/ — rules + agent memory, kept out of git)
+M_Memory/
+
 # Environment
 .env
 .env.local

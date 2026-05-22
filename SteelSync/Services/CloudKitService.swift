@@ -16,7 +16,69 @@ class CloudKitService {
 
     static let cloudKitEnabled = true
 
-    init() {}
+    // MARK: - Role (owner vs participant in a shared zone)
+
+    enum Role: Equatable {
+        case owner
+        case participant(ownerRecordName: String)
+    }
+
+    private static let roleKey = "SteelSync.CloudKit.Role"
+    private static let participantOwnerKey = "SteelSync.CloudKit.ParticipantOwnerName"
+
+    private(set) var role: Role = .owner
+
+    var isParticipant: Bool {
+        if case .participant = role { return true } else { return false }
+    }
+
+    /// Database to use for all reads/writes given the current role.
+    /// Owner → privateDB. Participant → sharedDB.
+    private var activeDatabase: CKDatabase? {
+        switch role {
+        case .owner: return privateDB
+        case .participant: return sharedDB
+        }
+    }
+
+    /// Zone ID for the current role. Owner uses their own zone; participant
+    /// uses the owner's zone (same zone name, different owner record name).
+    var zoneID: CKRecordZone.ID {
+        switch role {
+        case .owner:
+            return CKRecordZone.ID(zoneName: zoneName, ownerName: CKCurrentUserDefaultName)
+        case .participant(let ownerName):
+            return CKRecordZone.ID(zoneName: zoneName, ownerName: ownerName)
+        }
+    }
+
+    private func loadPersistedRole() {
+        let raw = UserDefaults.standard.string(forKey: Self.roleKey) ?? "owner"
+        if raw == "participant", let ownerName = UserDefaults.standard.string(forKey: Self.participantOwnerKey) {
+            role = .participant(ownerRecordName: ownerName)
+        } else {
+            role = .owner
+        }
+    }
+
+    /// Update the role and persist it. Called by the share-accept flow
+    /// (step 4) to switch this device into participant mode after the user
+    /// taps a SteelSync share URL.
+    func setRole(_ newRole: Role) {
+        role = newRole
+        switch newRole {
+        case .owner:
+            UserDefaults.standard.set("owner", forKey: Self.roleKey)
+            UserDefaults.standard.removeObject(forKey: Self.participantOwnerKey)
+        case .participant(let ownerName):
+            UserDefaults.standard.set("participant", forKey: Self.roleKey)
+            UserDefaults.standard.set(ownerName, forKey: Self.participantOwnerKey)
+        }
+    }
+
+    init() {
+        loadPersistedRole()
+    }
 
     private func initializeContainer() -> Bool {
         guard Self.cloudKitEnabled else { return false }
@@ -61,12 +123,11 @@ class CloudKitService {
 
     // MARK: - Zone Setup
 
-    var zoneID: CKRecordZone.ID {
-        CKRecordZone.ID(zoneName: zoneName, ownerName: CKCurrentUserDefaultName)
-    }
-
+    /// Owner-only: create the zone in the user's private database.
+    /// Participants receive the zone via share acceptance; calling this in
+    /// participant mode is a no-op (and would fail server-side anyway).
     func setupZone() async throws {
-        guard let db = privateDB else { return }
+        guard role == .owner, let db = privateDB else { return }
         do {
             _ = try await db.save(CKRecordZone(zoneID: zoneID))
         } catch { /* zone may already exist */ }
@@ -75,7 +136,7 @@ class CloudKitService {
     // MARK: - Per-Record CRUD
 
     func saveRecord<T: CloudKitConvertible>(_ item: T) async {
-        guard let db = privateDB else { return }
+        guard let db = activeDatabase else { return }
         let record = item.toCKRecord(in: zoneID)
         do {
             _ = try await db.save(record)
@@ -95,7 +156,7 @@ class CloudKitService {
     }
 
     func saveChildRecord<T: CloudKitConvertible>(_ item: T, parentProjectID: CKRecord.ID) async {
-        guard let db = privateDB else { return }
+        guard let db = activeDatabase else { return }
         let record = item.toCKRecord(in: zoneID)
         let parentRef = CKRecord.Reference(recordID: CKRecord.ID(recordName: parentProjectID.recordName, zoneID: zoneID), action: .none)
         record["projectRef"] = parentRef
@@ -118,12 +179,23 @@ class CloudKitService {
     }
 
     func deleteRecord(recordType: String, recordName: String) async {
-        guard let db = privateDB else { return }
+        _ = await deleteRecordReturningSuccess(recordType: recordType, recordName: recordName)
+    }
+
+    /// Delete and report success. A "record not found" is treated as success
+    /// (the record is already gone — the tombstone can be cleared). Returns
+    /// false only when the delete genuinely failed and should be retried.
+    func deleteRecordReturningSuccess(recordType: String, recordName: String) async -> Bool {
+        guard let db = activeDatabase else { return false }
         let id = CKRecord.ID(recordName: recordName, zoneID: zoneID)
         do {
             try await db.deleteRecord(withID: id)
+            return true
+        } catch let error as CKError where error.code == .unknownItem {
+            return true
         } catch {
             print("[CloudKit] Delete \(recordType)/\(recordName) failed: \(error.localizedDescription)")
+            return false
         }
     }
 
@@ -131,7 +203,7 @@ class CloudKitService {
 
     /// Fetch ALL records in the zone. Tries async API first, falls back to operation-based fetch.
     func fetchAllRecordsInZone() async throws -> [CKRecord] {
-        guard let db = privateDB else { throw CloudKitError.notConfigured }
+        guard let db = activeDatabase else { throw CloudKitError.notConfigured }
 
         // Try the modern async API first
         let changes = try await db.recordZoneChanges(inZoneWith: zoneID, since: nil)
@@ -274,9 +346,16 @@ class CloudKitService {
         return dict
     }
 
+    private func estimateBytes(_ record: CKRecord) -> Int64 {
+        guard let data = try? NSKeyedArchiver.archivedData(withRootObject: record, requiringSecureCoding: true) else {
+            return 0
+        }
+        return Int64(data.count)
+    }
+
     /// Upload all local data to CloudKit using batch operations. Returns true if all saves succeeded.
-    func uploadAllToCloud(from store: DataStore, onProgress: ((Double) -> Void)? = nil) async -> Bool {
-        guard privateDB != nil else {
+    func uploadAllToCloud(from store: DataStore, onProgress: ((SyncProgress) -> Void)? = nil) async -> Bool {
+        guard activeDatabase != nil else {
             lastSyncError = "CloudKit not configured"
             return false
         }
@@ -343,6 +422,10 @@ class CloudKitService {
         let batchSize = 400
         var totalFailed = 0
         let totalRecords = allRecords.count
+        let recordSizes: [Int64] = allRecords.map { estimateBytes($0) }
+        let totalBytes: Int64 = recordSizes.reduce(0, +)
+        onProgress?(SyncProgress(itemsDone: 0, itemsTotal: totalRecords, bytesDone: 0, bytesTotal: totalBytes))
+        var bytesDone: Int64 = 0
         for batchStart in stride(from: 0, to: totalRecords, by: batchSize) {
             let batchEnd = min(batchStart + batchSize, totalRecords)
             let batch = Array(allRecords[batchStart..<batchEnd])
@@ -352,9 +435,8 @@ class CloudKitService {
             let failed = await saveBatch(batch, label: "Batch \(batchNum)/\(totalBatches)")
             totalFailed += failed
 
-            // Report progress (0.0 to 1.0)
-            let progress = Double(batchEnd) / Double(totalRecords)
-            onProgress?(progress)
+            bytesDone += recordSizes[batchStart..<batchEnd].reduce(0, +)
+            onProgress?(SyncProgress(itemsDone: batchEnd, itemsTotal: totalRecords, bytesDone: bytesDone, bytesTotal: totalBytes))
         }
 
         if totalFailed > 0 {
@@ -369,7 +451,7 @@ class CloudKitService {
 
     /// Save a batch of CKRecords using CKModifyRecordsOperation. Returns count of failures.
     private func saveBatch(_ records: [CKRecord], label: String) async -> Int {
-        guard let db = privateDB else { return records.count }
+        guard let db = activeDatabase else { return records.count }
 
         return await withCheckedContinuation { continuation in
             let operation = CKModifyRecordsOperation(recordsToSave: records, recordIDsToDelete: nil)
@@ -411,7 +493,7 @@ class CloudKitService {
 
     /// Save a record and return success/failure
     func saveRecordReturningSuccess<T: CloudKitConvertible>(_ item: T) async -> Bool {
-        guard let db = privateDB else { return false }
+        guard let db = activeDatabase else { return false }
         let record = item.toCKRecord(in: zoneID)
         do {
             _ = try await db.save(record)
@@ -437,7 +519,7 @@ class CloudKitService {
 
     /// Save a child record and return success/failure
     func saveChildReturningSuccess<T: CloudKitConvertible>(_ item: T, parentProjectID projectID: CKRecord.ID) async -> Bool {
-        guard let db = privateDB else { return false }
+        guard let db = activeDatabase else { return false }
         let record = item.toCKRecord(in: zoneID)
         let parentRef = CKRecord.Reference(recordID: CKRecord.ID(recordName: projectID.recordName, zoneID: zoneID), action: .none)
         record["projectRef"] = parentRef
@@ -464,52 +546,38 @@ class CloudKitService {
         }
     }
 
-    // MARK: - Orphan Cleanup (delete cloud records not present locally)
-
-    /// After uploading, delete any cloud records whose IDs are not in the local set.
-    /// Deletes cloud records that don't appear in `localIDs`.
-    /// `protectedTypes` is a defensive whitelist: any record whose `recordType`
-    /// is in this set is spared from deletion regardless of whether its ID is
-    /// in `localIDs`. The push path uses this to protect record types where
-    /// the local store has zero entries — otherwise a fresh device that never
-    /// pulled would sweep cloud data of that type for every other device.
-    func deleteOrphanedRecords(localIDs: Set<String>, protectedTypes: Set<String> = []) async -> Int {
-        guard let db = privateDB else { return 0 }
-        do {
-            let allRecords = try await fetchAllRecordsInZone()
-            var deleted = 0
-            for record in allRecords {
-                // Skip CKShare records and zone-level records
-                guard record.recordType != "cloudkit.share" else { continue }
-                if protectedTypes.contains(record.recordType) {
-                    continue
-                }
-                if !localIDs.contains(record.recordID.recordName) {
-                    do {
-                        try await db.deleteRecord(withID: record.recordID)
-                        deleted += 1
-                        print("[CloudKit] Deleted orphan: \(record.recordType)/\(record.recordID.recordName)")
-                    } catch {
-                        print("[CloudKit] Failed to delete orphan: \(error.localizedDescription)")
-                    }
-                }
-            }
-            return deleted
-        } catch {
-            print("[CloudKit] Orphan cleanup failed: \(error.localizedDescription)")
-            return 0
-        }
-    }
-
     // MARK: - Sharing
 
-    func createZoneShare() async throws -> CKShare {
-        guard let db = privateDB else { throw CloudKitError.notConfigured }
+    /// Container exposed for share UI (UICloudSharingController needs it).
+    var ckContainer: CKContainer? { container }
+
+    /// Owner-only. Returns the existing zone share if one exists, otherwise
+    /// creates and saves a new one. The returned share has a populated `url`
+    /// suitable for sending in an invitation.
+    func ensureZoneShare() async throws -> CKShare {
+        guard role == .owner, let db = privateDB else { throw CloudKitError.notConfigured }
+
+        if let existing = try await fetchExistingZoneShare() {
+            return existing
+        }
+
         let share = CKShare(recordZoneID: zoneID)
         share[CKShare.SystemFieldKey.title] = "SteelSync Data" as CKRecordValue
         share.publicPermission = .none
-        _ = try await db.save(share)
-        return share
+
+        // CKModifyRecordsOperation reliably populates `share.url`;
+        // bare db.save sometimes returns before the URL is provisioned.
+        let (saveResults, _) = try await db.modifyRecords(saving: [share], deleting: [])
+        guard case .success(let saved) = saveResults[share.recordID],
+              let savedShare = saved as? CKShare else {
+            throw CloudKitError.notConfigured
+        }
+        return savedShare
+    }
+
+    private func fetchExistingZoneShare() async throws -> CKShare? {
+        let allRecords = try await fetchAllRecordsInZone()
+        return allRecords.first(where: { $0.recordType == "cloudkit.share" }) as? CKShare
     }
 
     // MARK: - Types
@@ -517,6 +585,16 @@ class CloudKitService {
     enum CloudKitError: LocalizedError {
         case notConfigured
         var errorDescription: String? { "CloudKit is not configured." }
+    }
+
+    struct SyncProgress: Equatable {
+        var itemsDone: Int = 0
+        var itemsTotal: Int = 0
+        var bytesDone: Int64 = 0
+        var bytesTotal: Int64 = 0
+        var fraction: Double {
+            itemsTotal == 0 ? 0 : Double(itemsDone) / Double(itemsTotal)
+        }
     }
 
     enum SyncStatus: Equatable {

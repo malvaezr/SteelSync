@@ -22,6 +22,8 @@ struct GanttTaskEditSheet: View {
     @State private var includesSaturdays = false
     @State private var predecessorIDs: Set<UUID> = []
     @State private var isPinned = false
+    @State private var hasManpower = false
+    @State private var manpower = 1
 
     init(projects: [Project], selectedProjectID: String? = nil, editingTask: GanttTask? = nil,
          onSave: @escaping (GanttTask) -> Void, onDelete: (() -> Void)? = nil) {
@@ -167,6 +169,16 @@ struct GanttTaskEditSheet: View {
                         .foregroundColor(.secondary)
                 }
 
+                Section("Manpower") {
+                    Toggle(isOn: $hasManpower) {
+                        Label("Assign Manpower", systemImage: "person.3.fill")
+                    }
+                    if hasManpower {
+                        Stepper("Crew: \(manpower) worker\(manpower == 1 ? "" : "s")",
+                                value: $manpower, in: 1...999)
+                    }
+                }
+
                 Section("Additional") {
                     TextField("Assigned To", text: $assignedTo)
                     TextField("Notes", text: $notes, axis: .vertical)
@@ -187,6 +199,7 @@ struct GanttTaskEditSheet: View {
                 progress = task.progress; includesSaturdays = task.includesSaturdays
                 predecessorIDs = Set(task.predecessorIDs)
                 isPinned = task.isPinned
+                if let m = task.manpower { hasManpower = true; manpower = m }
             } else if let pid = selectedProjectID {
                 projectID = pid
             } else if let first = projects.first {
@@ -204,6 +217,7 @@ struct GanttTaskEditSheet: View {
             task.progress = progress; task.includesSaturdays = includesSaturdays
             task.predecessorIDs = Array(predecessorIDs)
             task.isPinned = isPinned
+            task.manpower = hasManpower ? manpower : nil
             onSave(task)
         } else {
             let task = GanttTask(
@@ -212,7 +226,8 @@ struct GanttTaskEditSheet: View {
                 assignedTo: assignedTo, notes: notes,
                 sortOrder: 999, progress: progress, includesSaturdays: includesSaturdays,
                 predecessorIDs: Array(predecessorIDs),
-                isPinned: isPinned
+                isPinned: isPinned,
+                manpower: hasManpower ? manpower : nil
             )
             onSave(task)
         }

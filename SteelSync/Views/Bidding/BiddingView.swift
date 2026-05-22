@@ -1,6 +1,22 @@
 import SwiftUI
 import CloudKit
 
+enum BidSortMode: String, CaseIterable, Hashable {
+    case priority = "Priority"
+    case dueDate = "Due Date"
+    case bidAmount = "Bid Amount"
+    case projectName = "Project Name"
+
+    var icon: String {
+        switch self {
+        case .priority: return "exclamationmark.circle"
+        case .dueDate: return "calendar"
+        case .bidAmount: return "dollarsign.circle"
+        case .projectName: return "textformat"
+        }
+    }
+}
+
 struct BiddingView: View {
     @EnvironmentObject var dataStore: DataStore
     @State private var selectedFilter = "Pending"
@@ -9,8 +25,23 @@ struct BiddingView: View {
     @State private var selectedBid: BidProject?
     @State private var bidToDelete: BidProject?
     @State private var bidToConvert: BidProject?
+    @State private var sortMode: BidSortMode = .priority
+    @State private var showExportSheet = false
 
     private let filters = ["All", "Pending", "Working On", "Ready", "Submitted", "Awarded", "Lost"]
+
+    private func count(for filter: String) -> Int {
+        switch filter {
+        case "All": return dataStore.bids.count
+        case "Pending": return dataStore.bids.filter { $0.status == .pending }.count
+        case "Working On": return dataStore.bids.filter { $0.status == .workingOn }.count
+        case "Ready": return dataStore.bids.filter { $0.status == .readyToSubmit }.count
+        case "Submitted": return dataStore.bids.filter { $0.status == .submitted }.count
+        case "Awarded": return dataStore.bids.filter { $0.status == .awarded }.count
+        case "Lost": return dataStore.bids.filter { $0.status == .lost }.count
+        default: return 0
+        }
+    }
 
     var filteredBids: [BidProject] {
         var result = dataStore.bids
@@ -29,7 +60,21 @@ struct BiddingView: View {
                 $0.clientName.localizedCaseInsensitiveContains(searchText)
             }
         }
-        return result.sorted { $0.bidDueDate < $1.bidDueDate }
+        switch sortMode {
+        case .priority:
+            return result.sorted {
+                if $0.priority.sortOrder != $1.priority.sortOrder {
+                    return $0.priority.sortOrder < $1.priority.sortOrder
+                }
+                return $0.bidDueDate < $1.bidDueDate
+            }
+        case .dueDate:
+            return result.sorted { $0.bidDueDate < $1.bidDueDate }
+        case .bidAmount:
+            return result.sorted { $0.bidAmount > $1.bidAmount }
+        case .projectName:
+            return result.sorted { $0.projectName.localizedCaseInsensitiveCompare($1.projectName) == .orderedAscending }
+        }
     }
 
     var body: some View {
@@ -40,6 +85,10 @@ struct BiddingView: View {
                     subtitle: "\(dataStore.pendingBids.count) pending · \(dataStore.submittedBids.count) submitted",
                     icon: AppIcons.document
                 ) {
+                    Button { showExportSheet = true } label: {
+                        Label("Export PDF", systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(.appSecondary)
                     Button { showAddBid = true } label: {
                         Label("New Bid", systemImage: AppIcons.add)
                     }
@@ -62,15 +111,31 @@ struct BiddingView: View {
                 }
                 .frame(height: 120)
 
-                // Filters
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: AppTheme.Spacing.sm) {
-                        ForEach(filters, id: \.self) { filter in
-                            FilterPill(filter, isSelected: selectedFilter == filter) {
-                                selectedFilter = filter
+                // Filters + Sort
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: AppTheme.Spacing.sm) {
+                            ForEach(filters, id: \.self) { filter in
+                                FilterPill(filter, isSelected: selectedFilter == filter, count: count(for: filter)) {
+                                    selectedFilter = filter
+                                }
                             }
                         }
                     }
+
+                    Menu {
+                        Picker("Sort", selection: $sortMode) {
+                            ForEach(BidSortMode.allCases, id: \.self) { mode in
+                                Label(mode.rawValue, systemImage: mode.icon).tag(mode)
+                            }
+                        }
+                    } label: {
+                        Label("Sort: \(sortMode.rawValue)", systemImage: "arrow.up.arrow.down")
+                            .font(.caption)
+                            .lineLimit(1)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
                 }
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.bottom, AppTheme.Spacing.sm)
@@ -81,6 +146,18 @@ struct BiddingView: View {
                         BidRow(bid: bid, clientType: dataStore.client(for: bid.clientRef)?.preferredRateType)
                             .tag(bid)
                             .contextMenu {
+                                Menu("Set Priority") {
+                                    ForEach(BidPriority.allCases, id: \.self) { p in
+                                        Button {
+                                            var updated = bid
+                                            updated.priority = p
+                                            dataStore.updateBid(updated)
+                                        } label: {
+                                            Label(p.rawValue, systemImage: p.icon)
+                                        }
+                                    }
+                                }
+                                Divider()
                                 if !bid.isSubmitted && !bid.isAwarded {
                                     if !bid.isWorkingOn && !bid.isReadyToSubmit {
                                         Button("Mark as Working On") {
@@ -162,6 +239,9 @@ struct BiddingView: View {
         .sheet(isPresented: $showAddBid) {
             AddBidView()
         }
+        .sheet(isPresented: $showExportSheet) {
+            ExportBidsSheet()
+        }
         .sheet(item: $bidToConvert) { bid in
             ConvertBidToProjectView(bid: bid)
         }
@@ -197,39 +277,63 @@ struct BidRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            HStack {
-                Text(bid.projectName)
-                    .font(.headline)
-                Spacer()
-                StatusBadge(text: bid.status.rawValue, color: statusColor)
-            }
+        HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+            Image(systemName: bid.priority.icon)
+                .foregroundColor(bid.priority.color)
+                .font(.callout)
+                .frame(width: 18)
+                .padding(.top, 2)
+                .help("Priority: \(bid.priority.rawValue)")
 
-            HStack {
-                Label(bid.clientName, systemImage: "person.fill")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                if let type = clientType {
-                    StatusBadge(text: type == .generalContractor ? "GC" : "Sub",
-                                color: type == .generalContractor ? AppTheme.primaryOrange : .purple)
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                HStack(spacing: 6) {
+                    Text(bid.projectName)
+                        .font(.headline)
+                    if !bid.attachments.isEmpty {
+                        HStack(spacing: 2) {
+                            Image(systemName: "paperclip")
+                                .font(.caption2)
+                            Text("\(bid.attachments.count)")
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(AppTheme.primaryOrange)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(AppTheme.primaryOrange.opacity(0.15))
+                        .clipShape(Capsule())
+                        .help("\(bid.attachments.count) plan\(bid.attachments.count == 1 ? "" : "s") uploaded")
+                    }
+                    Spacer()
+                    StatusBadge(text: bid.status.rawValue, color: statusColor)
                 }
-                Spacer()
-                Text(bid.bidAmount.currencyFormatted)
-                    .font(.callout)
-                    .fontWeight(.semibold)
-            }
 
-            HStack {
-                if !bid.address.isEmpty {
-                    Label(bid.address, systemImage: AppIcons.location)
+                HStack {
+                    Label(bid.clientName, systemImage: "person.fill")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .lineLimit(1)
+                    if let type = clientType {
+                        StatusBadge(text: type == .generalContractor ? "GC" : "Sub",
+                                    color: type == .generalContractor ? AppTheme.primaryOrange : .purple)
+                    }
+                    Spacer()
+                    Text(bid.bidAmount.currencyFormatted)
+                        .font(.callout)
+                        .fontWeight(.semibold)
                 }
-                Spacer()
-                Label(bid.bidDueDate.shortDate, systemImage: "calendar")
-                    .font(.caption)
-                    .foregroundColor(bid.bidDueDate < Date() && !bid.isSubmitted ? .red : .secondary)
+
+                HStack {
+                    if !bid.address.isEmpty {
+                        Label(bid.address, systemImage: AppIcons.location)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    Label(bid.bidDueDate.shortDate, systemImage: "calendar")
+                        .font(.caption)
+                        .foregroundColor(bid.bidDueDate < Date() && !bid.isSubmitted ? .red : .secondary)
+                }
             }
         }
         .padding(.vertical, AppTheme.Spacing.xs)

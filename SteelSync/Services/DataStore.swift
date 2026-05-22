@@ -3,6 +3,7 @@ import CloudKit
 
 @MainActor
 class DataStore: ObservableObject {
+
     // IMPORTANT: Default to EMPTY arrays, not SampleData.
     // SampleData is only used on the very first launch (no saved data + no prior launch).
     @Published var projects: [Project] = []
@@ -33,6 +34,17 @@ class DataStore: ObservableObject {
     @Published var lastSyncDate: Date?
     @Published var isSyncing = false
     @Published var syncProgress: Double = 0  // 0.0 to 1.0
+    @Published var syncItemsDone: Int = 0
+    @Published var syncItemsTotal: Int = 0
+    @Published var syncBytesDone: Int64 = 0
+    @Published var syncBytesTotal: Int64 = 0
+
+    /// Records deleted locally that haven't yet been deleted from CloudKit
+    /// (the delete happened while offline, or the cloud delete failed).
+    /// Keyed as "recordType|recordName". Drained on the next push. This
+    /// replaces the old orphan-sweep approach, which was unsafe across
+    /// multiple devices and in shared mode.
+    var pendingCloudDeletes: Set<String> = []
 
     private static let hasLaunchedKey = "SteelSync.hasLaunchedBefore"
 
@@ -89,8 +101,9 @@ class DataStore: ObservableObject {
 
     // MARK: - Manual Sync
 
-    /// Push local data to CloudKit (Mac → Cloud). Does NOT overwrite local data.
-    /// Also deletes cloud records that no longer exist locally (orphan cleanup).
+    /// Push local data to CloudKit (Mac → Cloud). Does NOT overwrite local
+    /// data. Deletes propagate via the tombstone queue (`pendingCloudDeletes`),
+    /// which is drained here before the upload.
     func pushToCloud() async {
         guard !isSyncing else { return }
         guard cloudKitAvailable else {
@@ -100,65 +113,23 @@ class DataStore: ObservableObject {
         persistNow() // Flush pending writes before syncing
         isSyncing = true
         syncProgress = 0
+        syncItemsDone = 0; syncItemsTotal = 0; syncBytesDone = 0; syncBytesTotal = 0
         syncStatus = .syncing
         try? await cloudKit.setupZone()
-        let success = await cloudKit.uploadAllToCloud(from: self) { [weak self] progress in
-            Task { @MainActor in self?.syncProgress = progress }
-        }
 
-        // Always clean up orphans — collect all local record IDs
-        var localIDs = Set<String>()
-        for p in projects { localIDs.insert(p.ckRecordName) }
-        for c in clients { localIDs.insert(c.ckRecordName) }
-        for b in bids { localIDs.insert(b.ckRecordName) }
-        for e in employees { localIDs.insert(e.ckRecordName) }
-        for t in todos { localIDs.insert(t.ckRecordName) }
-        for ev in calendarEvents { localIDs.insert(ev.ckRecordName) }
-        for g in ganttTasks { localIDs.insert(g.ckRecordName) }
-        for a in auditLog { localIDs.insert(a.ckRecordName) }
-        for ts in timesheetEntries { localIDs.insert(ts.ckRecordName) }
-        for cp in crewPresets { localIDs.insert(cp.ckRecordName) }
-        for oh in overheadExpenses { localIDs.insert(oh.ckRecordName) }
-        for (_, items) in changeOrders { for co in items { localIDs.insert(co.ckRecordName) } }
-        for (_, items) in payments { for p in items { localIDs.insert(p.ckRecordName) } }
-        for (_, items) in payrollEntries { for e in items { localIDs.insert(e.ckRecordName) } }
-        for (_, items) in costs { for c in items { localIDs.insert(c.ckRecordName) } }
-        for (_, items) in equipmentRentals { for r in items { localIDs.insert(r.ckRecordName) } }
-        // Pay apps + invoices: include so the orphan sweep doesn't delete the
-        // records we just uploaded for them. Missing these here was the cause
-        // of invoices never reaching the iPad.
-        for (_, items) in payApplications { for pa in items { localIDs.insert(pa.ckRecordName) } }
-        for (_, items) in invoices { for inv in items { localIDs.insert(inv.ckRecordName) } }
-        for (_, items) in rfis { for r in items { localIDs.insert(r.ckRecordName) } }
-        for (_, items) in dailyLogs { for d in items { localIDs.insert(d.ckRecordName) } }
+        // Drain queued deletes (offline deletes, failed cloud deletes) so the
+        // cloud reflects local removals without a blanket orphan sweep.
+        await drainPendingDeletes()
 
-        // Defensive: if a collection is locally empty, protect that record
-        // type from the orphan sweep. This prevents a freshly installed device
-        // (e.g. iPad before its first successful pull) from wiping cloud data
-        // for that type. A genuine "delete the last one" still works because
-        // individual deletes go through `deleteFromCloud` directly.
-        var protectedTypes: Set<String> = []
-        if invoices.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(Invoice.ckRecordType) }
-        if payApplications.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(PayApplication.ckRecordType) }
-        if rfis.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(RFI.ckRecordType) }
-        if changeOrders.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(ChangeOrder.ckRecordType) }
-        if payments.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(Payment.ckRecordType) }
-        if payrollEntries.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(PayrollEntry.ckRecordType) }
-        if costs.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(Cost.ckRecordType) }
-        if equipmentRentals.values.allSatisfy({ $0.isEmpty }) { protectedTypes.insert(EquipmentRental.ckRecordType) }
-        if projects.isEmpty { protectedTypes.insert(Project.ckRecordType) }
-        if clients.isEmpty { protectedTypes.insert(Client.ckRecordType) }
-        if bids.isEmpty { protectedTypes.insert(BidProject.ckRecordType) }
-        if employees.isEmpty { protectedTypes.insert(Employee.ckRecordType) }
-        if todos.isEmpty { protectedTypes.insert(TodoItem.ckRecordType) }
-        if calendarEvents.isEmpty { protectedTypes.insert(CalendarEvent.ckRecordType) }
-        if ganttTasks.isEmpty { protectedTypes.insert(GanttTask.ckRecordType) }
-        if timesheetEntries.isEmpty { protectedTypes.insert(TimesheetEntry.ckRecordType) }
-        if crewPresets.isEmpty { protectedTypes.insert(CrewPreset.ckRecordType) }
-
-        let orphansDeleted = await cloudKit.deleteOrphanedRecords(localIDs: localIDs, protectedTypes: protectedTypes)
-        if orphansDeleted > 0 {
-            print("[Sync] Deleted \(orphansDeleted) orphaned cloud records")
+        let success = await cloudKit.uploadAllToCloud(from: self) { [weak self] p in
+            Task { @MainActor in
+                guard let self else { return }
+                self.syncProgress = p.fraction
+                self.syncItemsDone = p.itemsDone
+                self.syncItemsTotal = p.itemsTotal
+                self.syncBytesDone = p.bytesDone
+                self.syncBytesTotal = p.bytesTotal
+            }
         }
 
         if success {
@@ -179,6 +150,7 @@ class DataStore: ObservableObject {
         }
         isSyncing = true
         syncProgress = 0
+        syncItemsDone = 0; syncItemsTotal = 0; syncBytesDone = 0; syncBytesTotal = 0
         syncStatus = .syncing
 
         // SAFETY: backup local data before overwriting
@@ -197,6 +169,47 @@ class DataStore: ObservableObject {
             syncStatus = .error(cloudKit.lastSyncError ?? "Fetch failed")
         }
         isSyncing = false
+    }
+
+    /// Accept a CloudKit share invitation. Called by the platform app
+    /// delegate when the user taps a SteelSync share URL. Runs
+    /// CKAcceptSharesOperation, switches CloudKitService into participant
+    /// mode (so subsequent fetches/writes route through the shared DB
+    /// against the owner's zone), then pulls the shared data.
+    func acceptShare(metadata: CKShare.Metadata) async {
+        guard let container = cloudKit.ckContainer else {
+            syncStatus = .error("iCloud not available")
+            return
+        }
+
+        isSyncing = true
+        syncStatus = .syncing
+        defer { isSyncing = false }
+
+        do {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                let op = CKAcceptSharesOperation(shareMetadatas: [metadata])
+                op.acceptSharesResultBlock = { result in
+                    switch result {
+                    case .success: continuation.resume(returning: ())
+                    case .failure(let error): continuation.resume(throwing: error)
+                    }
+                }
+                container.add(op)
+            }
+        } catch {
+            syncStatus = .error("Failed to accept share: \(error.localizedDescription)")
+            return
+        }
+
+        // The zone ID in the share metadata already carries the owner's
+        // concrete record name (CKCurrentUserDefaultName is only used on
+        // the owner-side; participants always receive the resolved name).
+        let ownerName = metadata.share.recordID.zoneID.ownerName
+        cloudKit.setRole(.participant(ownerRecordName: ownerName))
+
+        // Pull data from the now-accessible shared zone.
+        await pullFromCloud()
     }
 
     /// Saves locally with debounce — buffers rapid mutations into a single write.
@@ -246,8 +259,39 @@ class DataStore: ObservableObject {
     }
 
     private func deleteFromCloud<T: CloudKitConvertible>(_ item: T) {
+        let key = Self.tombstoneKey(type: T.ckRecordType, name: item.ckRecordName)
+        // Tombstone first so the delete survives an app quit or an offline
+        // window. Cleared once the cloud confirms the delete.
+        pendingCloudDeletes.insert(key)
+        persistData()
+
         guard cloudKitAvailable else { return }
-        Task { await cloudKit.deleteRecord(recordType: T.ckRecordType, recordName: item.ckRecordName) }
+        Task {
+            let success = await cloudKit.deleteRecordReturningSuccess(recordType: T.ckRecordType, recordName: item.ckRecordName)
+            if success {
+                pendingCloudDeletes.remove(key)
+                persistData()
+            }
+        }
+    }
+
+    static func tombstoneKey(type: String, name: String) -> String { "\(type)|\(name)" }
+
+    /// Push any tombstoned deletes to the cloud. Called at the start of a
+    /// push. Each confirmed delete is removed from the pending set.
+    private func drainPendingDeletes() async {
+        guard cloudKitAvailable, !pendingCloudDeletes.isEmpty else { return }
+        for key in pendingCloudDeletes {
+            guard let sep = key.firstIndex(of: "|") else {
+                pendingCloudDeletes.remove(key)
+                continue
+            }
+            let type = String(key[..<sep])
+            let name = String(key[key.index(after: sep)...])
+            let success = await cloudKit.deleteRecordReturningSuccess(recordType: type, recordName: name)
+            if success { pendingCloudDeletes.remove(key) }
+        }
+        persistData()
     }
 
     func checkCloudKitAvailability() {
@@ -944,6 +988,31 @@ class DataStore: ObservableObject {
         swapGanttSortOrder(task, with: visibleTasks[idx + 1])
     }
 
+    /// Drag-reorder: reassign sortOrder for `orderedSiblings` (tasks of one
+    /// project, in their new display order) by reusing their existing
+    /// sortOrder values in the new sequence. Only intra-project order matters
+    /// for display, so this leaves other projects untouched.
+    func reorderGanttSiblings(_ orderedSiblings: [GanttTask]) {
+        guard orderedSiblings.count > 1 else { return }
+        let ids = orderedSiblings.map(\.id)
+        var pool = ganttTasks.filter { ids.contains($0.id) }.map(\.sortOrder).sorted()
+        // If the values aren't unique (e.g. all default 0), seed globally first
+        // so each task has a distinct value to reassign.
+        if Set(pool).count != pool.count {
+            normalizeGanttSortOrders()
+            pool = ganttTasks.filter { ids.contains($0.id) }.map(\.sortOrder).sorted()
+        }
+        for (i, task) in orderedSiblings.enumerated() {
+            guard i < pool.count, let idx = ganttTasks.firstIndex(where: { $0.id == task.id }) else { continue }
+            if ganttTasks[idx].sortOrder != pool[i] {
+                ganttTasks[idx].sortOrder = pool[i]
+                syncRecord(ganttTasks[idx])
+            }
+        }
+        logAudit(.updated, type: "Gantt Task", name: "\(orderedSiblings.count) tasks", details: "Reordered")
+        persistData()
+    }
+
     private func swapGanttSortOrder(_ a: GanttTask, with b: GanttTask) {
         guard let aIdx = ganttTasks.firstIndex(where: { $0.id == a.id }),
               let bIdx = ganttTasks.firstIndex(where: { $0.id == b.id }) else { return }
@@ -967,6 +1036,42 @@ class DataStore: ObservableObject {
             ganttTasks[i].sortOrder = i
             syncRecord(ganttTasks[i])
         }
+    }
+
+    /// Shift the start date of every selected (non-pinned) task by `days`.
+    /// Used by the Gantt group-drag (marquee selection + drag).
+    func moveGanttTasks(ids: Set<UUID>, byDays days: Int) {
+        guard days != 0, !ids.isEmpty else { return }
+        var moved = 0
+        for i in ganttTasks.indices where ids.contains(ganttTasks[i].id) && !ganttTasks[i].isPinned {
+            ganttTasks[i].startDate = Calendar.current.date(byAdding: .day, value: days, to: ganttTasks[i].startDate) ?? ganttTasks[i].startDate
+            syncRecord(ganttTasks[i])
+            moved += 1
+        }
+        guard moved > 0 else { return }
+        logAudit(.updated, type: "Gantt Task", name: "\(moved) tasks", details: "Moved \(days) day(s)")
+        persistData()
+    }
+
+    /// Reassign every task's sortOrder to match start-date order so the list
+    /// reads chronologically top-to-bottom. Stable for equal start dates.
+    /// Sorting the whole list also yields chronological order within each
+    /// project group (a project's tasks stay a subsequence of the global one).
+    func sortGanttTasksByStartDate() {
+        let ordered = ganttTasks.enumerated().sorted { a, b in
+            if a.element.startDate != b.element.startDate {
+                return a.element.startDate < b.element.startDate
+            }
+            return a.offset < b.offset
+        }
+        for (newOrder, entry) in ordered.enumerated() {
+            let idx = entry.offset
+            guard ganttTasks[idx].sortOrder != newOrder else { continue }
+            ganttTasks[idx].sortOrder = newOrder
+            syncRecord(ganttTasks[idx])
+        }
+        logAudit(.updated, type: "Gantt Task", name: "All tasks", details: "Sorted by start date")
+        persistData()
     }
 
     func generateSampleGanttTasks() {
@@ -1666,4 +1771,16 @@ class DataStore: ObservableObject {
         let margin = rev > 0 ? Double(truncating: (prof / rev * 100) as NSDecimalNumber) : 0
         return (rev, cost, prof, margin)
     }
+}
+
+// MARK: - Shared singleton
+
+/// App-wide single instance. SwiftUI `App` uses this as its `@StateObject`
+/// source, and out-of-band entry points (App Intents, the CloudKit
+/// share-acceptance app delegate) reach the live state through here.
+/// `@unchecked Sendable` is needed because non-MainActor callers (App
+/// Intents) need to capture a reference before hopping onto the main actor.
+extension DataStore: @unchecked Sendable {
+    @MainActor
+    static let shared = DataStore()
 }

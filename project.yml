@@ -49,6 +49,16 @@ targets:
         embed: true
       - target: SteelSyncWidgets-Mac
         embed: true
+    info:
+      path: SteelSync/Info-Mac.plist
+      properties:
+        CFBundleName: $(PRODUCT_NAME)
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSHumanReadableCopyright: ""
+        CKSharingSupported: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jrfv.SteelSync
@@ -56,8 +66,6 @@ targets:
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
-        INFOPLIST_GENERATION_MODE: GeneratedFile
-        GENERATE_INFOPLIST_FILE: YES
         SWIFT_EMIT_LOC_STRINGS: YES
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "Apple Development"
@@ -73,6 +81,21 @@ targets:
     sources:
       - path: SteelSync
         type: group
+    info:
+      path: SteelSync/Info-iPad.plist
+      properties:
+        CFBundleName: $(PRODUCT_NAME)
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        MinimumOSVersion: $(IPHONEOS_DEPLOYMENT_TARGET)
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+          - UIInterfaceOrientationPortraitUpsideDown
+        UILaunchScreen: {}
+        CKSharingSupported: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jrfv.SteelSync
@@ -81,8 +104,6 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         TARGETED_DEVICE_FAMILY: "2"
-        INFOPLIST_GENERATION_MODE: GeneratedFile
-        GENERATE_INFOPLIST_FILE: YES
         SWIFT_EMIT_LOC_STRINGS: YES
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "Apple Development"
@@ -197,6 +218,7 @@ targets:
           - CFBundleURLName: com.jrfv.SteelSync.Phone
             CFBundleURLSchemes: [steelsync]
         UILaunchScreen: {}
+        CKSharingSupported: true
     dependencies:
       - target: SteelSyncWidgets
         embed: true

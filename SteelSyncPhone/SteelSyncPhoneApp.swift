@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct SteelSyncPhoneApp: App {
     @StateObject private var dataStore = DataStore.shared
+    @UIApplicationDelegateAdaptor(ShareAcceptanceDelegate.self) private var shareDelegate
 
     var body: some Scene {
         WindowGroup {

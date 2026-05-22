@@ -1,5 +1,6 @@
 import SwiftUI
 import CloudKit
+import UniformTypeIdentifiers
 
 // MARK: - Pay Apps Tab (AIA G703 Schedule of Values + Invoice Tracking)
 
@@ -415,6 +416,7 @@ struct EditPayAppSheet: View {
     let project: Project
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @State private var draggingLineItemID: UUID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -451,6 +453,14 @@ struct EditPayAppSheet: View {
                     accent: AppTheme.primaryOrange
                 )
                 Spacer()
+                changeOrderMenu
+                Button {
+                    addLineItem()
+                } label: {
+                    Label("Add Line Item", systemImage: "plus")
+                }
+                .buttonStyle(.appSecondary)
+                .controlSize(.small)
             }
             .padding(.horizontal, AppTheme.Spacing.lg)
             .padding(.vertical, AppTheme.Spacing.md)
@@ -472,7 +482,7 @@ struct EditPayAppSheet: View {
 
                     sovTotalRow
                 }
-                .frame(minWidth: 800)
+                .frame(minWidth: 878)
             }
         }
         #if os(macOS)
@@ -513,6 +523,7 @@ struct EditPayAppSheet: View {
             Text("% (G÷C)").sovHeader(width: 60)
             Text("H - Balance\nTo Finish").sovHeader(width: 100)
             Text("I - Retainage").sovHeader(width: 90)
+            Text("").sovHeader(width: 78)
         }
         .background(Color.gray.opacity(0.15))
     }
@@ -525,14 +536,40 @@ struct EditPayAppSheet: View {
             Text("\(item.itemNumber)")
                 .sovCell(width: 30)
 
-            // B: Description
-            Text(item.description)
-                .sovCell(width: 160, alignment: .leading)
-                .lineLimit(2)
+            // B: Description (EDITABLE)
+            TextField("Description", text: $payApp.lineItems[index].description)
+                .textFieldStyle(.plain)
+                .font(.caption)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .frame(width: 150, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(AppTheme.primaryOrange.opacity(0.08))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .strokeBorder(AppTheme.primaryOrange.opacity(0.25), lineWidth: 0.5)
+                )
 
-            // C: Scheduled value (read-only)
-            Text(item.scheduledValue.currencyFormatted)
-                .sovCell(width: 100)
+            // C: Scheduled value (EDITABLE)
+            TextField("0", value: $payApp.lineItems[index].scheduledValue, format: .currency(code: "USD"))
+                .textFieldStyle(.plain)
+                .multilineTextAlignment(.trailing)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .frame(width: 90)
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(AppTheme.primaryOrange.opacity(0.08))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .strokeBorder(AppTheme.primaryOrange.opacity(0.25), lineWidth: 0.5)
+                )
+                #if !os(macOS)
+                .keyboardType(.decimalPad)
+                #endif
 
             // D: Previous application (read-only, carried forward)
             Text(item.previousCompleted.currencyFormatted)
@@ -596,8 +633,37 @@ struct EditPayAppSheet: View {
             Text(payApp.lineItems[index].retainage(at: payApp.retainageRate).currencyFormatted)
                 .sovCell(width: 90)
                 .foregroundColor(.orange)
+
+            // Row controls: drag handle to reorder + delete
+            HStack(spacing: 8) {
+                Image(systemName: "line.3.horizontal")
+                    .foregroundColor(.secondary)
+                    .contentShape(Rectangle())
+                    .help("Drag to reorder")
+                    .onDrag {
+                        draggingLineItemID = item.id
+                        return NSItemProvider(object: item.id.uuidString as NSString)
+                    }
+
+                Button(role: .destructive) {
+                    deleteLineItem(at: index)
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.red.opacity(0.75))
+                .help("Delete this line item")
+            }
+            .font(.caption)
+            .frame(width: 78)
         }
         .font(.caption)
+        .opacity(draggingLineItemID == item.id ? 0.5 : 1)
+        .onDrop(of: [.text], delegate: RowReorderDropDelegate(
+            targetID: item.id,
+            draggingID: $draggingLineItemID,
+            onReorder: { from, to in moveLineItem(from: from, to: to) }
+        ))
     }
 
     // MARK: - Grand Total Row
@@ -614,9 +680,96 @@ struct EditPayAppSheet: View {
             Text(String(format: "%.1f%%", payApp.overallPercentComplete)).sovCell(width: 60).fontWeight(.bold)
             Text(payApp.totalBalanceToFinish.currencyFormatted).sovCell(width: 100)
             Text(payApp.totalRetainage.currencyFormatted).sovCell(width: 90).fontWeight(.bold).foregroundColor(.orange)
+            Text("").sovCell(width: 78)
         }
         .background(Color.gray.opacity(0.1))
         .font(.caption)
+    }
+
+    // MARK: - Change Orders
+
+    /// Menu of every change order on the project. Checked entries are already
+    /// in the SOV; toggling adds or removes the matching line item. New pay
+    /// apps still auto-import COs (see DataStore.buildNewPayApp) — this just
+    /// lets the user override that selection per application.
+    private var changeOrderMenu: some View {
+        Menu {
+            let cos = dataStore.changeOrders(for: project.id)
+            if cos.isEmpty {
+                Text("No change orders for this project")
+            } else {
+                ForEach(cos) { co in
+                    Button {
+                        toggleChangeOrder(co)
+                    } label: {
+                        let title = "CO #\(co.number): \(co.description) · \(co.amount.currencyFormatted)"
+                        if isChangeOrderIncluded(co) {
+                            Label(title, systemImage: "checkmark")
+                        } else {
+                            Text(title)
+                        }
+                    }
+                }
+            }
+        } label: {
+            Label("Change Orders", systemImage: "plus.forwardslash.minus")
+        }
+        .menuStyle(.borderlessButton)
+        .controlSize(.small)
+        .fixedSize()
+        .help("Add or remove change orders in this Schedule of Values")
+    }
+
+    private func isChangeOrderIncluded(_ co: ChangeOrder) -> Bool {
+        payApp.lineItems.contains { $0.changeOrderID == co.id }
+    }
+
+    private func toggleChangeOrder(_ co: ChangeOrder) {
+        if let idx = payApp.lineItems.firstIndex(where: { $0.changeOrderID == co.id }) {
+            payApp.lineItems.remove(at: idx)
+        } else {
+            let nextNumber = (payApp.lineItems.map(\.itemNumber).max() ?? 0) + 1
+            payApp.lineItems.append(SOVLineItem(
+                itemNumber: nextNumber,
+                description: "CO #\(co.number): \(co.description)",
+                scheduledValue: co.amount,
+                isChangeOrder: true,
+                changeOrderID: co.id
+            ))
+        }
+        renumberLineItems()
+    }
+
+    // MARK: - Line Item Mutations
+
+    private func addLineItem() {
+        let nextNumber = (payApp.lineItems.map(\.itemNumber).max() ?? 0) + 1
+        payApp.lineItems.append(
+            SOVLineItem(itemNumber: nextNumber, description: "", scheduledValue: 0)
+        )
+    }
+
+    private func deleteLineItem(at index: Int) {
+        guard payApp.lineItems.indices.contains(index) else { return }
+        payApp.lineItems.remove(at: index)
+        renumberLineItems()
+    }
+
+    /// Drag-reorder: move the line item with id `from` to the position of `to`.
+    private func moveLineItem(from: UUID, to: UUID) {
+        guard let f = payApp.lineItems.firstIndex(where: { $0.id == from }),
+              let t = payApp.lineItems.firstIndex(where: { $0.id == to }), f != t else { return }
+        withAnimation(.easeInOut(duration: 0.18)) {
+            payApp.lineItems.move(fromOffsets: IndexSet(integer: f), toOffset: t > f ? t + 1 : t)
+        }
+        renumberLineItems()
+    }
+
+    /// Keep column A (item number) sequential after a reorder or delete.
+    private func renumberLineItems() {
+        for i in payApp.lineItems.indices {
+            payApp.lineItems[i].itemNumber = i + 1
+        }
     }
 
     private func save() {
@@ -981,9 +1134,14 @@ struct ExportPayAppSheet: View {
     }
 
     enum PDFFormat: String, CaseIterable, Identifiable {
-        case g703 = "AIA G702 / G703"
-        case steelSync = "SteelSync Branded"
+        case g703 = "AIA G702 / G703 (PDF)"
+        case steelSync = "SteelSync Branded (PDF)"
+        case subcontractorAIA = "Carrillo Submittal format (PDF)"
+        case subcontractorXLSX = "Carrillo Submittal format (Excel .xlsx)"
+        case subcontractorFullRelease = "Full w/ Release Lien (PDF)"
         var id: String { rawValue }
+
+        var isExcel: Bool { self == .subcontractorXLSX }
     }
 
     private var formatBlurb: String {
@@ -994,6 +1152,12 @@ struct ExportPayAppSheet: View {
                 : "Single-page G703 Schedule of Values only. Useful for subcontractors that don't require the G702 cover."
         case .steelSync:
             return "Clean, modern invoice layout with SteelSync branding. Same data, more readable."
+        case .subcontractorAIA:
+            return "Two-page subcontractor pay application matching the Carrillo Steel submittal template — application certificate page + schedule of values continuation with subtotals, change-order section, and summary block."
+        case .subcontractorXLSX:
+            return "Editable Excel workbook (.xlsx) with two sheets matching the Carrillo Steel submittal template — Application sheet (lines 1–9, lien release & notary block, change order summary) + Schedule of Values sheet. All numbers are real Excel currency cells you can edit for next month's app."
+        case .subcontractorFullRelease:
+            return "Same two-page Carrillo Submittal format, but the right-hand certification column is replaced with a full WAIVER & RELEASE OF LIEN block — McGregor / Miller Act language, blank notary fields, and a PM / DATE PAID / CHECK # / AMOUNT footer for back-office bookkeeping."
         }
     }
 
@@ -1053,14 +1217,23 @@ struct ExportPayAppSheet: View {
     }
 
     private func export() {
-        let renderer = PayAppPDFRenderer(
-            payApp: payApp,
-            project: project,
-            client: billToClient,
-            format: selectedFormat,
-            includeG702Cover: includeG702Cover
-        )
-        if let url = renderer.render() {
+        let url: URL?
+        if selectedFormat.isExcel {
+            url = PayAppXLSXRenderer(
+                payApp: payApp,
+                project: project,
+                client: billToClient
+            ).render()
+        } else {
+            url = PayAppPDFRenderer(
+                payApp: payApp,
+                project: project,
+                client: billToClient,
+                format: selectedFormat,
+                includeG702Cover: includeG702Cover
+            ).render()
+        }
+        if let url {
             exportURL = url
             #if os(macOS)
             NSWorkspace.shared.activateFileViewerSelecting([url])

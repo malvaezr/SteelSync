@@ -12,10 +12,16 @@ private extension Notification.Name {
 @main
 #endif
 struct SteelSyncApp: App {
-    @StateObject private var dataStore = DataStore()
+    @StateObject private var dataStore = DataStore.shared
     @StateObject private var navigationState = NavigationState()
     @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject private var notificationService = NotificationService.shared
+
+    #if os(macOS)
+    @NSApplicationDelegateAdaptor(ShareAcceptanceDelegate.self) private var shareDelegate
+    #else
+    @UIApplicationDelegateAdaptor(ShareAcceptanceDelegate.self) private var shareDelegate
+    #endif
 
     var body: some Scene {
         WindowGroup {

@@ -17,7 +17,7 @@ A native macOS SwiftUI app for steel erection project management, built from an 
 - **SwiftUI** with **MVVM** pattern
 - **DataStore** (`Services/DataStore.swift`) — central `@MainActor ObservableObject` holding all state
 - **NavigationSplitView** with sidebar → detail layout
-- **CloudKit-ready** models using `CKRecord.ID` / `CKRecord.Reference` (container: `iCloud.com.jrsteelwelding.app`)
+- **CloudKit-backed** models using `CKRecord.ID` / `CKRecord.Reference` (container: `iCloud.com.jrfv.SteelSync`, zone: `SteelSyncZone`, private DB; Push/Pull driven manually from the sidebar)
 
 ## File Structure (30 Swift files, ~5,200 LOC)
 ```

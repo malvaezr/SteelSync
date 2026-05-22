@@ -12,6 +12,7 @@ struct AddBidView: View {
     @State private var address = ""
     @State private var bidAmount = ""
     @State private var bidDueDate = Date().addingTimeInterval(86400 * 14)
+    @State private var priority: BidPriority = .normal
     @State private var squareFeet = ""
     @State private var beams = ""
     @State private var columns = ""
@@ -94,6 +95,17 @@ struct AddBidView: View {
                         .appControlSurface()
                 }
             }
+
+            LabeledField(label: "Priority") {
+                Picker("", selection: $priority) {
+                    ForEach(BidPriority.allCases, id: \.self) { p in
+                        Label(p.rawValue, systemImage: p.icon).tag(p)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .appControlSurface()
+            }
         }
     }
 
@@ -136,6 +148,7 @@ struct AddBidView: View {
             projectName: projectName, clientName: clientName, clientRef: clientRef, address: address,
             bidAmount: Decimal(string: bidAmount.replacingOccurrences(of: ",", with: "")) ?? 0,
             bidDueDate: bidDueDate,
+            priority: priority,
             squareFeet: Int(squareFeet) ?? 0, numberOfBeams: Int(beams) ?? 0,
             numberOfColumns: Int(columns) ?? 0, numberOfJoists: Int(joists) ?? 0,
             numberOfWallPanels: Int(wallPanels) ?? 0,
@@ -158,6 +171,7 @@ struct EditBidView: View {
     @State private var address: String
     @State private var bidAmount: String
     @State private var bidDueDate: Date
+    @State private var priority: BidPriority
     @State private var squareFeet: String
     @State private var beams: String
     @State private var columns: String
@@ -174,6 +188,7 @@ struct EditBidView: View {
         _address = State(initialValue: bid.address)
         _bidAmount = State(initialValue: "\(bid.bidAmount)")
         _bidDueDate = State(initialValue: bid.bidDueDate)
+        _priority = State(initialValue: bid.priority)
         _squareFeet = State(initialValue: bid.squareFeet > 0 ? "\(bid.squareFeet)" : "")
         _beams = State(initialValue: bid.numberOfBeams > 0 ? "\(bid.numberOfBeams)" : "")
         _columns = State(initialValue: bid.numberOfColumns > 0 ? "\(bid.numberOfColumns)" : "")
@@ -256,6 +271,17 @@ struct EditBidView: View {
                         .appControlSurface()
                 }
             }
+
+            LabeledField(label: "Priority") {
+                Picker("", selection: $priority) {
+                    ForEach(BidPriority.allCases, id: \.self) { p in
+                        Label(p.rawValue, systemImage: p.icon).tag(p)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .appControlSurface()
+            }
         }
     }
 
@@ -299,6 +325,7 @@ struct EditBidView: View {
         updated.address = address
         updated.bidAmount = Decimal(string: bidAmount.replacingOccurrences(of: ",", with: "")) ?? 0
         updated.bidDueDate = bidDueDate
+        updated.priority = priority
         updated.squareFeet = Int(squareFeet) ?? 0; updated.numberOfBeams = Int(beams) ?? 0
         updated.numberOfColumns = Int(columns) ?? 0; updated.numberOfJoists = Int(joists) ?? 0
         updated.numberOfWallPanels = Int(wallPanels) ?? 0

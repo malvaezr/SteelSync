@@ -35,12 +35,23 @@ struct GanttPDFRenderer {
     private let footerHeight: CGFloat = 30   // legend strip on last page
     private let taskListWidth: CGFloat = 320
 
-    /// Multi-project exports get a project subtitle under each task name,
-    /// so each row is taller. Single-project exports stay compact.
+    /// Multi-project exports get a project subtitle under each task name.
     private var showsProjectSubtitle: Bool {
         Set(tasks.map(\.projectID)).count > 1
     }
-    private var rowHeight: CGFloat { showsProjectSubtitle ? 30 : 22 }
+
+    /// Minimum row height. Rows whose task name wraps onto extra lines grow
+    /// taller than this; single-line rows stay at the compact minimum so the
+    /// look matches the previous fixed-height layout.
+    private var minRowHeight: CGFloat { showsProjectSubtitle ? 30 : 22 }
+
+    /// Vertical space per wrapped line of the task name (regular 10pt) and per
+    /// project subtitle line (regular 7pt).
+    private let nameLineHeight: CGFloat = 13
+    private let subtitleLineHeight: CGFloat = 10
+    /// Hard cap on wrapped name lines so one pathological name can't eat a
+    /// whole page; the last line gets an ellipsis if it overflows the cap.
+    private let maxNameLines = 4
 
     // Column splits inside the task list (relative to task-list left edge).
     // Sum + 8pt left padding = taskListWidth (320). Days column gets a wider
@@ -54,13 +65,9 @@ struct GanttPDFRenderer {
     private var pageTop: CGFloat { pageHeight - margin }
     private var titleBlockBottom: CGFloat { pageTop - titleBlockHeight }
     private var dateHeaderBottom: CGFloat { titleBlockBottom - dateHeaderHeight }
-    /// CG-y of the BOTTOM of the first task row (CGRect.y for that row).
-    /// Sits flush below the date header with no overlap.
-    private var firstRowBottom: CGFloat { dateHeaderBottom - rowHeight }
     private var rowAreaBottom: CGFloat { margin + footerHeight }
-    private var rowsPerPage: Int {
-        max(1, Int((dateHeaderBottom - rowAreaBottom) / rowHeight))
-    }
+    /// Vertical space available for task rows on a page.
+    private var availableRowHeight: CGFloat { dateHeaderBottom - rowAreaBottom }
 
     private var timelineLeft: CGFloat { margin + taskListWidth }
     private var timelineRight: CGFloat { pageWidth - margin }
@@ -69,12 +76,33 @@ struct GanttPDFRenderer {
     // MARK: - Render
 
     func render() -> URL? {
-        let visibleTasks = tasks.sorted { $0.sortOrder < $1.sortOrder }
+        // Only include tasks whose active span intersects the export window —
+        // passed tasks (ending before the range) and not-yet-started tasks
+        // (starting after the range) are omitted entirely.
+        let visibleTasks = tasks
+            .filter { taskOverlapsRange($0) }
+            .sorted { $0.sortOrder < $1.sortOrder }
+        let rows = layoutRows(visibleTasks)
 
         let totalDays = max(1, daysBetween(dateRange.lowerBound, dateRange.upperBound))
         let dayWidth = timelineWidth / CGFloat(totalDays)
 
-        let pageCount = max(1, Int(ceil(Double(visibleTasks.count) / Double(rowsPerPage))))
+        // Paginate by cumulative row height: keep adding rows to a page until
+        // the next one wouldn't fit in the available row area.
+        var pages: [[LaidOutRow]] = []
+        var currentPage: [LaidOutRow] = []
+        var usedHeight: CGFloat = 0
+        for row in rows {
+            if !currentPage.isEmpty && usedHeight + row.height > availableRowHeight {
+                pages.append(currentPage)
+                currentPage = []
+                usedHeight = 0
+            }
+            currentPage.append(row)
+            usedHeight += row.height
+        }
+        if !currentPage.isEmpty { pages.append(currentPage) }
+        if pages.isEmpty { pages = [[]] }
 
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("Gantt-\(safeFilename(title))-\(Self.timestamp).pdf")
@@ -82,23 +110,21 @@ struct GanttPDFRenderer {
         var mediaBox = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
         guard let context = CGContext(url as CFURL, mediaBox: &mediaBox, nil) else { return nil }
 
-        for pageIndex in 0..<pageCount {
-            let start = pageIndex * rowsPerPage
-            let end = min(start + rowsPerPage, visibleTasks.count)
-            let pageTasks = Array(visibleTasks[start..<end])
-            let isLastPage = (pageIndex == pageCount - 1)
+        for (pageIndex, pageRows) in pages.enumerated() {
+            let isLastPage = (pageIndex == pages.count - 1)
+            let rowsHeight = pageRows.reduce(0) { $0 + $1.height }
 
             context.beginPDFPage(nil)
-            drawTitleBlock(in: context, pageIndex: pageIndex, pageCount: pageCount)
+            drawTitleBlock(in: context, pageIndex: pageIndex, pageCount: pages.count)
             drawColumnHeaders(in: context)
             drawDateHeader(in: context, dayWidth: dayWidth, totalDays: totalDays)
             // Weekend shading sits BELOW gridlines and bars but ABOVE the
             // date header fill, so the chart background visibly differs on
             // Sat/Sun without obscuring tick labels above.
-            drawWeekendShading(in: context, dayWidth: dayWidth, totalDays: totalDays, rowCount: pageTasks.count)
-            drawGridlines(in: context, dayWidth: dayWidth, totalDays: totalDays, rowCount: pageTasks.count)
-            drawTaskRows(in: context, pageTasks: pageTasks, dayWidth: dayWidth)
-            drawTodayLine(in: context, dayWidth: dayWidth, totalDays: totalDays, rowCount: pageTasks.count)
+            drawWeekendShading(in: context, dayWidth: dayWidth, totalDays: totalDays, rowsHeight: rowsHeight)
+            drawGridlines(in: context, dayWidth: dayWidth, totalDays: totalDays, rowsHeight: rowsHeight)
+            drawTaskRows(in: context, pageRows: pageRows, dayWidth: dayWidth)
+            drawTodayLine(in: context, dayWidth: dayWidth, totalDays: totalDays, rowsHeight: rowsHeight)
             if isLastPage {
                 drawCategoryLegend(in: context, tasks: visibleTasks)
             }
@@ -107,6 +133,27 @@ struct GanttPDFRenderer {
 
         context.closePDF()
         return url
+    }
+
+    // MARK: - Row layout (wrapping + height)
+
+    /// A task row with its name pre-wrapped to fit the name column and the
+    /// resulting row height computed.
+    private struct LaidOutRow {
+        let task: GanttTask
+        let nameLines: [String]
+        let height: CGFloat
+    }
+
+    private func layoutRows(_ tasks: [GanttTask]) -> [LaidOutRow] {
+        tasks.map { task in
+            let lines = wrapText(task.name, font: regular(10),
+                                 maxWidth: nameColumnWidth - 16, maxLines: maxNameLines)
+            let textBlock = CGFloat(lines.count) * nameLineHeight
+                + (showsProjectSubtitle ? subtitleLineHeight : 0)
+            let height = max(minRowHeight, textBlock + 9)
+            return LaidOutRow(task: task, nameLines: lines, height: height)
+        }
     }
 
     // MARK: - Drawing — title block
@@ -255,11 +302,11 @@ struct GanttPDFRenderer {
     // the chart row area. Helps the PM see at a glance which days are
     // off-calendar so a bar that crosses a weekend is obvious.
 
-    private func drawWeekendShading(in ctx: CGContext, dayWidth: CGFloat, totalDays: Int, rowCount: Int) {
-        guard rowCount > 0 else { return }
+    private func drawWeekendShading(in ctx: CGContext, dayWidth: CGFloat, totalDays: Int, rowsHeight: CGFloat) {
+        guard rowsHeight > 0 else { return }
         let cal = Calendar.current
         let topY = dateHeaderBottom
-        let bottomY = topY - CGFloat(rowCount) * rowHeight
+        let bottomY = topY - rowsHeight
 
         // Cool-tinted gray so weekends read as "non-working time" and don't
         // visually compete with the warmer category bar colors.
@@ -277,10 +324,10 @@ struct GanttPDFRenderer {
 
     // MARK: - Drawing — gridlines extending into the chart area
 
-    private func drawGridlines(in ctx: CGContext, dayWidth: CGFloat, totalDays: Int, rowCount: Int) {
+    private func drawGridlines(in ctx: CGContext, dayWidth: CGFloat, totalDays: Int, rowsHeight: CGFloat) {
         let stride = tickStride(forDays: totalDays)
         let topY = dateHeaderBottom
-        let bottomY = topY - CGFloat(rowCount) * rowHeight
+        let bottomY = topY - rowsHeight
         var day = 0
         while day <= totalDays {
             let x = timelineLeft + CGFloat(day) * dayWidth
@@ -304,22 +351,24 @@ struct GanttPDFRenderer {
 
     // MARK: - Drawing — task rows
 
-    private func drawTaskRows(in ctx: CGContext, pageTasks: [GanttTask], dayWidth: CGFloat) {
-        var y = firstRowBottom
-        for (i, task) in pageTasks.enumerated() {
-            let rowRect = CGRect(x: margin, y: y, width: pageWidth - margin * 2, height: rowHeight)
+    private func drawTaskRows(in ctx: CGContext, pageRows: [LaidOutRow], dayWidth: CGFloat) {
+        var y = dateHeaderBottom
+        for (i, row) in pageRows.enumerated() {
+            let task = row.task
+            let h = row.height
+            y -= h   // y is now the BOTTOM of this row
 
             // Zebra striping (subtle — light gray for even rows in task-list area only;
             // the timeline gets a fully transparent stripe so gridlines remain visible)
             if i % 2 == 0 {
                 ctx.setFillColor(gray(0.97))
-                ctx.fill(CGRect(x: margin, y: y, width: taskListWidth, height: rowHeight))
+                ctx.fill(CGRect(x: margin, y: y, width: taskListWidth, height: h))
             }
 
-            drawTaskListColumns(in: ctx, task: task, rowY: y)
+            drawTaskListColumns(in: ctx, row: row, rowY: y)
 
             // Bar
-            let barRect = barRect(for: task, in: rowRect, dayWidth: dayWidth)
+            let barRect = barRect(for: task, rowY: y, rowHeight: h, dayWidth: dayWidth)
             if barRect.width > 0 {
                 let color = categoryColor(task.category)
                 ctx.setFillColor(color)
@@ -348,12 +397,6 @@ struct GanttPDFRenderer {
                              color: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.85),
                              in: ctx)
                 }
-            } else if let outOfRangeMark = outOfRangeMarker(for: task) {
-                // Task is fully outside the date window — show a small chevron at
-                // the appropriate edge so the PM knows it exists.
-                drawText(outOfRangeMark.symbol,
-                         at: CGPoint(x: outOfRangeMark.x, y: y + rowHeight / 2 - 5),
-                         font: regular(11), color: categoryColor(task.category), in: ctx)
             }
 
             // Row baseline rule
@@ -362,52 +405,52 @@ struct GanttPDFRenderer {
             ctx.move(to: CGPoint(x: margin, y: y))
             ctx.addLine(to: CGPoint(x: pageWidth - margin, y: y))
             ctx.strokePath()
-
-            y -= rowHeight
         }
     }
 
-    private func drawTaskListColumns(in ctx: CGContext, task: GanttTask, rowY: CGFloat) {
-        let centerY = rowY + rowHeight / 2 - 4
-        // When a subtitle is shown the task name sits in the upper half of
-        // the row, so dates/days align with it instead of the geometric
-        // centerline (which would make them visually droop below the name).
-        let textY = showsProjectSubtitle ? rowY + rowHeight - 14 : centerY
+    private func drawTaskListColumns(in ctx: CGContext, row: LaidOutRow, rowY: CGFloat) {
+        let task = row.task
+        let h = row.height
+        let lines = row.nameLines
+
+        // Vertically center the name block (plus subtitle, if any) within the
+        // row. `firstBaseline` is the text baseline of the top name line; each
+        // subsequent line drops by `nameLineHeight`. For a single-line,
+        // no-subtitle row this lands on the same baseline as the old layout.
+        let blockHeight = CGFloat(lines.count) * nameLineHeight
+            + (showsProjectSubtitle ? subtitleLineHeight : 0)
+        let blockTop = rowY + (h + blockHeight) / 2
+        let firstBaseline = blockTop - nameLineHeight + 3
+
         var x = margin + 8
 
-        // Status indicator dot — sits centered when there's no subtitle,
-        // nudged up a touch when there is so it lines up with the task name.
-        let dotY = showsProjectSubtitle ? rowY + rowHeight - 12 : centerY + 1
-        let statusColor = statusCGColor(task.status)
-        ctx.setFillColor(statusColor)
+        // Status indicator dot — aligned to the top name line.
+        let dotY = firstBaseline + 1
+        ctx.setFillColor(statusCGColor(task.status))
         ctx.fillEllipse(in: CGRect(x: x, y: dotY, width: 7, height: 7))
         x += 12
 
-        // Task name. When the export covers multiple projects we draw a
-        // small project subtitle below the name so the PM can tell which
-        // job each row belongs to without flipping pages.
+        // Task name, wrapped across as many lines as it needs.
+        for (idx, lineStr) in lines.enumerated() {
+            drawText(lineStr,
+                     at: CGPoint(x: x, y: firstBaseline - CGFloat(idx) * nameLineHeight),
+                     font: regular(10), color: .black, in: ctx)
+        }
+
+        // Project subtitle (multi-project exports) sits just below the name.
         if showsProjectSubtitle {
-            let nameY = rowY + rowHeight - 14
-            let projectY = rowY + 4
-            drawText(task.name,
-                     at: CGPoint(x: x, y: nameY),
-                     font: regular(10), color: .black, in: ctx,
-                     maxWidth: nameColumnWidth - 16, truncate: true)
             let projectTitle = projectsByID[task.projectID] ?? ""
             if !projectTitle.isEmpty {
+                let subY = firstBaseline - CGFloat(lines.count) * nameLineHeight
                 drawText(projectTitle,
-                         at: CGPoint(x: x, y: projectY),
+                         at: CGPoint(x: x, y: subY),
                          font: regular(7), color: gray(0.5), in: ctx,
                          maxWidth: nameColumnWidth - 16, truncate: true)
             }
-        } else {
-            drawText(task.name,
-                     at: CGPoint(x: x, y: centerY),
-                     font: regular(10), color: .black, in: ctx,
-                     maxWidth: nameColumnWidth - 16, truncate: true)
         }
 
-        // Start date
+        // Dates + days align to the top name line.
+        let textY = firstBaseline
         x = margin + 8 + nameColumnWidth
         drawText(formatShortDate(task.startDate),
                  at: CGPoint(x: x, y: textY),
@@ -431,14 +474,14 @@ struct GanttPDFRenderer {
 
     // MARK: - Drawing — Today line
 
-    private func drawTodayLine(in ctx: CGContext, dayWidth: CGFloat, totalDays: Int, rowCount: Int) {
+    private func drawTodayLine(in ctx: CGContext, dayWidth: CGFloat, totalDays: Int, rowsHeight: CGFloat) {
         let today = Date()
         guard today >= dateRange.lowerBound && today <= dateRange.upperBound else { return }
 
         let offset = CGFloat(daysBetween(dateRange.lowerBound, today))
         let x = timelineLeft + offset * dayWidth
         let topY = dateHeaderBottom + dateHeaderHeight
-        let bottomY = max(rowAreaBottom, dateHeaderBottom - CGFloat(rowCount) * rowHeight)
+        let bottomY = max(rowAreaBottom, dateHeaderBottom - rowsHeight)
 
         ctx.saveGState()
         ctx.setStrokeColor(CGColor(srgbRed: 0.9, green: 0.2, blue: 0.2, alpha: 0.85))
@@ -497,7 +540,7 @@ struct GanttPDFRenderer {
 
     // MARK: - Geometry helpers
 
-    private func barRect(for task: GanttTask, in rowRect: CGRect, dayWidth: CGFloat) -> CGRect {
+    private func barRect(for task: GanttTask, rowY: CGFloat, rowHeight: CGFloat, dayWidth: CGFloat) -> CGRect {
         // Task occupies [startDate, startDate + durationDays). Exclusive end.
         let taskEnd = endDate(for: task)
         let clippedStart = max(task.startDate, dateRange.lowerBound)
@@ -509,8 +552,10 @@ struct GanttPDFRenderer {
 
         let x = timelineLeft + startOffset * dayWidth
         let width = max(2, (endOffset - startOffset) * dayWidth)
-        let barHeight: CGFloat = rowHeight - 8
-        let y = rowRect.minY + (rowHeight - barHeight) / 2
+        // Cap bar thickness so tall (multi-line) rows don't get a chunky bar;
+        // center it vertically within the row.
+        let barHeight: CGFloat = min(14, rowHeight - 8)
+        let y = rowY + (rowHeight - barHeight) / 2
         return CGRect(x: x, y: y, width: width, height: barHeight)
     }
 
@@ -533,14 +578,12 @@ struct GanttPDFRenderer {
         return max(task.startDate, oneDayBack)
     }
 
-    private func outOfRangeMarker(for task: GanttTask) -> (symbol: String, x: CGFloat)? {
+    /// Whether a task's active span intersects the export window. Tasks that
+    /// end before the range (passed) or start after it are excluded from the
+    /// export entirely.
+    private func taskOverlapsRange(_ task: GanttTask) -> Bool {
         let taskEnd = endDate(for: task)
-        if taskEnd < dateRange.lowerBound {
-            return ("◀", timelineLeft + 4)        // entirely before window
-        } else if task.startDate > dateRange.upperBound {
-            return ("▶", timelineRight - 14)      // entirely after window
-        }
-        return nil
+        return taskEnd > dateRange.lowerBound && task.startDate <= dateRange.upperBound
     }
 
     private func daysBetween(_ a: Date, _ b: Date) -> Int {
@@ -695,6 +738,58 @@ struct GanttPDFRenderer {
             current.removeLast()
         }
         return current + "…"
+    }
+
+    /// Word-wrap `string` to fit `maxWidth`, returning one entry per line.
+    /// Words longer than the column are hard-broken by character. If the text
+    /// needs more than `maxLines`, the final line is ellipsized.
+    private func wrapText(_ string: String, font: CTFont, maxWidth: CGFloat, maxLines: Int) -> [String] {
+        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return [""] }
+        if estimateWidth(trimmed, font: font) <= maxWidth { return [trimmed] }
+
+        var words = trimmed.split(separator: " ").map(String.init)
+        var lines: [String] = []
+        var current = ""
+        var i = 0
+
+        while i < words.count {
+            let word = words[i]
+            let candidate = current.isEmpty ? word : current + " " + word
+            if estimateWidth(candidate, font: font) <= maxWidth {
+                current = candidate
+                i += 1
+            } else if current.isEmpty {
+                // Single word wider than the column — hard-break by character.
+                var chunk = ""
+                var consumed = 0
+                for ch in word {
+                    if estimateWidth(chunk + String(ch), font: font) <= maxWidth {
+                        chunk.append(ch); consumed += 1
+                    } else { break }
+                }
+                if chunk.isEmpty { chunk = String(word.first!); consumed = 1 }
+                lines.append(chunk)
+                words[i] = String(word.dropFirst(consumed))
+                if lines.count >= maxLines { break }
+            } else {
+                lines.append(current)
+                current = ""
+                if lines.count >= maxLines { break }
+            }
+        }
+        if lines.count < maxLines && !current.isEmpty { lines.append(current) }
+
+        // If text remains beyond the cap, ellipsize the last line.
+        let consumedEverything = (i >= words.count) && current.isEmpty
+        if !consumedEverything, lines.count >= maxLines, var last = lines.popLast() {
+            while !last.isEmpty && estimateWidth(last + "…", font: font) > maxWidth {
+                last.removeLast()
+            }
+            lines.append(last + "…")
+        }
+
+        return lines.isEmpty ? [trimmed] : lines
     }
 }
 

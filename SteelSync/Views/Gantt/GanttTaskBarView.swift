@@ -1,8 +1,11 @@
 import SwiftUI
+#if canImport(AppKit)
+import AppKit
+#endif
 
 struct GanttTaskBarView: View {
     let task: GanttTask
-    let vm: GanttViewModel
+    @ObservedObject var vm: GanttViewModel
     let allTasks: [GanttTask]
     var projectColor: Color = .orange
     var isOnCriticalPath: Bool = false
@@ -11,6 +14,9 @@ struct GanttTaskBarView: View {
     let onUpdate: (GanttTask) -> Void
     var onTogglePin: () -> Void = {}
     var onDelete: () -> Void = {}
+    /// Move every selected task by `days`. Used when this bar is part of a
+    /// multi-selection group drag.
+    var onGroupMove: (Int) -> Void = { _ in }
 
     @State private var dragOffset: CGFloat = 0
     @State private var resizeRightOffset: CGFloat = 0
@@ -23,8 +29,17 @@ struct GanttTaskBarView: View {
         max(vm.barWidth(for: task) + resizeRightOffset - resizeLeftOffset, 10)
     }
     private var barHeight: CGFloat { vm.rowHeight - 10 }
-    private var isSelected: Bool { vm.selectedTaskID == task.id }
+    private var isSelected: Bool { vm.isSelected(task.id) }
     private var isResizing: Bool { isResizingRight || isResizingLeft }
+
+    /// True when this bar is part of an in-flight multi-selection group drag.
+    private var isInGroupDrag: Bool { vm.isGroupDragging && isSelected }
+
+    /// Horizontal drag offset to apply to the bar: the shared group offset
+    /// when group-dragging, otherwise this bar's own local offset.
+    private var effectiveDragOffset: CGFloat {
+        isInGroupDrag ? vm.groupDragOffsetX : dragOffset
+    }
     private var handleWidth: CGFloat {
         #if os(macOS)
         return 10
@@ -66,8 +81,8 @@ struct GanttTaskBarView: View {
                     .offset(x: -4, y: -4)
             }
         }
-        .onTapGesture { vm.selectedTaskID = task.id }
         .onTapGesture(count: 2) { onEdit() }
+        .onTapGesture { selectTapped() }
         .contextMenu {
             Button("Edit") { onEdit() }
             Button(task.isPinned ? "Unpin" : "Pin") { onTogglePin() }
@@ -147,8 +162,8 @@ struct GanttTaskBarView: View {
             color: shadowColor,
             radius: isOnCriticalPath || hasCrewConflict ? 4 : (isSelected ? 3 : 1)
         )
-        .offset(x: dragOffset + resizeLeftOffset)
-        .opacity(isDragging || isResizing ? 0.8 : 1)
+        .offset(x: effectiveDragOffset + resizeLeftOffset)
+        .opacity(isDragging || isResizing || isInGroupDrag ? 0.8 : 1)
         .gesture(moveDrag)
     }
 
@@ -190,8 +205,8 @@ struct GanttTaskBarView: View {
                 .foregroundColor(.white)
         }
         .frame(width: max(effectiveBarWidth, diamondSize), height: barHeight, alignment: .leading)
-        .offset(x: dragOffset + resizeLeftOffset)
-        .opacity(isDragging ? 0.8 : 1)
+        .offset(x: effectiveDragOffset + resizeLeftOffset)
+        .opacity(isDragging || isInGroupDrag ? 0.8 : 1)
         .gesture(moveDrag)
     }
 
@@ -231,12 +246,20 @@ struct GanttTaskBarView: View {
 
     // MARK: - Move Gesture (drag from middle of bar)
 
+    /// True when dragging this bar should move the whole selection.
+    private var dragsAsGroup: Bool { isSelected && vm.selectedTaskIDs.count > 1 }
+
     private var moveDrag: some Gesture {
         DragGesture()
             .onChanged { value in
                 guard !task.isPinned else { return }
-                isDragging = true
-                dragOffset = value.translation.width
+                if dragsAsGroup {
+                    vm.isGroupDragging = true
+                    vm.groupDragOffsetX = value.translation.width
+                } else {
+                    isDragging = true
+                    dragOffset = value.translation.width
+                }
             }
             .onEnded { value in
                 guard !task.isPinned else {
@@ -244,15 +267,34 @@ struct GanttTaskBarView: View {
                     isDragging = false
                     return
                 }
-                isDragging = false
                 let daysMoved = Int(round(value.translation.width / vm.dayWidth))
-                if daysMoved != 0 {
-                    var updated = task
-                    updated.startDate = Calendar.current.date(byAdding: .day, value: daysMoved, to: task.startDate) ?? task.startDate
-                    onUpdate(updated)
+                if dragsAsGroup {
+                    vm.isGroupDragging = false
+                    vm.groupDragOffsetX = 0
+                    if daysMoved != 0 { onGroupMove(daysMoved) }
+                } else {
+                    isDragging = false
+                    if daysMoved != 0 {
+                        var updated = task
+                        updated.startDate = Calendar.current.date(byAdding: .day, value: daysMoved, to: task.startDate) ?? task.startDate
+                        onUpdate(updated)
+                    }
+                    dragOffset = 0
                 }
-                dragOffset = 0
             }
+    }
+
+    /// Selection on single click. Cmd/Shift toggles membership (macOS);
+    /// a plain click selects just this task.
+    private func selectTapped() {
+        #if os(macOS)
+        let mods = NSEvent.modifierFlags
+        if mods.contains(.command) || mods.contains(.shift) {
+            vm.toggleSelection(task.id)
+            return
+        }
+        #endif
+        vm.selectedTaskIDs = [task.id]
     }
 
     // MARK: - Resize Right Gesture

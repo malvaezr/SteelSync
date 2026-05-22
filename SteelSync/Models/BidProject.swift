@@ -1,5 +1,40 @@
 import Foundation
+import SwiftUI
 import CloudKit
+
+enum BidPriority: String, Codable, CaseIterable, Hashable {
+    case urgent = "Urgent"
+    case high = "High"
+    case normal = "Normal"
+    case low = "Low"
+
+    var sortOrder: Int {
+        switch self {
+        case .urgent: return 0
+        case .high: return 1
+        case .normal: return 2
+        case .low: return 3
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .urgent: return .red
+        case .high: return .orange
+        case .normal: return .blue
+        case .low: return .gray
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .urgent: return "exclamationmark.triangle.fill"
+        case .high: return "arrow.up.circle.fill"
+        case .normal: return "minus.circle.fill"
+        case .low: return "arrow.down.circle.fill"
+        }
+    }
+}
 
 struct BidProject: Identifiable, Hashable {
     let recordID: CKRecord.ID
@@ -18,6 +53,7 @@ struct BidProject: Identifiable, Hashable {
     var isReadyToSubmit: Bool
     var isLost: Bool
     var isWorkingOn: Bool
+    var priority: BidPriority
 
     var squareFeet: Int
     var numberOfBeams: Int
@@ -39,6 +75,7 @@ struct BidProject: Identifiable, Hashable {
         isSubmitted: Bool = false, submittedDate: Date? = nil,
         awardedProjectID: String? = nil, isReadyToSubmit: Bool = false, isLost: Bool = false,
         isWorkingOn: Bool = false,
+        priority: BidPriority = .normal,
         squareFeet: Int = 0, numberOfBeams: Int = 0, numberOfColumns: Int = 0,
         numberOfJoists: Int = 0, numberOfWallPanels: Int = 0, estimatedTons: Double = 0,
         touchpoints: [Touchpoint] = [], nextFollowUp: Date? = nil, reminderDate: Date? = nil,
@@ -49,6 +86,7 @@ struct BidProject: Identifiable, Hashable {
         self.createdDate = createdDate; self.isSubmitted = isSubmitted; self.submittedDate = submittedDate
         self.awardedProjectID = awardedProjectID; self.isReadyToSubmit = isReadyToSubmit; self.isLost = isLost
         self.isWorkingOn = isWorkingOn
+        self.priority = priority
         self.squareFeet = squareFeet; self.numberOfBeams = numberOfBeams
         self.numberOfColumns = numberOfColumns; self.numberOfJoists = numberOfJoists
         self.numberOfWallPanels = numberOfWallPanels; self.estimatedTons = estimatedTons

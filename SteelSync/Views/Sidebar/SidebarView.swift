@@ -1,9 +1,13 @@
 import SwiftUI
+import CloudKit
 
 struct SidebarView: View {
     @EnvironmentObject var dataStore: DataStore
     @EnvironmentObject var navigationState: NavigationState
     @State private var showSyncOptions = false
+    @State private var pendingShare: CKShare?
+    @State private var shareError: String?
+    @State private var isPreparingShare = false
 
     /// Projects the user has pinned, resolved to live `Project` objects.
     /// Filters out IDs that no longer exist (project deleted) so stale
@@ -16,6 +20,8 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            logoHeader
+
             List(selection: $navigationState.selectedSection) {
                 if !pinnedProjects.isEmpty {
                     Section("PINNED") {
@@ -77,9 +83,51 @@ struct SidebarView: View {
             Button("Pull Cloud → Local") {
                 Task { await dataStore.pullFromCloud() }
             }
+            if !dataStore.cloudKit.isParticipant {
+                Button("Share Data…") {
+                    Task { await prepareShare() }
+                }
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(syncDialogMessage)
+        }
+        .sheet(isPresented: Binding(get: { pendingShare != nil }, set: { if !$0 { pendingShare = nil } })) {
+            if let share = pendingShare, let container = dataStore.cloudKit.ckContainer {
+                CloudShareSheet(share: share, container: container) {
+                    pendingShare = nil
+                }
+            }
+        }
+        .alert("Couldn't create share", isPresented: Binding(get: { shareError != nil }, set: { if !$0 { shareError = nil } })) {
+            Button("OK", role: .cancel) { shareError = nil }
+        } message: {
+            Text(shareError ?? "")
+        }
+    }
+
+    private func prepareShare() async {
+        isPreparingShare = true
+        defer { isPreparingShare = false }
+        do {
+            let share = try await dataStore.cloudKit.ensureZoneShare()
+            pendingShare = share
+        } catch {
+            shareError = error.localizedDescription
+        }
+    }
+
+    /// Brand banner at the top of the sidebar. The PNG already contains the
+    /// "Steel Sync" wordmark, so no extra Text is needed alongside.
+    private var logoHeader: some View {
+        VStack(spacing: 0) {
+            Image("SteelSyncLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(height: 64)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity)
+            Divider()
         }
     }
 
@@ -144,6 +192,17 @@ struct SidebarView: View {
 
     private var syncButton: some View {
         VStack(spacing: 4) {
+            if dataStore.cloudKit.isParticipant {
+                HStack(spacing: 4) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 9))
+                    Text("Shared mode")
+                        .font(.system(size: 10, weight: .medium))
+                    Spacer()
+                }
+                .foregroundColor(AppTheme.primaryOrange)
+            }
+
             Button {
                 if !dataStore.isSyncing {
                     showSyncOptions = true
@@ -159,7 +218,7 @@ struct SidebarView: View {
                             .fill(syncColor)
                             .frame(width: 8, height: 8)
                     }
-                    Text(dataStore.syncStatus.displayText)
+                    Text(syncPrimaryLabel)
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     Spacer()
@@ -175,10 +234,33 @@ struct SidebarView: View {
             .help(syncTooltip)
 
             if dataStore.isSyncing {
+                if dataStore.syncBytesTotal > 0 {
+                    HStack {
+                        Text("~\(formatBytes(dataStore.syncBytesDone)) of \(formatBytes(dataStore.syncBytesTotal))")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary.opacity(0.8))
+                        Spacer()
+                    }
+                }
                 ProgressView(value: dataStore.syncProgress)
                     .tint(AppTheme.primaryOrange)
             }
         }
+    }
+
+    private var syncPrimaryLabel: String {
+        let base = dataStore.syncStatus.displayText
+        if dataStore.isSyncing && dataStore.syncItemsTotal > 0 {
+            return "\(base) \(dataStore.syncItemsDone) of \(dataStore.syncItemsTotal) items"
+        }
+        return base
+    }
+
+    private func formatBytes(_ bytes: Int64) -> String {
+        let f = ByteCountFormatter()
+        f.allowedUnits = [.useKB, .useMB, .useGB]
+        f.countStyle = .file
+        return f.string(fromByteCount: bytes)
     }
 
     private var syncDialogMessage: String {

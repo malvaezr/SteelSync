@@ -94,6 +94,7 @@ extension BidProject: CloudKitConvertible {
         CKField.setBool(r, "isReadyToSubmit", isReadyToSubmit)
         CKField.setBool(r, "isLost", isLost)
         CKField.setBool(r, "isWorkingOn", isWorkingOn)
+        r["priority"] = priority.rawValue as CKRecordValue
         r["squareFeet"] = squareFeet as CKRecordValue; r["numberOfBeams"] = numberOfBeams as CKRecordValue
         r["numberOfColumns"] = numberOfColumns as CKRecordValue; r["numberOfJoists"] = numberOfJoists as CKRecordValue
         r["numberOfWallPanels"] = numberOfWallPanels as CKRecordValue
@@ -160,6 +161,7 @@ extension BidProject: CloudKitConvertible {
             isReadyToSubmit: CKField.bool(record, "isReadyToSubmit"),
             isLost: CKField.bool(record, "isLost"),
             isWorkingOn: CKField.bool(record, "isWorkingOn"),
+            priority: BidPriority(rawValue: CKField.string(record, "priority")) ?? .normal,
             squareFeet: CKField.int(record, "squareFeet"),
             numberOfBeams: CKField.int(record, "numberOfBeams"),
             numberOfColumns: CKField.int(record, "numberOfColumns"),
@@ -573,6 +575,7 @@ extension GanttTask: CloudKitConvertible {
         r["durationDays"] = durationDays as CKRecordValue; r["assignedTo"] = assignedTo as CKRecordValue
         r["notes"] = notes as CKRecordValue; r["sortOrder"] = sortOrder as CKRecordValue
         r["progress"] = progress as CKRecordValue; CKField.setBool(r, "includesSaturdays", includesSaturdays)
+        if let manpower { r["manpower"] = manpower as CKRecordValue }
         return r
     }
 
@@ -585,7 +588,8 @@ extension GanttTask: CloudKitConvertible {
             startDate: CKField.date(record, "startDate"), durationDays: CKField.int(record, "durationDays"),
             assignedTo: CKField.string(record, "assignedTo"), notes: CKField.string(record, "notes"),
             sortOrder: CKField.int(record, "sortOrder"), progress: CKField.double(record, "progress"),
-            includesSaturdays: CKField.bool(record, "includesSaturdays")
+            includesSaturdays: CKField.bool(record, "includesSaturdays"),
+            manpower: record["manpower"] as? Int
         )
     }
 }

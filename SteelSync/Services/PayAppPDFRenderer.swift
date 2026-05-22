@@ -34,6 +34,18 @@ struct PayAppPDFRenderer {
             }
         case .steelSync:
             pages = [AnyView(SteelSyncInvoiceView(payApp: payApp, project: project, client: client))]
+        case .subcontractorAIA, .subcontractorXLSX:
+            // .subcontractorXLSX is dispatched to PayAppXLSXRenderer in
+            // ExportPayAppSheet — this PDF path is just a graceful fallback.
+            pages = [
+                AnyView(SubcontractorAIACoverView(payApp: payApp, project: project, client: client, lienStyle: .standard)),
+                AnyView(SubcontractorAIAScheduleView(payApp: payApp, project: project, client: client))
+            ]
+        case .subcontractorFullRelease:
+            pages = [
+                AnyView(SubcontractorAIACoverView(payApp: payApp, project: project, client: client, lienStyle: .fullWithRelease)),
+                AnyView(SubcontractorAIAScheduleView(payApp: payApp, project: project, client: client))
+            ]
         }
 
         let tmpDir = FileManager.default.temporaryDirectory
@@ -46,6 +58,10 @@ struct PayAppPDFRenderer {
                 : "G703-\(safeTitle)-App\(payApp.applicationNumber).pdf"
         case .steelSync:
             filename = "Invoice-\(safeTitle)-App\(payApp.applicationNumber).pdf"
+        case .subcontractorAIA, .subcontractorXLSX:
+            filename = "SubApp-\(safeTitle)-App\(payApp.applicationNumber).pdf"
+        case .subcontractorFullRelease:
+            filename = "SubApp-Release-\(safeTitle)-App\(payApp.applicationNumber).pdf"
         }
         let outputURL = tmpDir.appendingPathComponent(filename)
 

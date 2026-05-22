@@ -12,7 +12,7 @@ struct GanttTask: Identifiable, Codable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, projectID, name, category, status, startDate
         case durationDays, assignedTo, notes, sortOrder, progress, includesSaturdays
-        case predecessorIDs, isPinned
+        case predecessorIDs, isPinned, manpower
     }
 
     var durationDays: Int
@@ -25,6 +25,8 @@ struct GanttTask: Identifiable, Codable, Hashable {
     var predecessorIDs: [UUID]
     /// When true, the bar cannot be dragged or resized. Toggle from the bar context menu or edit sheet.
     var isPinned: Bool
+    /// Optional headcount assigned to this task. `nil` when unspecified.
+    var manpower: Int?
 
     init(
         id: UUID = UUID(), projectID: String, name: String,
@@ -34,7 +36,8 @@ struct GanttTask: Identifiable, Codable, Hashable {
         sortOrder: Int = 0, progress: Double = 0,
         includesSaturdays: Bool = false,
         predecessorIDs: [UUID] = [],
-        isPinned: Bool = false
+        isPinned: Bool = false,
+        manpower: Int? = nil
     ) {
         self.id = id; self.projectID = projectID; self.name = name
         self.category = category; self.status = status
@@ -44,6 +47,7 @@ struct GanttTask: Identifiable, Codable, Hashable {
         self.includesSaturdays = includesSaturdays
         self.predecessorIDs = predecessorIDs
         self.isPinned = isPinned
+        self.manpower = manpower
     }
 
     /// Custom decoder so older persisted tasks (before predecessorIDs / isPinned existed)
@@ -64,6 +68,7 @@ struct GanttTask: Identifiable, Codable, Hashable {
         self.includesSaturdays = try c.decode(Bool.self, forKey: .includesSaturdays)
         self.predecessorIDs = try c.decodeIfPresent([UUID].self, forKey: .predecessorIDs) ?? []
         self.isPinned = try c.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+        self.manpower = try c.decodeIfPresent(Int.self, forKey: .manpower)
     }
 
     /// Returns true if this task is overdue — end date has passed and it's not completed.
@@ -75,7 +80,13 @@ struct GanttTask: Identifiable, Codable, Hashable {
     var isMilestone: Bool { status == .milestone }
 
     var endDate: Date {
-        startDate.addingWorkdays(durationDays, includeSaturdays: includesSaturdays)
+        // Exclusive end = the calendar day AFTER the task's last working day.
+        // Advancing a full `durationDays` working days would skip a trailing
+        // weekend — e.g. a 1-day Friday task would stretch to Monday and the
+        // bar would visually swallow Sat/Sun. Instead, walk to the last
+        // working day (durationDays - 1 hops) and add a single calendar day.
+        let lastWorkingDay = startDate.addingWorkdays(max(0, durationDays - 1), includeSaturdays: includesSaturdays)
+        return Calendar.current.date(byAdding: .day, value: 1, to: lastWorkingDay) ?? lastWorkingDay
     }
 
     var calendarSpan: Int {

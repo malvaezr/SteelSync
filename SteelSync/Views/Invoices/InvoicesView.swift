@@ -10,6 +10,7 @@ struct InvoicesView: View {
     @State private var projectFilter: String = "All"
     @State private var searchText: String = ""
     @State private var payingInvoice: InvoiceContext?
+    @State private var deletingInvoice: InvoiceContext?
 
     enum InvoiceStatusFilter: String, CaseIterable, Identifiable {
         case all = "All"
@@ -110,6 +111,17 @@ struct InvoicesView: View {
                                     payingInvoice = InvoiceContext(invoice: entry.invoice, projectID: entry.projectID)
                                 }
                             }
+                            Divider()
+                            Button("Delete Invoice…", role: .destructive) {
+                                deletingInvoice = entry
+                            }
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                deletingInvoice = entry
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
                     }
                 }
@@ -122,6 +134,19 @@ struct InvoicesView: View {
             if let project = dataStore.projects.first(where: { $0.id == ctx.projectID }) {
                 LogPaymentSheet(invoice: ctx.invoice, project: project)
             }
+        }
+        .confirmationDialog(
+            "Delete Invoice?",
+            isPresented: Binding(get: { deletingInvoice != nil }, set: { if !$0 { deletingInvoice = nil } }),
+            presenting: deletingInvoice
+        ) { ctx in
+            Button("Delete \(ctx.invoice.invoiceNumber)", role: .destructive) {
+                dataStore.deleteInvoice(ctx.invoice, from: ctx.projectID)
+                deletingInvoice = nil
+            }
+            Button("Cancel", role: .cancel) { deletingInvoice = nil }
+        } message: { ctx in
+            Text("Permanently deletes invoice \(ctx.invoice.invoiceNumber) and any payments logged against it. If it came from a pay application, that app will be unlinked so you can re-invoice it.")
         }
     }
 
