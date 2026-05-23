@@ -94,6 +94,10 @@ class DataStore: ObservableObject {
             return
         }
 
+        // Recover participant role before any zone work (e.g. a reinstall may
+        // have cleared the persisted role). Owners are unaffected.
+        await cloudKit.autoDetectParticipantRole()
+
         try? await cloudKit.setupZone()
         // Ready for manual sync — local data is untouched
         syncStatus = .ready
@@ -157,6 +161,10 @@ class DataStore: ObservableObject {
         PersistenceService.backupAll()
         syncProgress = 0.1  // Backup done
 
+        // Self-heal a lost participant role so we don't pull our own empty
+        // zone instead of the owner's shared data.
+        await cloudKit.autoDetectParticipantRole()
+
         let success = await cloudKit.fetchAllDataFromCloud(into: self)
         syncProgress = 1.0
         cloudKitAvailable = cloudKit.isAvailable
@@ -181,10 +189,10 @@ class DataStore: ObservableObject {
             syncStatus = .error("iCloud not available")
             return
         }
+        print("🔗 [Share] acceptShare() called — owner zone: \(metadata.share.recordID.zoneID.ownerName)")
 
         isSyncing = true
         syncStatus = .syncing
-        defer { isSyncing = false }
 
         do {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -198,9 +206,12 @@ class DataStore: ObservableObject {
                 container.add(op)
             }
         } catch {
+            isSyncing = false
+            print("🔗 [Share] accept FAILED: \(error.localizedDescription)")
             syncStatus = .error("Failed to accept share: \(error.localizedDescription)")
             return
         }
+        print("🔗 [Share] CKAcceptSharesOperation succeeded — switching to participant + pulling")
 
         // The zone ID in the share metadata already carries the owner's
         // concrete record name (CKCurrentUserDefaultName is only used on
@@ -208,7 +219,11 @@ class DataStore: ObservableObject {
         let ownerName = metadata.share.recordID.zoneID.ownerName
         cloudKit.setRole(.participant(ownerRecordName: ownerName))
 
-        // Pull data from the now-accessible shared zone.
+        // Release the accept-phase sync flag BEFORE pulling: pullFromCloud()
+        // starts with `guard !isSyncing else { return }`, so if we held the
+        // flag here the pull would silently no-op and the participant would
+        // join the zone but see zero records.
+        isSyncing = false
         await pullFromCloud()
     }
 

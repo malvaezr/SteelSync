@@ -71,6 +71,7 @@
 		2CDB78805AA1608E3ABEB762 /* PersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8D56045443EE049CDCFAF6A /* PersistenceService.swift */; };
 		2E30240222A7214FCE9652B9 /* PhoneProjectsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C91103CD0FA9972FA89E3FE /* PhoneProjectsView.swift */; };
 		2F3857F3660442E07263ACE2 /* llama.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9CBD37DF59091C54FB3DBA26 /* llama.xcframework */; };
+		2F42139D4B810A59392FA39E /* EntryForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 036C6DBBFDF9C6CB0FDDF114 /* EntryForm.swift */; };
 		2F5D33BE9FC3C9FC1D29490C /* DailyLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 121ABD89FB44D7A760DB8A90 /* DailyLog.swift */; };
 		2FD58DB82DCB2FDC5903C755 /* TimekeepingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F14DBFBCB15B4C618E554D /* TimekeepingView.swift */; };
 		303C11EFFB1A61451058E2AB /* PayApplication.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8BD59F1AD2C45F5E18F52CE /* PayApplication.swift */; };
@@ -97,6 +98,7 @@
 		3D6864EEA125240B6F086F6E /* InvoiceAgingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA963E7D349BE555D63F7EC9 /* InvoiceAgingWidget.swift */; };
 		3DF6AD2B5A607458D28AF525 /* ShareAcceptanceDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEDCAD4902D180D053827CE /* ShareAcceptanceDelegate.swift */; };
 		3E5B75903E513C9C5709D9C3 /* TimeEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CEF8300A84E73A0EF9DF08 /* TimeEntry.swift */; };
+		3E944CEE31E9BEEDBBE31AA4 /* EntryForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 036C6DBBFDF9C6CB0FDDF114 /* EntryForm.swift */; };
 		3EAC78D04FFD5C380F56AE23 /* RFI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530A1552340FF002D1AB9A8C /* RFI.swift */; };
 		403F8D096C16B77C5CCEFF9D /* PDFExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 812971A7EA828E9BF47A7BB6 /* PDFExportService.swift */; };
 		4101591E8A4F4FA5D12CB7EF /* InvoicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF19E9569CAF299AAEBC0ED /* InvoicesView.swift */; };
@@ -345,6 +347,7 @@
 		FC1F7CA420ACB35CBEFF844B /* PhoneMoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7220A96843A08F66CEE450BB /* PhoneMoreView.swift */; };
 		FCDD897278C690FA5EA64EFA /* TodoOverviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B11124CBC093401AD48942 /* TodoOverviewWidget.swift */; };
 		FD00D112711A47DE4CF7A5DC /* WorkOrderInvoicePDFView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF20B46D8C773A462C02FB9E /* WorkOrderInvoicePDFView.swift */; };
+		FED8705EAA52BEC33CDB4741 /* EntryForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 036C6DBBFDF9C6CB0FDDF114 /* EntryForm.swift */; };
 		FF167F1E5AD52014B45D080A /* CrewManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4FDB469A32E53EAB31384F /* CrewManagementView.swift */; };
 		FF7C3AE14704BF47635D7F7F /* HandwritingRecognitionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2953DF713912AE6F41BA1451 /* HandwritingRecognitionService.swift */; };
 		FF89C0322E7810E0CF89AD66 /* OverheadExpense.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C2ADF3F7937DBF838CB48B /* OverheadExpense.swift */; };
@@ -433,6 +436,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		036C6DBBFDF9C6CB0FDDF114 /* EntryForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryForm.swift; sourceTree = "<group>"; };
 		05696EA88AFDF328A1548B80 /* PhoneEquipmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneEquipmentView.swift; sourceTree = "<group>"; };
 		05F33D378A68D315E61C16E5 /* SteelSyncPhone.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SteelSyncPhone.entitlements; sourceTree = "<group>"; };
 		062E9F90EF9A227D6B3A84BA /* QueryParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryParser.swift; sourceTree = "<group>"; };
@@ -702,6 +706,7 @@
 			isa = PBXGroup;
 			children = (
 				CF30F3359D69BBCAA9858C00 /* ConfirmationPinSheet.swift */,
+				036C6DBBFDF9C6CB0FDDF114 /* EntryForm.swift */,
 				5F937DB7367744CB2FD75497 /* FileDropModifier.swift */,
 				BADCA49EBF740AF2392D2B80 /* PDFShareButton.swift */,
 				ED56B7484A529A5F7C23A349 /* RowReorderDropDelegate.swift */,
@@ -1361,6 +1366,7 @@
 				AC8A65D4FFF3769673A80C37 /* DashboardView.swift in Sources */,
 				0EF2705BEFF256BA6D85E722 /* DataStore.swift in Sources */,
 				162C0ED47A5BCC38EFF887DF /* Employee.swift in Sources */,
+				3E944CEE31E9BEEDBBE31AA4 /* EntryForm.swift in Sources */,
 				C2A4B1C4986D7313497897B5 /* EquipmentOverviewView.swift in Sources */,
 				E7945B6D14CB5FF1F9CDEF0A /* EquipmentRental.swift in Sources */,
 				F038579942D400560EDB43F0 /* ExportBidsSheet.swift in Sources */,
@@ -1480,6 +1486,7 @@
 				9534D7F9A881D002FA90F860 /* DataContextBuilder.swift in Sources */,
 				8525133AD9B01D31CE61A2C8 /* DataStore.swift in Sources */,
 				4216F36D9D5833AFC52AA576 /* Employee.swift in Sources */,
+				2F42139D4B810A59392FA39E /* EntryForm.swift in Sources */,
 				1E3C94F14EF867BEAB6CDC59 /* EquipmentOverviewView.swift in Sources */,
 				55C2D9E3FDA1B680C3678297 /* EquipmentRental.swift in Sources */,
 				F90900CA84F36D28F208302C /* ExportBidsSheet.swift in Sources */,
@@ -1615,6 +1622,7 @@
 				14BC3885EA461CB13B060178 /* DataContextBuilder.swift in Sources */,
 				547E41F233616859FCF071BA /* DataStore.swift in Sources */,
 				93F541157CA6635691298474 /* Employee.swift in Sources */,
+				FED8705EAA52BEC33CDB4741 /* EntryForm.swift in Sources */,
 				421313FAAF4CAE1AC6488D07 /* EquipmentOverviewView.swift in Sources */,
 				A2D9055F8A3C8C6E0A01011B /* EquipmentRental.swift in Sources */,
 				431083DB018E4A294DF5E714 /* ExportBidsSheet.swift in Sources */,

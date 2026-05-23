@@ -77,6 +77,10 @@ struct ProjectDetailView: View {
     @State private var rfiToDelete: RFI?
     @State private var changeOrderToDelete: ChangeOrder?
     @State private var payrollEntryToDelete: PayrollEntry?
+    // Hoisted from PayAppsTab so the pay-app forms present INLINE at the pane
+    // root (an overlay inside the scrolling tab can't size to the viewport).
+    @State private var showCreatePayApp = false
+    @State private var editingPayApp: PayApplication?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -95,35 +99,44 @@ struct ProjectDetailView: View {
         .sheet(isPresented: $showEditProject) {
             EditProjectView(project: project)
         }
-        .sheet(isPresented: $showAddChangeOrder) {
+        .inlineForm(isPresented: $showAddChangeOrder) {
             AddChangeOrderView(projectID: project.id, nextNumber: (dataStore.changeOrders(for: project.id).count) + 1)
         }
-        .sheet(item: $editingChangeOrder) { co in
+        .inlineForm(item: $editingChangeOrder) { co in
             EditChangeOrderSheet(changeOrder: co, projectID: project.id)
         }
-        .sheet(isPresented: $showAddPayment) {
+        .inlineForm(isPresented: $showCreatePayApp) {
+            CreatePayAppSheet(project: project)
+        }
+        .inlineForm(item: $editingPayApp) { payApp in
+            EditPayAppSheet(payApp: payApp, project: project)
+        }
+        .inlineForm(isPresented: $showAddPayment) {
             AddPaymentView(projectID: project.id)
         }
-        .sheet(isPresented: $showAddPayroll) {
+        .inlineForm(isPresented: $showAddPayroll) {
             AddPayrollView(projectID: project.id)
         }
-        .sheet(isPresented: $showAddCost) {
+        .inlineForm(isPresented: $showAddCost) {
             AddCostView(projectID: project.id)
         }
-        .sheet(isPresented: $showAddRental) {
+        .inlineForm(isPresented: $showAddRental) {
             AddEquipmentRentalView(projectID: project.id)
         }
         .sheet(item: $rentalToClose) { rental in
             CloseEquipmentRentalView(projectID: project.id, rental: rental)
         }
-        .sheet(isPresented: $showQuickEntry) {
+        .inlineForm(isPresented: $showQuickEntry) {
             QuickEntrySheet(project: project)
         }
-        .sheet(isPresented: $showAddRFI) {
+        .inlineForm(isPresented: $showAddRFI) {
             AddRFISheet(projectID: project.id, nextNumber: dataStore.nextRFINumber(for: project.id))
         }
         .sheet(item: $editingRFI) { rfi in
             EditRFISheet(rfi: rfi, projectID: project.id)
+        }
+        .inlineForm(isPresented: $showAddDailyLog) {
+            AddDailyLogSheet(projectID: project.id)
         }
         .confirmationDialog(
             "Delete RFI?",
@@ -372,7 +385,9 @@ struct ProjectDetailView: View {
         case .payments:
             paymentsTab
         case .payApps:
-            PayAppsTab(project: project)
+            PayAppsTab(project: project,
+                       showCreatePayApp: $showCreatePayApp,
+                       editingPayApp: $editingPayApp)
         case .costs:
             costsTab
         case .payroll:
@@ -974,9 +989,6 @@ struct ProjectDetailView: View {
                 .listStyle(.inset)
                 .frame(minHeight: 240)
             }
-        }
-        .sheet(isPresented: $showAddDailyLog) {
-            AddDailyLogSheet(projectID: project.id)
         }
         .sheet(item: $editingDailyLog) { log in
             EditDailyLogSheet(log: log, projectID: project.id)

@@ -236,7 +236,7 @@ struct BiddingView: View {
                 #endif
             }
         }
-        .sheet(isPresented: $showAddBid) {
+        .inlineForm(isPresented: $showAddBid) {
             AddBidView()
         }
         .sheet(isPresented: $showExportSheet) {

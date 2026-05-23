@@ -8,6 +8,7 @@ struct AddDailyLogSheet: View {
     let projectID: CKRecord.ID
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var date = Date()
     @State private var weather = ""
@@ -19,33 +20,27 @@ struct AddDailyLogSheet: View {
     @State private var notes = ""
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "New Daily Log",
-                saveTitle: "Save",
-                saveDisabled: !canSave,
-                onCancel: { dismiss() },
-                onSave: save
+        EntryFormScaffold(
+            title: "New Daily Log",
+            icon: "doc.text.below.ecg",
+            saveDisabled: !canSave,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            DailyLogFormBody(
+                employees: dataStore.employees,
+                date: $date, weather: $weather,
+                workCompleted: $workCompleted, issuesEncountered: $issuesEncountered,
+                crewIDs: $crewIDs, totalCrewHoursText: $totalCrewHoursText,
+                safetyIncidentsNote: $safetyIncidentsNote, notes: $notes,
+                photos: nil,                          // photos added after first save
+                onPhotoUpload: nil,
+                onPhotoRemove: nil
             )
-            ScrollView {
-                DailyLogFormBody(
-                    employees: dataStore.employees,
-                    date: $date, weather: $weather,
-                    workCompleted: $workCompleted, issuesEncountered: $issuesEncountered,
-                    crewIDs: $crewIDs, totalCrewHoursText: $totalCrewHoursText,
-                    safetyIncidentsNote: $safetyIncidentsNote, notes: $notes,
-                    photos: nil,                          // photos added after first save
-                    onPhotoUpload: nil,
-                    onPhotoRemove: nil
-                )
-                .padding(AppTheme.Spacing.lg)
-            }
-            .background(AppTheme.background)
         }
-        #if os(macOS)
-        .frame(width: 640, height: 700)
-        #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private var canSave: Bool {
         // Don't allow empty logs.
@@ -67,7 +62,7 @@ struct AddDailyLogSheet: View {
             notes: notes
         )
         dataStore.addDailyLog(log, to: projectID)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -78,6 +73,7 @@ struct EditDailyLogSheet: View {
     let projectID: CKRecord.ID
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var date: Date
     @State private var weather: String
@@ -113,30 +109,25 @@ struct EditDailyLogSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Edit Daily Log",
-                saveTitle: "Save",
-                onCancel: { dismiss() },
-                onSave: save
+        EntryFormScaffold(
+            title: "Edit Daily Log",
+            icon: "doc.text.below.ecg",
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            DailyLogFormBody(
+                employees: dataStore.employees,
+                date: $date, weather: $weather,
+                workCompleted: $workCompleted, issuesEncountered: $issuesEncountered,
+                crewIDs: $crewIDs, totalCrewHoursText: $totalCrewHoursText,
+                safetyIncidentsNote: $safetyIncidentsNote, notes: $notes,
+                photos: currentPhotos,
+                onPhotoUpload: { showFileImporter = true },
+                onPhotoRemove: { attachmentToDelete = $0 }
             )
-            ScrollView {
-                DailyLogFormBody(
-                    employees: dataStore.employees,
-                    date: $date, weather: $weather,
-                    workCompleted: $workCompleted, issuesEncountered: $issuesEncountered,
-                    crewIDs: $crewIDs, totalCrewHoursText: $totalCrewHoursText,
-                    safetyIncidentsNote: $safetyIncidentsNote, notes: $notes,
-                    photos: currentPhotos,
-                    onPhotoUpload: { showFileImporter = true },
-                    onPhotoRemove: { attachmentToDelete = $0 }
-                )
-                .padding(AppTheme.Spacing.lg)
-            }
-            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 640, height: 700)
+        .frame(width: 660, height: 720)
         #endif
         .fileImporter(
             isPresented: $showFileImporter,
@@ -172,6 +163,8 @@ struct EditDailyLogSheet: View {
         }
     }
 
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
+
     private func importPhotos(_ urls: [URL]) {
         let logIDString = log.id.uuidString
         for url in urls {
@@ -197,7 +190,7 @@ struct EditDailyLogSheet: View {
         // photos are managed via add/remove attachment APIs and read from store
         updated.photos = currentPhotos
         dataStore.updateDailyLog(updated, in: projectID)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -224,7 +217,7 @@ struct DailyLogFormBody: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+        Group {
             basicsSection
             workSection
             crewSection
@@ -237,8 +230,7 @@ struct DailyLogFormBody: View {
     }
 
     @ViewBuilder private var basicsSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Day")
+        EntrySection("Day", systemImage: AppIcons.calendar) {
             HStack(spacing: AppTheme.Spacing.md) {
                 LabeledField(label: "Date") {
                     DatePicker("", selection: $date, displayedComponents: .date)
@@ -254,19 +246,18 @@ struct DailyLogFormBody: View {
     }
 
     @ViewBuilder private var workSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Work Completed")
-            NotesField(text: $workCompleted, minHeight: 70)
-
-            SectionTitle(text: "Issues / Blockers")
-            NotesField(text: $issuesEncountered, minHeight: 60)
+        EntrySection("Work Completed", systemImage: "hammer.fill") {
+            LabeledField(label: "Work Completed") {
+                NotesField(text: $workCompleted, minHeight: 70)
+            }
+            LabeledField(label: "Issues / Blockers") {
+                NotesField(text: $issuesEncountered, minHeight: 60)
+            }
         }
     }
 
     @ViewBuilder private var crewSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Crew on Site")
-
+        EntrySection("Crew on Site", systemImage: AppIcons.crew) {
             LabeledField(label: "Total Crew Hours") {
                 TextField("0", text: $totalCrewHoursText)
                     .textFieldStyle(.appField)
@@ -302,6 +293,7 @@ struct DailyLogFormBody: View {
                             }
                         }
                         .toggleStyle(.switch)
+                        .tint(AppTheme.primaryOrange)
                     }
                 }
                 .padding(AppTheme.Spacing.md)
@@ -314,8 +306,7 @@ struct DailyLogFormBody: View {
     }
 
     @ViewBuilder private var safetySection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Safety")
+        EntrySection("Safety", systemImage: "exclamationmark.shield.fill") {
             LabeledField(
                 label: "Incidents",
                 helpText: "Leave blank if nothing happened. If something did, describe it concisely — date, who, what, what was done."
@@ -326,17 +317,14 @@ struct DailyLogFormBody: View {
     }
 
     @ViewBuilder private var photosSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            HStack {
-                SectionTitle(text: "Photos (\(photos?.count ?? 0))")
-                Spacer()
-                if let onUpload = onPhotoUpload {
-                    Button { onUpload() } label: {
-                        Label("Upload", systemImage: "photo.on.rectangle.angled")
-                    }
-                    .buttonStyle(.appSecondary)
-                    .controlSize(.small)
+        EntrySection("Photos (\(photos?.count ?? 0))", systemImage: "photo.on.rectangle.angled") {
+            if let onUpload = onPhotoUpload {
+                Button { onUpload() } label: {
+                    Label("Upload", systemImage: "photo.on.rectangle.angled")
                 }
+                .buttonStyle(.appSecondary)
+                .controlSize(.small)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             if let photos = photos, photos.isEmpty {
@@ -399,8 +387,7 @@ struct DailyLogFormBody: View {
     }
 
     @ViewBuilder private var notesSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Internal Notes")
+        EntrySection("Internal Notes", systemImage: "note.text") {
             NotesField(text: $notes, minHeight: 60)
         }
     }

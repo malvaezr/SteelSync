@@ -138,7 +138,7 @@ struct ClientsView: View {
                 #endif
             }
         }
-        .sheet(isPresented: $showAddClient) {
+        .inlineForm(isPresented: $showAddClient) {
             AddClientView()
         }
         .confirmationDialog(
@@ -428,6 +428,7 @@ struct ClientDetailView: View {
 struct AddClientView: View {
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var name = ""
     @State private var contactName = ""
@@ -437,70 +438,59 @@ struct AddClientView: View {
     @State private var rateType: RateType = .generalContractor
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "New Client",
-                saveTitle: "Save",
-                saveDisabled: name.isEmpty,
-                onCancel: { dismiss() },
-                onSave: save
-            )
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                        SectionTitle(text: "Client Information")
-                        LabeledField(label: "Company Name") {
-                            TextField("Company name", text: $name)
-                                .textFieldStyle(.appField)
-                        }
-                        LabeledField(label: "Client Type") {
-                            Picker("", selection: $rateType) {
-                                ForEach(RateType.allCases, id: \.self) { type in
-                                    Text(type.displayName).tag(type)
-                                }
-                            }
-                            .labelsHidden()
-                            .pickerStyle(.menu)
-                            .appControlSurface()
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                        SectionTitle(text: "Contact Details")
-                        LabeledField(label: "Contact Name") {
-                            TextField("Primary contact", text: $contactName)
-                                .textFieldStyle(.appField)
-                        }
-                        LabeledField(label: "Email") {
-                            TextField("name@example.com", text: $email)
-                                .textFieldStyle(.appField)
-                                #if !os(macOS)
-                                .textInputAutocapitalization(.never)
-                                .keyboardType(.emailAddress)
-                                #endif
-                        }
-                        LabeledField(label: "Phone") {
-                            TextField("(555) 555-5555", text: $phone)
-                                .textFieldStyle(.appField)
-                                #if !os(macOS)
-                                .keyboardType(.phonePad)
-                                #endif
-                        }
-                        LabeledField(label: "Billing Address") {
-                            TextField("Street, City, ST", text: $billingAddress)
-                                .textFieldStyle(.appField)
-                        }
-                    }
+        EntryFormScaffold(
+            title: "New Client",
+            icon: AppIcons.people,
+            saveDisabled: name.isEmpty,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Client Information", systemImage: AppIcons.building) {
+                LabeledField(label: "Company Name") {
+                    TextField("Company name", text: $name)
+                        .textFieldStyle(.appField)
                 }
-                .padding(AppTheme.Spacing.lg)
+                LabeledField(label: "Client Type") {
+                    Picker("", selection: $rateType) {
+                        ForEach(RateType.allCases, id: \.self) { type in
+                            Text(type.displayName).tag(type)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .appControlSurface()
+                }
             }
-            .background(AppTheme.background)
+
+            EntrySection("Contact Details", systemImage: AppIcons.person) {
+                LabeledField(label: "Contact Name") {
+                    TextField("Primary contact", text: $contactName)
+                        .textFieldStyle(.appField)
+                }
+                LabeledField(label: "Email") {
+                    TextField("name@example.com", text: $email)
+                        .textFieldStyle(.appField)
+                        #if !os(macOS)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                        #endif
+                }
+                LabeledField(label: "Phone") {
+                    TextField("(555) 555-5555", text: $phone)
+                        .textFieldStyle(.appField)
+                        #if !os(macOS)
+                        .keyboardType(.phonePad)
+                        #endif
+                }
+                LabeledField(label: "Billing Address") {
+                    TextField("Street, City, ST", text: $billingAddress)
+                        .textFieldStyle(.appField)
+                }
+            }
         }
-        #if os(macOS)
-        .frame(width: 520, height: 520)
-        #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         let client = Client(
@@ -510,7 +500,7 @@ struct AddClientView: View {
             preferredRateType: rateType
         )
         dataStore.addClient(client)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -519,6 +509,7 @@ struct EditClientView: View {
     let client: Client
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var name: String
     @State private var contactName: String
@@ -538,70 +529,62 @@ struct EditClientView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Edit Client",
-                saveTitle: "Save",
-                saveDisabled: name.isEmpty,
-                onCancel: { dismiss() },
-                onSave: save
-            )
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                        SectionTitle(text: "Client Information")
-                        LabeledField(label: "Company Name") {
-                            TextField("Company name", text: $name)
-                                .textFieldStyle(.appField)
-                        }
-                        LabeledField(label: "Client Type") {
-                            Picker("", selection: $rateType) {
-                                ForEach(RateType.allCases, id: \.self) { type in
-                                    Text(type.displayName).tag(type)
-                                }
-                            }
-                            .labelsHidden()
-                            .pickerStyle(.menu)
-                            .appControlSurface()
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                        SectionTitle(text: "Contact Details")
-                        LabeledField(label: "Contact Name") {
-                            TextField("Primary contact", text: $contactName)
-                                .textFieldStyle(.appField)
-                        }
-                        LabeledField(label: "Email") {
-                            TextField("name@example.com", text: $email)
-                                .textFieldStyle(.appField)
-                                #if !os(macOS)
-                                .textInputAutocapitalization(.never)
-                                .keyboardType(.emailAddress)
-                                #endif
-                        }
-                        LabeledField(label: "Phone") {
-                            TextField("(555) 555-5555", text: $phone)
-                                .textFieldStyle(.appField)
-                                #if !os(macOS)
-                                .keyboardType(.phonePad)
-                                #endif
-                        }
-                        LabeledField(label: "Billing Address") {
-                            TextField("Street, City, ST", text: $billingAddress)
-                                .textFieldStyle(.appField)
-                        }
-                    }
+        EntryFormScaffold(
+            title: "Edit Client",
+            icon: AppIcons.people,
+            saveDisabled: name.isEmpty,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Client Information", systemImage: AppIcons.building) {
+                LabeledField(label: "Company Name") {
+                    TextField("Company name", text: $name)
+                        .textFieldStyle(.appField)
                 }
-                .padding(AppTheme.Spacing.lg)
+                LabeledField(label: "Client Type") {
+                    Picker("", selection: $rateType) {
+                        ForEach(RateType.allCases, id: \.self) { type in
+                            Text(type.displayName).tag(type)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .appControlSurface()
+                }
             }
-            .background(AppTheme.background)
+
+            EntrySection("Contact Details", systemImage: AppIcons.person) {
+                LabeledField(label: "Contact Name") {
+                    TextField("Primary contact", text: $contactName)
+                        .textFieldStyle(.appField)
+                }
+                LabeledField(label: "Email") {
+                    TextField("name@example.com", text: $email)
+                        .textFieldStyle(.appField)
+                        #if !os(macOS)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                        #endif
+                }
+                LabeledField(label: "Phone") {
+                    TextField("(555) 555-5555", text: $phone)
+                        .textFieldStyle(.appField)
+                        #if !os(macOS)
+                        .keyboardType(.phonePad)
+                        #endif
+                }
+                LabeledField(label: "Billing Address") {
+                    TextField("Street, City, ST", text: $billingAddress)
+                        .textFieldStyle(.appField)
+                }
+            }
         }
         #if os(macOS)
-        .frame(width: 520, height: 520)
+        .frame(width: 580, height: 620)
         #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         var updated = client
@@ -612,7 +595,7 @@ struct EditClientView: View {
         updated.billingAddress = billingAddress
         updated.preferredRateType = rateType
         dataStore.updateClient(updated)
-        dismiss()
+        closeForm()
     }
 }
 

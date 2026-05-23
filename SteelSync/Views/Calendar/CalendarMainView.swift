@@ -46,7 +46,7 @@ struct CalendarMainView: View {
                 agendaView
             }
         }
-        .sheet(isPresented: $showAddEvent) {
+        .inlineForm(isPresented: $showAddEvent) {
             AddEventView()
         }
         .navigationTitle("Calendar")
@@ -247,6 +247,7 @@ struct EventRow: View {
 struct AddEventView: View {
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var title = ""
     @State private var description = ""
@@ -256,69 +257,64 @@ struct AddEventView: View {
     @State private var isAllDay = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "New Event",
-                saveTitle: "Save",
-                saveDisabled: title.isEmpty,
-                onCancel: { dismiss() },
-                onSave: save
-            )
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                    LabeledField(label: "Title") {
-                        TextField("Event title", text: $title)
-                            .textFieldStyle(.appField)
-                    }
-                    LabeledField(label: "Description") {
-                        TextField("Optional details", text: $description)
-                            .textFieldStyle(.appField)
-                    }
-                    LabeledField(label: "Type") {
-                        Picker("", selection: $type) {
-                            ForEach(CalendarEvent.EventType.allCases, id: \.self) {
-                                Label($0.rawValue, systemImage: $0.icon).tag($0)
-                            }
+        EntryFormScaffold(
+            title: "New Event",
+            icon: AppIcons.calendar,
+            saveDisabled: title.isEmpty,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Event Details", systemImage: AppIcons.calendar) {
+                LabeledField(label: "Title") {
+                    TextField("Event title", text: $title)
+                        .textFieldStyle(.appField)
+                }
+                LabeledField(label: "Description") {
+                    TextField("Optional details", text: $description)
+                        .textFieldStyle(.appField)
+                }
+                LabeledField(label: "Type") {
+                    Picker("", selection: $type) {
+                        ForEach(CalendarEvent.EventType.allCases, id: \.self) {
+                            Label($0.rawValue, systemImage: $0.icon).tag($0)
                         }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .appControlSurface()
                     }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .appControlSurface()
+                }
+            }
 
-                    Toggle("All Day", isOn: $isAllDay)
-                        .toggleStyle(.switch)
-                        .padding(.top, 4)
+            EntrySection("Schedule", systemImage: AppIcons.clock) {
+                Toggle("All Day", isOn: $isAllDay)
+                    .toggleStyle(.switch)
+                    .tint(AppTheme.primaryOrange)
 
-                    LabeledField(label: "Start") {
-                        DatePicker("", selection: $startDate,
-                                   displayedComponents: isAllDay ? .date : [.date, .hourAndMinute])
+                LabeledField(label: "Start") {
+                    DatePicker("", selection: $startDate,
+                               displayedComponents: isAllDay ? .date : [.date, .hourAndMinute])
+                        .labelsHidden()
+                        .appControlSurface()
+                }
+                if !isAllDay {
+                    LabeledField(label: "End") {
+                        DatePicker("", selection: $endDate,
+                                   displayedComponents: [.date, .hourAndMinute])
                             .labelsHidden()
                             .appControlSurface()
                     }
-                    if !isAllDay {
-                        LabeledField(label: "End") {
-                            DatePicker("", selection: $endDate,
-                                       displayedComponents: [.date, .hourAndMinute])
-                                .labelsHidden()
-                                .appControlSurface()
-                        }
-                    }
                 }
-                .padding(AppTheme.Spacing.lg)
             }
-            .background(AppTheme.background)
         }
-        #if os(macOS)
-        .frame(width: 480, height: 500)
-        #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         let event = CalendarEvent(title: title, description: description,
                                    startDate: startDate, endDate: isAllDay ? startDate : endDate,
                                    type: type, isAllDay: isAllDay)
         dataStore.addEvent(event)
-        dismiss()
+        closeForm()
     }
 }

@@ -6,6 +6,7 @@ import CloudKit
 struct AddOverheadExpenseView: View {
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var date = Date()
     @State private var amount = ""
@@ -18,32 +19,25 @@ struct AddOverheadExpenseView: View {
     @State private var selectedProjectIDs: Set<String> = []
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "New Overhead Expense",
-                saveTitle: "Save",
-                saveDisabled: parsedAmount == nil,
-                onCancel: { dismiss() },
-                onSave: save
+        EntryFormScaffold(
+            title: "New Overhead Expense",
+            icon: AppIcons.money,
+            saveDisabled: parsedAmount == nil,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            OverheadFormBody(
+                date: $date, amount: $amount, category: $category,
+                vendor: $vendor, expenseDescription: $expenseDescription,
+                notes: $notes, recurrence: $recurrence,
+                distributionMode: $distributionMode,
+                selectedProjectIDs: $selectedProjectIDs,
+                availableProjects: dataStore.projects
             )
-
-            ScrollView {
-                OverheadFormBody(
-                    date: $date, amount: $amount, category: $category,
-                    vendor: $vendor, expenseDescription: $expenseDescription,
-                    notes: $notes, recurrence: $recurrence,
-                    distributionMode: $distributionMode,
-                    selectedProjectIDs: $selectedProjectIDs,
-                    availableProjects: dataStore.projects
-                )
-                .padding(AppTheme.Spacing.lg)
-            }
-            .background(AppTheme.background)
         }
-        #if os(macOS)
-        .frame(width: 580, height: 680)
-        #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private var parsedAmount: Decimal? {
         let cleaned = amount.replacingOccurrences(of: ",", with: "")
@@ -68,7 +62,7 @@ struct AddOverheadExpenseView: View {
                 : []
         )
         dataStore.addOverhead(entry)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -78,6 +72,7 @@ struct EditOverheadExpenseView: View {
     let expense: OverheadExpense
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var date: Date
     @State private var amount: String
@@ -103,33 +98,29 @@ struct EditOverheadExpenseView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Edit Overhead Expense",
-                saveTitle: "Save",
-                saveDisabled: parsedAmount == nil,
-                onCancel: { dismiss() },
-                onSave: save
+        EntryFormScaffold(
+            title: "Edit Overhead Expense",
+            icon: AppIcons.money,
+            saveDisabled: parsedAmount == nil,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            OverheadFormBody(
+                date: $date, amount: $amount, category: $category,
+                vendor: $vendor, expenseDescription: $expenseDescription,
+                notes: $notes, recurrence: $recurrence,
+                distributionMode: $distributionMode,
+                selectedProjectIDs: $selectedProjectIDs,
+                availableProjects: dataStore.projects,
+                isChildInstance: expense.parentRecurringID != nil
             )
-
-            ScrollView {
-                OverheadFormBody(
-                    date: $date, amount: $amount, category: $category,
-                    vendor: $vendor, expenseDescription: $expenseDescription,
-                    notes: $notes, recurrence: $recurrence,
-                    distributionMode: $distributionMode,
-                    selectedProjectIDs: $selectedProjectIDs,
-                    availableProjects: dataStore.projects,
-                    isChildInstance: expense.parentRecurringID != nil
-                )
-                .padding(AppTheme.Spacing.lg)
-            }
-            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 580, height: 680)
+        .frame(width: 600, height: 700)
         #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private var parsedAmount: Decimal? {
         let cleaned = amount.replacingOccurrences(of: ",", with: "")
@@ -152,7 +143,7 @@ struct EditOverheadExpenseView: View {
             ? Array(selectedProjectIDs)
             : []
         dataStore.updateOverhead(updated)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -172,7 +163,7 @@ private struct OverheadFormBody: View {
     var isChildInstance: Bool = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+        Group {
             basicsSection
             recurrenceSection
             allocationSection
@@ -181,8 +172,7 @@ private struct OverheadFormBody: View {
     }
 
     @ViewBuilder private var basicsSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Expense")
+        EntrySection("Expense", systemImage: AppIcons.money) {
             HStack(spacing: AppTheme.Spacing.md) {
                 LabeledField(label: "Date") {
                     DatePicker("", selection: $date, displayedComponents: .date)
@@ -215,8 +205,7 @@ private struct OverheadFormBody: View {
     }
 
     @ViewBuilder private var recurrenceSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Recurrence")
+        EntrySection("Recurrence", systemImage: AppIcons.history) {
             if isChildInstance {
                 Text("This is a generated instance of a recurring template. Edit the template directly to change the schedule.")
                     .font(.caption)
@@ -246,8 +235,7 @@ private struct OverheadFormBody: View {
     }
 
     @ViewBuilder private var allocationSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Allocation")
+        EntrySection("Allocation", systemImage: "chart.pie.fill") {
             LabeledField(
                 label: "Distribution",
                 helpText: allocationHelp
@@ -286,6 +274,7 @@ private struct OverheadFormBody: View {
                             }
                         }
                         .toggleStyle(.switch)
+                        .tint(AppTheme.primaryOrange)
                     }
                     if availableProjects.isEmpty {
                         Text("No projects available.")
@@ -303,8 +292,7 @@ private struct OverheadFormBody: View {
     }
 
     @ViewBuilder private var notesSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Notes")
+        EntrySection("Notes", systemImage: "note.text") {
             NotesField(text: $notes, minHeight: 80)
         }
     }

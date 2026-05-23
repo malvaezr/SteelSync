@@ -7,8 +7,8 @@ import UniformTypeIdentifiers
 struct PayAppsTab: View {
     let project: Project
     @EnvironmentObject var dataStore: DataStore
-    @State private var showCreatePayApp = false
-    @State private var editingPayApp: PayApplication?
+    @Binding var showCreatePayApp: Bool
+    @Binding var editingPayApp: PayApplication?
     @State private var markingSentPayApp: PayApplication?
     @State private var addingPaymentForInvoice: InvoiceContext?
     @State private var exportingPayApp: PayApplication?
@@ -107,12 +107,8 @@ struct PayAppsTab: View {
                 }
             }
         }
-        .sheet(isPresented: $showCreatePayApp) {
-            CreatePayAppSheet(project: project)
-        }
-        .sheet(item: $editingPayApp) { payApp in
-            EditPayAppSheet(payApp: payApp, project: project)
-        }
+        // Pay-app create/edit are presented INLINE at the ProjectDetailView
+        // root (so the overlay fills the whole pane). See ProjectDetailView.
         .sheet(item: $markingSentPayApp) { payApp in
             MarkAsSentSheet(payApp: payApp, project: project)
         }
@@ -302,6 +298,7 @@ struct CreatePayAppSheet: View {
     let project: Project
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
     @State private var periodTo = Date()
     @State private var retainageRate = "10"
 
@@ -310,27 +307,19 @@ struct CreatePayAppSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "New Pay Application",
-                saveTitle: "Create",
-                onCancel: { dismiss() },
-                onSave: create
-            )
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                    detailsSection
-                    inclusionSection
-                }
-                .padding(AppTheme.Spacing.lg)
-            }
-            .background(AppTheme.background)
+        EntryFormScaffold(
+            title: "New Pay Application",
+            icon: AppIcons.invoice,
+            saveTitle: "Create",
+            onCancel: closeForm,
+            onSave: create
+        ) {
+            detailsSection
+            inclusionSection
         }
-        #if os(macOS)
-        .frame(width: 540, height: 460)
-        #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     @ViewBuilder private var detailsSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
@@ -405,7 +394,7 @@ struct CreatePayAppSheet: View {
         var payApp = dataStore.buildNewPayApp(for: project.id, periodTo: periodTo, retainageRate: rate)
         payApp.applicationDate = Date()
         dataStore.addPayApplication(payApp, to: project.id)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -416,14 +405,17 @@ struct EditPayAppSheet: View {
     let project: Project
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
     @State private var draggingLineItemID: UUID?
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     var body: some View {
         VStack(spacing: 0) {
             SheetHeader(
                 title: "Schedule of Values — App #\(payApp.applicationNumber)",
                 saveTitle: "Save",
-                onCancel: { dismiss() },
+                onCancel: closeForm,
                 onSave: save
             )
 
@@ -485,9 +477,7 @@ struct EditPayAppSheet: View {
                 .frame(minWidth: 878)
             }
         }
-        #if os(macOS)
-        .frame(width: 960, height: 640)
-        #endif
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     @ViewBuilder
@@ -774,7 +764,7 @@ struct EditPayAppSheet: View {
 
     private func save() {
         dataStore.updatePayApplication(payApp, in: project.id)
-        dismiss()
+        closeForm()
     }
 }
 

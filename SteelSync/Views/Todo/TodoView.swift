@@ -89,7 +89,7 @@ struct TodoView: View {
                 #endif
             }
         }
-        .sheet(isPresented: $showAddTodo) {
+        .inlineForm(isPresented: $showAddTodo) {
             AddTodoView()
         }
         .sheet(item: $editingTodo) { todo in
@@ -163,6 +163,7 @@ struct TodoItemRow: View {
 struct AddTodoView: View {
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var title = ""
     @State private var notes = ""
@@ -172,34 +173,27 @@ struct AddTodoView: View {
     @State private var category: TodoCategory = .general
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "New Task",
-                saveTitle: "Save",
-                saveDisabled: title.isEmpty,
-                onCancel: { dismiss() },
-                onSave: save
-            )
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                    todoFields(title: $title, notes: $notes, priority: $priority,
-                               category: $category, hasDueDate: $hasDueDate, dueDate: $dueDate)
-                }
-                .padding(AppTheme.Spacing.lg)
+        EntryFormScaffold(
+            title: "New Task",
+            icon: "checklist",
+            saveDisabled: title.isEmpty,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Task Details", systemImage: "checklist") {
+                todoFields(title: $title, notes: $notes, priority: $priority,
+                           category: $category, hasDueDate: $hasDueDate, dueDate: $dueDate)
             }
-            .background(AppTheme.background)
         }
-        #if os(macOS)
-        .frame(width: 480, height: 520)
-        #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         let todo = TodoItem(title: title, notes: notes, dueDate: hasDueDate ? dueDate : nil,
                             priority: priority, category: category)
         dataStore.addTodo(todo)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -208,6 +202,7 @@ struct EditTodoView: View {
     let todo: TodoItem
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var title: String
     @State private var notes: String
@@ -227,28 +222,24 @@ struct EditTodoView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Edit Task",
-                saveTitle: "Save",
-                saveDisabled: title.isEmpty,
-                onCancel: { dismiss() },
-                onSave: save
-            )
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                    todoFields(title: $title, notes: $notes, priority: $priority,
-                               category: $category, hasDueDate: $hasDueDate, dueDate: $dueDate)
-                }
-                .padding(AppTheme.Spacing.lg)
+        EntryFormScaffold(
+            title: "Edit Task",
+            icon: "checklist",
+            saveDisabled: title.isEmpty,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Task Details", systemImage: "checklist") {
+                todoFields(title: $title, notes: $notes, priority: $priority,
+                           category: $category, hasDueDate: $hasDueDate, dueDate: $dueDate)
             }
-            .background(AppTheme.background)
         }
         #if os(macOS)
-        .frame(width: 480, height: 520)
+        .frame(width: 520, height: 560)
         #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         var updated = todo
@@ -256,7 +247,7 @@ struct EditTodoView: View {
         updated.dueDate = hasDueDate ? dueDate : nil
         updated.priority = priority; updated.category = category
         dataStore.updateTodo(updated)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -302,6 +293,7 @@ fileprivate func todoFields(
 
     Toggle("Set Due Date", isOn: hasDueDate)
         .toggleStyle(.switch)
+        .tint(AppTheme.primaryOrange)
         .padding(.top, 4)
 
     if hasDueDate.wrappedValue {

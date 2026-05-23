@@ -5,6 +5,7 @@ import CloudKit
 struct AddBidView: View {
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var projectName = ""
     @State private var selectedClientID: CKRecord.ID?
@@ -22,34 +23,23 @@ struct AddBidView: View {
     @State private var notes = ""
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "New Bid",
-                saveTitle: "Save",
-                saveDisabled: projectName.isEmpty || clientName.isEmpty,
-                onCancel: { dismiss() },
-                onSave: save
-            )
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                    projectInfoSection
-                    metricsSection
-                    notesSection
-                }
-                .padding(AppTheme.Spacing.lg)
-            }
-            .background(AppTheme.background)
+        EntryFormScaffold(
+            title: "New Bid",
+            icon: "doc.text.magnifyingglass",
+            saveDisabled: projectName.isEmpty || clientName.isEmpty,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            projectInfoSection
+            metricsSection
+            notesSection
         }
-        #if os(macOS)
-        .frame(width: 560, height: 620)
-        #endif
     }
 
-    @ViewBuilder private var projectInfoSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Project Information")
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
+    @ViewBuilder private var projectInfoSection: some View {
+        EntrySection("Project Information", systemImage: AppIcons.building) {
             LabeledField(label: "Project Name") {
                 TextField("e.g. Downtown Office Tower", text: $projectName)
                     .textFieldStyle(.appField)
@@ -110,9 +100,7 @@ struct AddBidView: View {
     }
 
     @ViewBuilder private var metricsSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Construction Metrics")
-
+        EntrySection("Construction Metrics", systemImage: AppIcons.tools) {
             HStack(spacing: AppTheme.Spacing.md) {
                 LabeledField(label: "Sq Ft") { numberField("0", $squareFeet, decimal: false) }
                 LabeledField(label: "Beams") { numberField("0", $beams, decimal: false) }
@@ -127,8 +115,7 @@ struct AddBidView: View {
     }
 
     @ViewBuilder private var notesSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Notes")
+        EntrySection("Notes", systemImage: "note.text") {
             NotesField(text: $notes)
         }
     }
@@ -155,7 +142,7 @@ struct AddBidView: View {
             estimatedTons: Double(estimatedTons) ?? 0, notes: notes
         )
         dataStore.addBid(bid)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -164,6 +151,7 @@ struct EditBidView: View {
     let bid: BidProject
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var projectName: String
     @State private var selectedClientID: CKRecord.ID?
@@ -199,33 +187,25 @@ struct EditBidView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Edit Bid",
-                saveTitle: "Save",
-                onCancel: { dismiss() },
-                onSave: save
-            )
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                    projectInfoSection
-                    metricsSection
-                    notesSection
-                }
-                .padding(AppTheme.Spacing.lg)
-            }
-            .background(AppTheme.background)
+        EntryFormScaffold(
+            title: "Edit Bid",
+            icon: "doc.text.magnifyingglass",
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            projectInfoSection
+            metricsSection
+            notesSection
         }
         #if os(macOS)
-        .frame(width: 560, height: 620)
+        .frame(width: 580, height: 640)
         #endif
     }
 
-    @ViewBuilder private var projectInfoSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Project Information")
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
+    @ViewBuilder private var projectInfoSection: some View {
+        EntrySection("Project Information", systemImage: AppIcons.building) {
             LabeledField(label: "Project Name") {
                 TextField("Project name", text: $projectName)
                     .textFieldStyle(.appField)
@@ -286,8 +266,7 @@ struct EditBidView: View {
     }
 
     @ViewBuilder private var metricsSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Construction Metrics")
+        EntrySection("Construction Metrics", systemImage: AppIcons.tools) {
             HStack(spacing: AppTheme.Spacing.md) {
                 LabeledField(label: "Sq Ft") { numberField("0", $squareFeet, decimal: false) }
                 LabeledField(label: "Beams") { numberField("0", $beams, decimal: false) }
@@ -302,8 +281,7 @@ struct EditBidView: View {
     }
 
     @ViewBuilder private var notesSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Notes")
+        EntrySection("Notes", systemImage: "note.text") {
             NotesField(text: $notes)
         }
     }
@@ -331,7 +309,7 @@ struct EditBidView: View {
         updated.numberOfWallPanels = Int(wallPanels) ?? 0
         updated.estimatedTons = Double(estimatedTons) ?? 0; updated.notes = notes
         dataStore.updateBid(updated)
-        dismiss()
+        closeForm()
     }
 }
 

@@ -48,240 +48,200 @@ private struct ChangeOrderFormBody: View {
         return siblingNumbers.contains(n)
     }
 
+    private var numberError: String? {
+        guard allowEditingNumber else { return nil }
+        if numberCollision { return "Another change order on this project already uses #\(parsedNumber ?? 0)." }
+        if parsedNumber == nil || (parsedNumber ?? 0) < 1 { return "Number must be a positive integer." }
+        return nil
+    }
+
     var body: some View {
-        Form {
-            // Identification — CO Number, Title, Billed To
-            Section {
-                HStack {
-                    Text("CO Number")
-                    Spacer()
+        Group {
+            EntrySection("Identification", systemImage: "number.square") {
+                LabeledField(label: "CO Number") {
                     TextField("e.g. 2", text: $numberText)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
+                        .textFieldStyle(.appField)
                         .disabled(!allowEditingNumber)
                         #if !os(macOS)
                         .keyboardType(.numberPad)
                         #endif
                 }
-                if allowEditingNumber {
-                    if numberCollision {
-                        Text("Another change order on this project already uses #\(parsedNumber ?? 0).")
-                            .font(.caption).foregroundColor(.red)
-                    } else if parsedNumber == nil || (parsedNumber ?? 0) < 1 {
-                        Text("Number must be a positive integer.")
-                            .font(.caption).foregroundColor(.red)
-                    }
+                if let numberError {
+                    Text(numberError).font(.caption).foregroundColor(.red)
                 }
-                TextField("Title (e.g. Beam relocation, owner request)", text: $coDescription)
-                Picker("Billed To", selection: $billedTo) {
-                    ForEach(COBilledTo.allCases, id: \.self) { type in
-                        Text(type.displayName).tag(type)
-                    }
+                LabeledField(label: "Title") {
+                    TextField("Beam relocation, owner request", text: $coDescription)
+                        .textFieldStyle(.appField)
                 }
-            } header: {
-                Label("Identification", systemImage: "number.square")
+                LabeledField(label: "Billed To") {
+                    Picker("", selection: $billedTo) {
+                        ForEach(COBilledTo.allCases, id: \.self) { type in
+                            Text(type.displayName).tag(type)
+                        }
+                    }
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
+                }
             }
 
-            // Invoice Details
-            Section {
-                HStack {
-                    TextField("Invoice #", text: $invoiceNumber)
-                    DatePicker("Date", selection: $invoiceDate, displayedComponents: .date)
+            EntrySection("Invoice Details", systemImage: AppIcons.invoice) {
+                HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+                    LabeledField(label: "Invoice #") {
+                        TextField("INV-1", text: $invoiceNumber).textFieldStyle(.appField)
+                    }
+                    LabeledField(label: "Date") {
+                        DatePicker("", selection: $invoiceDate, displayedComponents: .date)
+                            .labelsHidden().appControlSurface()
+                    }
                 }
-                HStack {
-                    TextField("Work Order #", text: $workOrderNumber)
-                    TextField("PO Number", text: $poNumber)
+                HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+                    LabeledField(label: "Work Order #") {
+                        TextField("", text: $workOrderNumber).textFieldStyle(.appField)
+                    }
+                    LabeledField(label: "PO Number") {
+                        TextField("", text: $poNumber).textFieldStyle(.appField)
+                    }
                 }
-            } header: {
-                Label("Invoice Details", systemImage: "doc.text")
             }
 
-            // Bill To & Project (auto-populated, read-only)
-            Section {
+            EntrySection("Bill To / Project", systemImage: "person.text.rectangle") {
                 if let client = client {
                     InfoRow(label: "Bill To", value: client.name, icon: "person")
                     if !client.billingAddress.isEmpty {
-                        Text(client.billingAddress)
-                            .font(.caption).foregroundColor(.secondary)
+                        Text(client.billingAddress).font(.caption).foregroundColor(AppTheme.secondaryText)
                     }
                 } else {
-                    Text("No client linked to this project")
-                        .font(.caption).foregroundColor(.secondary)
+                    Text("No client linked to this project").font(.caption).foregroundColor(AppTheme.secondaryText)
                 }
                 if let project = project {
-                    Divider()
                     InfoRow(label: "Project", value: project.title, icon: "building.2")
                     if !project.location.isEmpty {
                         InfoRow(label: "Location", value: project.location, icon: AppIcons.location)
                     }
                 }
-            } header: {
-                Label("Bill To / Project", systemImage: "person.text.rectangle")
             }
 
-            // Scope
-            Section {
-                TextEditor(text: $scope)
-                    .frame(height: 80)
-                    .overlay(
-                        Group {
-                            if scope.isEmpty {
-                                Text("Describe work performed...")
-                                    .foregroundColor(AppTheme.tertiaryText)
-                                    .padding(.leading, 4).padding(.top, 8)
-                                    .allowsHitTesting(false)
-                            }
-                        }, alignment: .topLeading
-                    )
-            } header: {
-                Label("Work Description / Scope Performed", systemImage: "text.alignleft")
+            EntrySection("Work Description / Scope Performed", systemImage: "text.alignleft") {
+                NotesField(text: $scope, minHeight: 80)
             }
 
-            // Labor & Equipment Charges
-            Section {
+            EntrySection("Labor & Equipment Charges", systemImage: AppIcons.tools) {
+                laborTable
+            }
+
+            EntrySection("Additional Charges / Materials", systemImage: AppIcons.equipment) {
+                additionalTable
+            }
+
+            EntrySection("Totals", systemImage: AppIcons.money) {
                 HStack {
-                    Text("Description").font(.caption).fontWeight(.bold).frame(width: 140, alignment: .leading)
-                    Text("Qty").font(.caption).fontWeight(.bold).frame(width: 50)
-                    Text("Hours").font(.caption).fontWeight(.bold).frame(width: 55)
-                    Text("Rate").font(.caption).fontWeight(.bold).frame(width: 70)
-                    Text("Total").font(.caption).fontWeight(.bold).frame(width: 80, alignment: .trailing)
-                }
-                .padding(.vertical, 2)
-
-                ForEach(Array(laborLines.enumerated()), id: \.element.id) { index, line in
-                    HStack {
-                        Text(line.category.displayName)
-                            .font(.callout)
-                            .frame(width: 140, alignment: .leading)
-                        TextField("0", value: $laborLines[index].quantity, format: .number)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                            .textFieldStyle(.roundedBorder).frame(width: 50)
-                        TextField("0", value: $laborLines[index].hours, format: .number)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                            .textFieldStyle(.roundedBorder).frame(width: 55)
-                        TextField("0", value: $laborLines[index].rate, format: .number)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                            .textFieldStyle(.roundedBorder).frame(width: 70)
-                        Text(line.lineTotal.currencyWithCents)
-                            .font(.callout).fontWeight(.medium)
-                            .frame(width: 80, alignment: .trailing)
-                            .foregroundColor(line.lineTotal > 0 ? AppTheme.primaryOrange : .secondary)
-                    }
-                }
-
-                if laborSubtotal > 0 {
-                    HStack {
-                        Spacer()
-                        Text("Labor Subtotal: \(laborSubtotal.currencyWithCents)")
-                            .font(.callout).fontWeight(.semibold)
-                    }
-                }
-            } header: {
-                Label("Labor & Equipment Charges", systemImage: "wrench.and.screwdriver")
-            }
-
-            // Additional Charges / Materials
-            Section {
-                ForEach(Array(additionalLines.enumerated()), id: \.element.id) { index, line in
-                    HStack {
-                        TextField("Description", text: $additionalLines[index].description)
-                            .textFieldStyle(.roundedBorder)
-                        HStack(spacing: 4) {
-                            Text("$")
-                                .foregroundColor(.secondary)
-                            TextField("0", value: $additionalLines[index].rate, format: .number)
-                                #if !os(macOS)
-                                .keyboardType(.decimalPad)
-                                #endif
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 90)
-                        }
-                        Button { additionalLines.remove(at: index) } label: {
-                            Image(systemName: "xmark.circle.fill").foregroundColor(.red.opacity(0.6))
-                        }.buttonStyle(.plain)
-                    }
-                }
-
-                Button {
-                    var item = AdditionalChargeItem()
-                    item.quantity = 1
-                    item.hours = 1
-                    additionalLines.append(item)
-                } label: {
-                    Label("Add Line Item", systemImage: "plus")
-                        .font(.callout).foregroundColor(AppTheme.primaryOrange)
-                }
-            } header: {
-                Label("Additional Charges / Materials", systemImage: "shippingbox")
-            }
-
-            // Totals
-            Section {
-                HStack {
-                    Text("Subtotal").fontWeight(.medium)
+                    Text("Subtotal").foregroundColor(AppTheme.secondaryText)
                     Spacer()
-                    Text(subtotal.currencyWithCents).fontWeight(.semibold)
+                    Text(subtotal.currencyWithCents).fontWeight(.semibold).foregroundColor(AppTheme.primaryText)
                 }
                 HStack {
-                    Text("Tax Rate (%)").foregroundColor(.secondary)
+                    Text("Tax Rate (%)").foregroundColor(AppTheme.secondaryText)
                     TextField("0", text: $taxRateString)
                         #if !os(macOS)
                         .keyboardType(.decimalPad)
                         #endif
-                        .textFieldStyle(.roundedBorder).frame(width: 60)
+                        .textFieldStyle(.appField).frame(width: 90)
                     Spacer()
                     if taxAmount > 0 {
-                        Text(taxAmount.currencyWithCents).foregroundColor(.secondary)
+                        Text(taxAmount.currencyWithCents).foregroundColor(AppTheme.secondaryText)
                     }
                 }
-                Divider()
-                HStack {
-                    Text("TOTAL DUE").font(.headline)
-                    Spacer()
-                    Text(totalDue.currencyWithCents)
-                        .font(.title3).fontWeight(.bold)
-                        .foregroundColor(AppTheme.primaryOrange)
+            }
+
+            EntrySection("Payment Terms & Notes", systemImage: "note.text") {
+                LabeledField(label: "Payment Terms") {
+                    TextField("Net 30 Days", text: $paymentTerms).textFieldStyle(.appField)
                 }
-            } header: {
-                Label("Totals", systemImage: "dollarsign.circle")
+                LabeledField(label: "Additional Notes") {
+                    NotesField(text: $additionalNotes, minHeight: 60)
+                }
             }
 
-            // Payment Terms & Notes
-            Section {
-                TextField("Payment Terms", text: $paymentTerms)
-                TextEditor(text: $additionalNotes)
-                    .frame(height: 50)
-                    .overlay(
-                        Group {
-                            if additionalNotes.isEmpty {
-                                Text("Additional notes...")
-                                    .foregroundColor(AppTheme.tertiaryText)
-                                    .padding(.leading, 4).padding(.top, 8)
-                                    .allowsHitTesting(false)
-                            }
-                        }, alignment: .topLeading
-                    )
-            } header: {
-                Label("Payment Terms & Notes", systemImage: "note.text")
-            }
-
-            // Approval
-            Section {
+            EntrySection("Approval", systemImage: "checkmark.seal") {
                 Toggle("Mark as Signed", isOn: $isSigned)
+                    .tint(AppTheme.primaryOrange)
                 if isSigned {
-                    DatePicker("Signed Date", selection: $signedDate, displayedComponents: .date)
+                    LabeledField(label: "Signed Date") {
+                        DatePicker("", selection: $signedDate, displayedComponents: .date)
+                            .labelsHidden().appControlSurface()
+                    }
                 }
-            } header: {
-                Label("Approval", systemImage: "checkmark.seal")
             }
         }
-        .formStyle(.grouped)
+    }
+
+    private var laborTable: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text("Description").font(.caption).fontWeight(.bold).frame(maxWidth: .infinity, alignment: .leading)
+                Text("Qty").font(.caption).fontWeight(.bold).frame(width: 46)
+                Text("Hours").font(.caption).fontWeight(.bold).frame(width: 50)
+                Text("Rate").font(.caption).fontWeight(.bold).frame(width: 64)
+                Text("Total").font(.caption).fontWeight(.bold).frame(width: 78, alignment: .trailing)
+            }
+            ForEach(Array(laborLines.enumerated()), id: \.element.id) { index, line in
+                HStack {
+                    Text(line.category.displayName)
+                        .font(.callout).frame(maxWidth: .infinity, alignment: .leading)
+                    TextField("0", value: $laborLines[index].quantity, format: .number)
+                        #if !os(macOS)
+                        .keyboardType(.decimalPad)
+                        #endif
+                        .textFieldStyle(.roundedBorder).frame(width: 46)
+                    TextField("0", value: $laborLines[index].hours, format: .number)
+                        #if !os(macOS)
+                        .keyboardType(.decimalPad)
+                        #endif
+                        .textFieldStyle(.roundedBorder).frame(width: 50)
+                    TextField("0", value: $laborLines[index].rate, format: .number)
+                        #if !os(macOS)
+                        .keyboardType(.decimalPad)
+                        #endif
+                        .textFieldStyle(.roundedBorder).frame(width: 64)
+                    Text(line.lineTotal.currencyWithCents)
+                        .font(.callout).fontWeight(.medium)
+                        .frame(width: 78, alignment: .trailing)
+                        .foregroundColor(line.lineTotal > 0 ? AppTheme.primaryOrange : AppTheme.secondaryText)
+                }
+            }
+        }
+    }
+
+    private var additionalTable: some View {
+        VStack(spacing: 8) {
+            ForEach(Array(additionalLines.enumerated()), id: \.element.id) { index, line in
+                HStack {
+                    TextField("Description", text: $additionalLines[index].description)
+                        .textFieldStyle(.roundedBorder)
+                    HStack(spacing: 4) {
+                        Text("$").foregroundColor(AppTheme.secondaryText)
+                        TextField("0", value: $additionalLines[index].rate, format: .number)
+                            #if !os(macOS)
+                            .keyboardType(.decimalPad)
+                            #endif
+                            .textFieldStyle(.roundedBorder).frame(width: 90)
+                    }
+                    Button { additionalLines.remove(at: index) } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundColor(.red.opacity(0.6))
+                    }.buttonStyle(.plain)
+                }
+            }
+            Button {
+                var item = AdditionalChargeItem()
+                item.quantity = 1
+                item.hours = 1
+                additionalLines.append(item)
+            } label: {
+                Label("Add Line Item", systemImage: "plus")
+                    .font(.callout).foregroundColor(AppTheme.primaryOrange)
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 }
 
@@ -291,6 +251,7 @@ struct AddChangeOrderView: View {
     let nextNumber: Int
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var numberText = ""
     @State private var coDescription = ""
@@ -327,29 +288,24 @@ struct AddChangeOrderView: View {
         parsedNumber == nil || (parsedNumber ?? 0) < 1 || numberCollision
     }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    Text("CO #\(numberText.isEmpty ? "\(nextNumber)" : numberText)")
-                        .font(.caption).fontWeight(.bold)
-                        .padding(.horizontal, 8).padding(.vertical, 4)
-                        .background(AppTheme.primaryOrange)
-                        .foregroundColor(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                    Text("Work Order Invoice")
-                        .font(AppTheme.Typography.title3)
-                }
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.appPrimary)
-                    .disabled(isSaveDisabled)
-            }
-            .padding()
-            Divider()
+    private var footerTotal: Decimal {
+        let labor = laborLines.reduce(Decimal(0)) { $0 + $1.lineTotal }
+        let additional = additionalLines.reduce(Decimal(0)) { $0 + $1.lineTotal }
+        let sub = labor + additional
+        let rate = Decimal(string: taxRateString) ?? 0
+        var tax = Decimal(); var v = sub * rate / 100
+        NSDecimalRound(&tax, &v, 2, .plain)
+        return sub + tax
+    }
 
+    var body: some View {
+        EntryFormScaffold(
+            title: "Work Order Invoice",
+            badge: "CO #\(numberText.isEmpty ? "\(nextNumber)" : numberText)",
+            saveDisabled: isSaveDisabled,
+            onCancel: closeForm,
+            onSave: save
+        ) {
             ChangeOrderFormBody(
                 project: project,
                 client: client,
@@ -372,15 +328,21 @@ struct AddChangeOrderView: View {
                 isSigned: $isSigned,
                 signedDate: $signedDate
             )
+        } footer: {
+            HStack {
+                Text("TOTAL DUE").font(.headline).foregroundColor(AppTheme.primaryText)
+                Spacer()
+                Text(footerTotal.currencyWithCents)
+                    .font(.title3).fontWeight(.bold).foregroundColor(AppTheme.primaryOrange)
+            }
         }
-        #if os(macOS)
-        .frame(width: 720, height: 820)
-        #endif
         .onAppear {
             if numberText.isEmpty { numberText = "\(nextNumber)" }
             if invoiceNumber.isEmpty { invoiceNumber = "INV-\(nextNumber)" }
         }
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         guard let n = parsedNumber, n > 0, !numberCollision else { return }
@@ -411,7 +373,7 @@ struct AddChangeOrderView: View {
             additionalNotes: additionalNotes
         )
         dataStore.addChangeOrder(co, to: projectID)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -428,6 +390,7 @@ struct EditChangeOrderSheet: View {
     let projectID: CKRecord.ID
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var numberText: String
     @State private var coDescription: String
@@ -504,29 +467,24 @@ struct EditChangeOrderSheet: View {
         parsedNumber == nil || (parsedNumber ?? 0) < 1 || numberCollision
     }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    Text("CO #\(numberText)")
-                        .font(.caption).fontWeight(.bold)
-                        .padding(.horizontal, 8).padding(.vertical, 4)
-                        .background(AppTheme.primaryOrange)
-                        .foregroundColor(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                    Text("Edit Work Order Invoice")
-                        .font(AppTheme.Typography.title3)
-                }
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.appPrimary)
-                    .disabled(isSaveDisabled)
-            }
-            .padding()
-            Divider()
+    private var footerTotal: Decimal {
+        let labor = laborLines.reduce(Decimal(0)) { $0 + $1.lineTotal }
+        let additional = additionalLines.reduce(Decimal(0)) { $0 + $1.lineTotal }
+        let sub = labor + additional
+        let rate = Decimal(string: taxRateString) ?? 0
+        var tax = Decimal(); var v = sub * rate / 100
+        NSDecimalRound(&tax, &v, 2, .plain)
+        return sub + tax
+    }
 
+    var body: some View {
+        EntryFormScaffold(
+            title: "Edit Work Order Invoice",
+            badge: "CO #\(numberText)",
+            saveDisabled: isSaveDisabled,
+            onCancel: closeForm,
+            onSave: save
+        ) {
             ChangeOrderFormBody(
                 project: project,
                 client: client,
@@ -549,11 +507,17 @@ struct EditChangeOrderSheet: View {
                 isSigned: $isSigned,
                 signedDate: $signedDate
             )
+        } footer: {
+            HStack {
+                Text("TOTAL DUE").font(.headline).foregroundColor(AppTheme.primaryText)
+                Spacer()
+                Text(footerTotal.currencyWithCents)
+                    .font(.title3).fontWeight(.bold).foregroundColor(AppTheme.primaryOrange)
+            }
         }
-        #if os(macOS)
-        .frame(width: 720, height: 820)
-        #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         guard let n = parsedNumber, n > 0, !numberCollision else { return }
@@ -583,7 +547,7 @@ struct EditChangeOrderSheet: View {
         updated.paymentTerms = paymentTerms
         updated.additionalNotes = additionalNotes
         dataStore.updateChangeOrder(updated, in: projectID)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -592,6 +556,7 @@ struct AddPaymentView: View {
     let projectID: CKRecord.ID
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var amount = ""
     @State private var date = Date()
@@ -631,100 +596,89 @@ struct AddPaymentView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Record Payment")
-                    .font(AppTheme.Typography.title3)
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(!canSave)
-                    .buttonStyle(.appPrimary)
-            }
-            .padding()
-            Divider()
+        EntryFormScaffold(
+            title: "Record Payment",
+            icon: AppIcons.money,
+            saveDisabled: !canSave,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            // Collection Progress
+            if let project = project {
+                EntrySection("Collection Progress", systemImage: "chart.bar.fill") {
+                    let revenue = project.totalRevenue
+                    let collected = project.totalPayments
+                    let remaining = project.remainingBalance
+                    let progress = revenue > 0 ? Double(truncating: (collected / revenue) as NSDecimalNumber) : 0
+                    let afterCollected = collected + parsedAmount
+                    let afterProgress = revenue > 0 ? Double(truncating: (afterCollected / revenue) as NSDecimalNumber) : 0
 
-            Form {
-                // Collection Progress
-                if let project = project {
-                    Section {
-                        let revenue = project.totalRevenue
-                        let collected = project.totalPayments
-                        let remaining = project.remainingBalance
-                        let progress = revenue > 0 ? Double(truncating: (collected / revenue) as NSDecimalNumber) : 0
-                        let afterCollected = collected + parsedAmount
-                        let afterProgress = revenue > 0 ? Double(truncating: (afterCollected / revenue) as NSDecimalNumber) : 0
-
-                        VStack(spacing: AppTheme.Spacing.sm) {
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text("Revenue").font(.caption).foregroundColor(.secondary)
-                                    Text(revenue.currencyFormatted).fontWeight(.semibold)
-                                }
-                                Spacer()
-                                VStack(alignment: .center) {
-                                    Text("Collected").font(.caption).foregroundColor(.secondary)
-                                    Text(collected.currencyFormatted).fontWeight(.semibold).foregroundColor(.green)
-                                }
-                                Spacer()
-                                VStack(alignment: .trailing) {
-                                    Text("Remaining").font(.caption).foregroundColor(.secondary)
-                                    Text(remaining.currencyFormatted).fontWeight(.semibold).foregroundColor(.orange)
-                                }
+                    VStack(spacing: AppTheme.Spacing.sm) {
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text("Revenue").font(.caption).foregroundColor(AppTheme.secondaryText)
+                                Text(revenue.currencyFormatted).fontWeight(.semibold)
                             }
-
-                            ProgressBar(value: progress, color: .green)
-
-                            if parsedAmount > 0 {
-                                HStack {
-                                    Text("After this payment:")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
-                                    Text(afterCollected.currencyFormatted)
-                                        .font(.callout)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.green)
-                                    Text("(\(Int(afterProgress * 100))%)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-
-                                ProgressBar(value: afterProgress, color: .green.opacity(0.6), height: 4)
+                            Spacer()
+                            VStack(alignment: .center) {
+                                Text("Collected").font(.caption).foregroundColor(AppTheme.secondaryText)
+                                Text(collected.currencyFormatted).fontWeight(.semibold).foregroundColor(.green)
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing) {
+                                Text("Remaining").font(.caption).foregroundColor(AppTheme.secondaryText)
+                                Text(remaining.currencyFormatted).fontWeight(.semibold).foregroundColor(.orange)
                             }
                         }
-                    } header: {
-                        Label("Collection Progress", systemImage: "chart.bar.fill")
+
+                        ProgressBar(value: progress, color: .green)
+
+                        if parsedAmount > 0 {
+                            HStack {
+                                Text("After this payment:")
+                                    .font(.caption)
+                                    .foregroundColor(AppTheme.secondaryText)
+                                Spacer()
+                                Text(afterCollected.currencyFormatted)
+                                    .font(.callout)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.green)
+                                Text("(\(Int(afterProgress * 100))%)")
+                                    .font(.caption)
+                                    .foregroundColor(AppTheme.secondaryText)
+                            }
+
+                            ProgressBar(value: afterProgress, color: .green.opacity(0.6), height: 4)
+                        }
                     }
                 }
+            }
 
-                // Payment Details
-                Section {
-                    HStack {
-                        Text("$")
-                            .foregroundColor(.green)
-                            .fontWeight(.semibold)
-                        TextField("Amount", text: $amount)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                            .textFieldStyle(.plain)
-                            .font(.title3)
-                    }
-
-                    DatePicker("Date Received", selection: $date, displayedComponents: .date)
-
-                    Picker("Method", selection: $paymentMethod) {
+            // Payment Details
+            EntrySection("Payment Details", systemImage: "banknote") {
+                LabeledField(label: "Amount") {
+                    CurrencyInput(placeholder: "0.00", text: $amount)
+                }
+                LabeledField(label: "Date Received") {
+                    DatePicker("", selection: $date, displayedComponents: .date)
+                        .labelsHidden().appControlSurface()
+                }
+                LabeledField(label: "Method") {
+                    Picker("", selection: $paymentMethod) {
                         ForEach(PaymentMethod.allCases) { m in
                             Label(m.rawValue, systemImage: m.icon).tag(m)
                         }
                     }
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
+                }
+                LabeledField(label: "Reference Number") {
+                    TextField("Check #, wire confirmation, ACH ref", text: $referenceNumber)
+                        .textFieldStyle(.appField)
+                }
 
-                    TextField("Reference Number", text: $referenceNumber, prompt: Text("Check #, wire confirmation, ACH ref"))
-
-                    if !outstandingInvoices.isEmpty {
-                        Picker("Apply to Invoice", selection: $appliedToInvoiceID) {
+                if !outstandingInvoices.isEmpty {
+                    LabeledField(label: "Apply to Invoice") {
+                        Picker("", selection: $appliedToInvoiceID) {
                             Text("None (contract payment)").tag(nil as UUID?)
                             Divider()
                             ForEach(outstandingInvoices) { invoice in
@@ -733,9 +687,12 @@ struct AddPaymentView: View {
                                     .tag(invoice.id as UUID?)
                             }
                         }
+                        .labelsHidden().pickerStyle(.menu).appControlSurface()
                     }
+                }
 
-                    Picker("Apply to Change Order", selection: $appliedToCO) {
+                LabeledField(label: "Apply to Change Order") {
+                    Picker("", selection: $appliedToCO) {
                         Text("None").tag(nil as UUID?)
                         if !changeOrders.isEmpty {
                             Divider()
@@ -745,110 +702,88 @@ struct AddPaymentView: View {
                             }
                         }
                     }
-                } header: {
-                    Label("Payment Details", systemImage: "banknote")
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
                 }
+            }
 
-                // Proof of Payment (required — image or reason)
-                Section {
-                    VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                        if attachments.isEmpty {
-                            VStack(spacing: 8) {
-                                Image(systemName: "arrow.down.doc.fill")
-                                    .font(.title2)
-                                    .foregroundColor(.secondary)
-                                Text("Drag a check image or PDF here")
-                                    .font(.callout)
-                                    .foregroundColor(.secondary)
-                                Button {
-                                    showFilePicker = true
-                                } label: {
-                                    Label("Or choose a file…", systemImage: "paperclip")
-                                }
-                                .buttonStyle(.appSecondary)
-                                .controlSize(.small)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.gray.opacity(0.06))
-                            )
-                            .fileDrop(folderID: "payment-\(projectID.recordName)") { attachment in
-                                attachments.append(attachment)
-                            }
+            // Proof of Payment (required — image or reason)
+            EntrySection("Proof of Payment", systemImage: "checkmark.shield") {
+                if attachments.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "arrow.down.doc.fill")
+                            .font(.title2)
+                            .foregroundColor(AppTheme.secondaryText)
+                        Text("Drag a check image or PDF here")
+                            .font(.callout)
+                            .foregroundColor(AppTheme.secondaryText)
+                        Button {
+                            showFilePicker = true
+                        } label: {
+                            Label("Or choose a file…", systemImage: "paperclip")
+                        }
+                        .buttonStyle(.appSecondary)
+                        .controlSize(.small)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.gray.opacity(0.06))
+                    )
+                    .fileDrop(folderID: "payment-\(projectID.recordName)") { attachment in
+                        attachments.append(attachment)
+                    }
 
-                            TextField(
-                                "",
-                                text: $proofReason,
-                                prompt: Text("Or explain why no proof is attached (required if no file)"),
-                                axis: .vertical
-                            )
-                            .lineLimit(2...4)
-                        } else {
-                            ForEach(attachments, id: \.id) { att in
-                                HStack {
-                                    Image(systemName: "doc.fill")
-                                        .foregroundColor(.green)
-                                    Text(att.filename)
-                                        .font(.callout)
-                                    Spacer()
-                                    Button(role: .destructive) {
-                                        attachments.removeAll { $0.id == att.id }
-                                    } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            Button {
-                                showFilePicker = true
+                    NotesField(text: $proofReason, minHeight: 60)
+                    Text("Or explain why no proof is attached (required if no file)")
+                        .font(.caption2).foregroundColor(AppTheme.tertiaryText)
+                } else {
+                    ForEach(attachments, id: \.id) { att in
+                        HStack {
+                            Image(systemName: "doc.fill")
+                                .foregroundColor(.green)
+                            Text(att.filename)
+                                .font(.callout)
+                            Spacer()
+                            Button(role: .destructive) {
+                                attachments.removeAll { $0.id == att.id }
                             } label: {
-                                Label("Add Another", systemImage: "plus")
+                                Image(systemName: "xmark.circle.fill")
                             }
+                            .buttonStyle(.plain)
                         }
                     }
-                } header: {
-                    Label("Proof of Payment", systemImage: "checkmark.shield")
-                } footer: {
-                    if !hasProofOrReason {
-                        Text("⚠️ Attach a check image/receipt, OR type a reason to save without proof.")
-                            .foregroundColor(.orange)
+                    Button {
+                        showFilePicker = true
+                    } label: {
+                        Label("Add Another", systemImage: "plus")
                     }
+                    .buttonStyle(.appSecondary)
+                    .controlSize(.small)
                 }
 
-                // Notes
-                Section {
-                    TextEditor(text: $notes)
-                        .frame(height: 60)
-                        .overlay(
-                            Group {
-                                if notes.isEmpty {
-                                    Text("Optional notes...")
-                                        .foregroundColor(AppTheme.tertiaryText)
-                                        .padding(.leading, 4)
-                                        .padding(.top, 8)
-                                        .allowsHitTesting(false)
-                                }
-                            }, alignment: .topLeading
-                        )
-                } header: {
-                    Label("Notes", systemImage: "note.text")
+                if !hasProofOrReason {
+                    Text("⚠️ Attach a check image/receipt, OR type a reason to save without proof.")
+                        .font(.caption)
+                        .foregroundColor(.orange)
                 }
             }
-            .formStyle(.grouped)
-            .fileImporter(
-                isPresented: $showFilePicker,
-                allowedContentTypes: [.image, .pdf],
-                allowsMultipleSelection: false
-            ) { result in
-                handleFilePick(result)
+
+            // Notes
+            EntrySection("Notes", systemImage: "note.text") {
+                NotesField(text: $notes, minHeight: 60)
             }
         }
-        #if os(macOS)
-        .frame(width: 560, height: 720)
-        #endif
+        .fileImporter(
+            isPresented: $showFilePicker,
+            allowedContentTypes: [.image, .pdf],
+            allowsMultipleSelection: false
+        ) { result in
+            handleFilePick(result)
+        }
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func handleFilePick(_ result: Result<[URL], Error>) {
         guard case .success(let urls) = result, let url = urls.first else { return }
@@ -879,7 +814,7 @@ struct AddPaymentView: View {
            let invoice = dataStore.invoices(for: projectID).first(where: { $0.id == invoiceID }) {
             dataStore.refreshInvoiceStatus(invoice, in: projectID)
         }
-        dismiss()
+        closeForm()
     }
 }
 
@@ -924,6 +859,7 @@ struct AddPayrollView: View {
     let projectID: CKRecord.ID
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var weekStart = Calendar.current.date(from: Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
     @State private var notes = ""
@@ -948,123 +884,95 @@ struct AddPayrollView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Add Payroll Entry")
-                    .font(AppTheme.Typography.title3)
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(crewLines.isEmpty || totalHours == 0)
-                    .buttonStyle(.appPrimary)
-            }
-            .padding()
-            Divider()
-
-            Form {
-                // Work Week
-                Section {
-                    DatePicker("Week Starting", selection: $weekStart,
-                               displayedComponents: .date)
-                    if let project = project {
-                        InfoRow(label: "Project", value: project.title, icon: "building.2")
-                    }
-                } header: {
-                    Label("Work Week", systemImage: "calendar")
+        EntryFormScaffold(
+            title: "Add Payroll Entry",
+            icon: AppIcons.crew,
+            saveDisabled: crewLines.isEmpty || totalHours == 0,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Work Week", systemImage: AppIcons.calendar) {
+                LabeledField(label: "Week Starting") {
+                    DatePicker("", selection: $weekStart, displayedComponents: .date)
+                        .labelsHidden().appControlSurface()
                 }
+                if let project = project {
+                    InfoRow(label: "Project", value: project.title, icon: "building.2")
+                }
+            }
 
-                // Crew
-                Section {
-                    if crewLines.isEmpty {
-                        HStack {
-                            Spacer()
-                            VStack(spacing: 8) {
-                                Image(systemName: "person.badge.plus")
-                                    .font(.title2)
-                                    .foregroundColor(.secondary)
-                                Text("Add crew members to this payroll entry")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(.vertical, AppTheme.Spacing.md)
-                            Spacer()
-                        }
-                    }
-
-                    ForEach(Array(crewLines.enumerated()), id: \.element.id) { index, line in
-                        crewLineRow(index: index, line: line)
-                            .padding(.vertical, 4)
-                    }
-
-                    if !availableEmployees.isEmpty {
-                        Menu {
-                            ForEach(availableEmployees) { emp in
-                                Button {
-                                    addEmployee(emp)
-                                } label: {
-                                    HStack {
-                                        Text(emp.fullName)
-                                        Text("(\(emp.employeeType.displayName))")
-                                        Spacer()
-                                        Text(emp.defaultHourlyRate.currencyFormatted + "/hr")
-                                    }
-                                }
-                            }
-                        } label: {
-                            Label("Add Crew Member", systemImage: "person.badge.plus")
-                                .font(.callout)
-                                .foregroundColor(AppTheme.primaryOrange)
-                        }
-                    }
-                } header: {
+            EntrySection("Crew (\(crewLines.count))", systemImage: AppIcons.people) {
+                if crewLines.isEmpty {
                     HStack {
-                        Label("Crew (\(crewLines.count))", systemImage: "person.2.fill")
+                        Spacer()
+                        VStack(spacing: 8) {
+                            Image(systemName: "person.badge.plus")
+                                .font(.title2)
+                                .foregroundColor(AppTheme.secondaryText)
+                            Text("Add crew members to this payroll entry")
+                                .font(.caption)
+                                .foregroundColor(AppTheme.secondaryText)
+                        }
+                        .padding(.vertical, AppTheme.Spacing.md)
                         Spacer()
                     }
                 }
 
-                // Running Totals
-                if !crewLines.isEmpty {
-                    Section {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text("Total Hours")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Text(totalHours.decimalFormatted)
-                                    .font(.title3)
-                                    .fontWeight(.bold)
-                            }
-                            Spacer()
-                            VStack(alignment: .trailing) {
-                                Text("Total Labor Cost")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Text(totalAmount.currencyFormatted)
-                                    .font(.title3)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(AppTheme.primaryOrange)
-                            }
-                        }
-                    } header: {
-                        Label("Summary", systemImage: "sum")
+                ForEach(Array(crewLines.enumerated()), id: \.element.id) { index, line in
+                    crewLineRow(index: index, line: line)
+                        .padding(.vertical, 6)
+                    if index < crewLines.count - 1 {
+                        Divider()
                     }
                 }
 
-                // Notes
-                Section {
-                    TextField("Notes", text: $notes)
-                } header: {
-                    Label("Notes", systemImage: "note.text")
+                if !availableEmployees.isEmpty {
+                    Menu {
+                        ForEach(availableEmployees) { emp in
+                            Button {
+                                addEmployee(emp)
+                            } label: {
+                                HStack {
+                                    Text(emp.fullName)
+                                    Text("(\(emp.employeeType.displayName))")
+                                    Spacer()
+                                    Text(emp.defaultHourlyRate.currencyFormatted + "/hr")
+                                }
+                            }
+                        }
+                    } label: {
+                        Label("Add Crew Member", systemImage: "person.badge.plus")
+                            .font(.callout)
+                            .foregroundColor(AppTheme.primaryOrange)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .formStyle(.grouped)
+
+            EntrySection("Notes", systemImage: "note.text") {
+                TextField("Notes", text: $notes).textFieldStyle(.appField)
+            }
+        } footer: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Total Hours")
+                        .font(.caption).foregroundColor(AppTheme.secondaryText)
+                    Text(totalHours.decimalFormatted)
+                        .font(.title3).fontWeight(.bold).foregroundColor(AppTheme.primaryText)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Total Labor Cost")
+                        .font(.caption).foregroundColor(AppTheme.secondaryText)
+                    Text(totalAmount.currencyFormatted)
+                        .font(.title3).fontWeight(.bold).foregroundColor(AppTheme.primaryOrange)
+                }
+            }
         }
-        #if os(macOS)
-        .frame(width: 560, height: 600)
-        #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func addEmployee(_ employee: Employee) {
         crewLines.append(PayrollLine(
@@ -1213,7 +1121,7 @@ struct AddPayrollView: View {
             employeeDetails: details
         )
         dataStore.addPayrollEntry(entry, to: projectID)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -1222,6 +1130,7 @@ struct AddCostView: View {
     let projectID: CKRecord.ID
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var category: Cost.CostCategory = .machinery
     @State private var coDescription = ""
@@ -1245,24 +1154,17 @@ struct AddCostView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Add Cost")
-                    .font(AppTheme.Typography.title3)
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(coDescription.isEmpty)
-                    .buttonStyle(.appPrimary)
-            }
-            .padding()
-            Divider()
-
-            Form {
-                // Category
-                Section {
-                    Picker("Category", selection: $category) {
+        EntryFormScaffold(
+            title: "Add Cost",
+            icon: "dollarsign.circle",
+            saveDisabled: coDescription.isEmpty,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            // Category
+            EntrySection("Category", systemImage: "tag") {
+                LabeledField(label: "Category") {
+                    Picker("", selection: $category) {
                         ForEach(Cost.CostCategoryGroup.allCases, id: \.self) { group in
                             Section(group.rawValue) {
                                 ForEach(group.categories, id: \.self) { cat in
@@ -1272,150 +1174,114 @@ struct AddCostView: View {
                             }
                         }
                     }
-
-                    HStack(spacing: AppTheme.Spacing.sm) {
-                        Image(systemName: categoryIcon(category))
-                            .foregroundColor(categoryColor(category))
-                            .frame(width: 24)
-                        Text(category.categoryGroup.rawValue)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        StatusBadge(text: category.displayName, color: categoryColor(category))
-                    }
-                } header: {
-                    Label("Category", systemImage: "tag")
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
                 }
 
-                // Details
-                Section {
-                    TextEditor(text: $coDescription)
-                        .frame(height: 50)
-                        .overlay(
-                            Group {
-                                if coDescription.isEmpty {
-                                    Text("What was this cost for...")
-                                        .foregroundColor(AppTheme.tertiaryText)
-                                        .padding(.leading, 4)
-                                        .padding(.top, 8)
-                                        .allowsHitTesting(false)
-                                }
-                            }, alignment: .topLeading
-                        )
-                    DatePicker("Date", selection: $date, displayedComponents: .date)
-                } header: {
-                    Label("Details", systemImage: "text.alignleft")
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Image(systemName: categoryIcon(category))
+                        .foregroundColor(categoryColor(category))
+                        .frame(width: 24)
+                    Text(category.categoryGroup.rawValue)
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                    Spacer()
+                    StatusBadge(text: category.displayName, color: categoryColor(category))
                 }
+            }
 
-                // Amount
-                Section {
-                    Picker("Entry Mode", selection: $useQuantity) {
-                        Text("Direct Amount").tag(false)
-                        Text("Qty x Unit Price").tag(true)
+            // Details
+            EntrySection("Details", systemImage: "text.alignleft") {
+                LabeledField(label: "Description") {
+                    NotesField(text: $coDescription, minHeight: 50)
+                }
+                LabeledField(label: "Date") {
+                    DatePicker("", selection: $date, displayedComponents: .date)
+                        .labelsHidden().appControlSurface()
+                }
+            }
+
+            // Amount
+            EntrySection("Amount", systemImage: "dollarsign.circle") {
+                Picker("Entry Mode", selection: $useQuantity) {
+                    Text("Direct Amount").tag(false)
+                    Text("Qty x Unit Price").tag(true)
+                }
+                .pickerStyle(.segmented)
+
+                if useQuantity {
+                    HStack(alignment: .bottom, spacing: AppTheme.Spacing.md) {
+                        LabeledField(label: "Qty") {
+                            TextField("0", text: $quantity)
+                                #if !os(macOS)
+                                .keyboardType(.numberPad)
+                                #endif
+                                .textFieldStyle(.appField)
+                        }
+                        Text("x")
+                            .foregroundColor(AppTheme.secondaryText)
+                            .fontWeight(.semibold)
+                            .padding(.bottom, 10)
+                        LabeledField(label: "Unit Price") {
+                            CurrencyInput(placeholder: "0.00", text: $unitPrice)
+                        }
                     }
-                    .pickerStyle(.segmented)
 
-                    if useQuantity {
-                        HStack(spacing: AppTheme.Spacing.md) {
-                            VStack(alignment: .leading) {
-                                Text("Qty").font(.caption).foregroundColor(.secondary)
-                                TextField("0", text: $quantity)
-                                    #if !os(macOS)
-                            .keyboardType(.numberPad)
-                            #endif
-                                    .textFieldStyle(.roundedBorder)
-                            }
-                            Text("x")
-                                .foregroundColor(.secondary)
-                                .fontWeight(.semibold)
-                            VStack(alignment: .leading) {
-                                Text("Unit Price").font(.caption).foregroundColor(.secondary)
-                                HStack {
-                                    Text("$").foregroundColor(.secondary)
-                                    TextField("0.00", text: $unitPrice)
-                                        #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                                        .textFieldStyle(.plain)
-                                }
-                                .padding(6)
-                                .background(AppTheme.secondaryBackground)
-                                .cornerRadius(6)
-                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.gray.opacity(0.3)))
-                            }
-                        }
-
-                        if parsedAmount > 0 {
-                            HStack {
-                                Text("Total:")
-                                    .fontWeight(.semibold)
-                                Spacer()
-                                Text(parsedAmount.currencyFormatted)
-                                    .font(.title3)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(AppTheme.primaryOrange)
-                            }
-                        }
-                    } else {
+                    if parsedAmount > 0 {
                         HStack {
-                            Text("$")
-                                .foregroundColor(.secondary)
+                            Text("Total:")
                                 .fontWeight(.semibold)
-                            TextField("Amount", text: $amount)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                                .textFieldStyle(.plain)
+                            Spacer()
+                            Text(parsedAmount.currencyFormatted)
                                 .font(.title3)
+                                .fontWeight(.bold)
+                                .foregroundColor(AppTheme.primaryOrange)
                         }
                     }
-                } header: {
-                    Label("Amount", systemImage: "dollarsign.circle")
-                }
-
-                // Running Context
-                if let project = project, parsedAmount > 0 {
-                    Section {
-                        let currentCosts = project.totalCosts
-                        let afterCosts = currentCosts + parsedAmount
-                        let afterProfit = project.totalRevenue - afterCosts
-
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text("Current Costs").font(.caption).foregroundColor(.secondary)
-                                Text(currentCosts.currencyFormatted).fontWeight(.semibold)
-                            }
-                            Spacer()
-                            Image(systemName: "arrow.right").foregroundColor(.secondary)
-                            Spacer()
-                            VStack(alignment: .trailing) {
-                                Text("After This Cost").font(.caption).foregroundColor(.secondary)
-                                Text(afterCosts.currencyFormatted).fontWeight(.semibold).foregroundColor(.red)
-                            }
-                        }
-                        HStack {
-                            Text("Profit Impact:").font(.caption).foregroundColor(.secondary)
-                            Spacer()
-                            Text(afterProfit.currencyFormatted)
-                                .fontWeight(.semibold)
-                                .foregroundColor(afterProfit >= 0 ? .green : .red)
-                        }
-                    } header: {
-                        Label("Impact Preview", systemImage: "chart.line.downtrend.xyaxis")
+                } else {
+                    LabeledField(label: "Amount") {
+                        CurrencyInput(placeholder: "0.00", text: $amount)
                     }
                 }
             }
-            .formStyle(.grouped)
+
+            // Running Context
+            if let project = project, parsedAmount > 0 {
+                EntrySection("Impact Preview", systemImage: "chart.line.downtrend.xyaxis") {
+                    let currentCosts = project.totalCosts
+                    let afterCosts = currentCosts + parsedAmount
+                    let afterProfit = project.totalRevenue - afterCosts
+
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text("Current Costs").font(.caption).foregroundColor(AppTheme.secondaryText)
+                            Text(currentCosts.currencyFormatted).fontWeight(.semibold)
+                        }
+                        Spacer()
+                        Image(systemName: "arrow.right").foregroundColor(AppTheme.secondaryText)
+                        Spacer()
+                        VStack(alignment: .trailing) {
+                            Text("After This Cost").font(.caption).foregroundColor(AppTheme.secondaryText)
+                            Text(afterCosts.currencyFormatted).fontWeight(.semibold).foregroundColor(.red)
+                        }
+                    }
+                    HStack {
+                        Text("Profit Impact:").font(.caption).foregroundColor(AppTheme.secondaryText)
+                        Spacer()
+                        Text(afterProfit.currencyFormatted)
+                            .fontWeight(.semibold)
+                            .foregroundColor(afterProfit >= 0 ? .green : .red)
+                    }
+                }
+            }
         }
-        #if os(macOS)
-        .frame(width: 520, height: useQuantity ? 650 : 600)
-        #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         let cost = Cost(category: category, description: coDescription, amount: parsedAmount, date: date)
         dataStore.addCost(cost, to: projectID)
-        dismiss()
+        closeForm()
     }
 
     private func categoryIcon(_ cat: Cost.CostCategory) -> String { costCategoryIcon(cat) }
@@ -1453,6 +1319,7 @@ struct EditCostView: View {
     let projectID: CKRecord.ID
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var category: Cost.CostCategory
     @State private var coDescription: String
@@ -1473,23 +1340,16 @@ struct EditCostView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Edit Cost")
-                    .font(AppTheme.Typography.title3)
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(coDescription.isEmpty || parsedAmount <= 0)
-                    .buttonStyle(.appPrimary)
-            }
-            .padding()
-            Divider()
-
-            Form {
-                Section {
-                    Picker("Category", selection: $category) {
+        EntryFormScaffold(
+            title: "Edit Cost",
+            icon: "dollarsign.circle",
+            saveDisabled: coDescription.isEmpty || parsedAmount <= 0,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Category", systemImage: "tag") {
+                LabeledField(label: "Category") {
+                    Picker("", selection: $category) {
                         ForEach(Cost.CostCategoryGroup.allCases, id: \.self) { group in
                             Section(group.rawValue) {
                                 ForEach(group.categories, id: \.self) { cat in
@@ -1499,62 +1359,43 @@ struct EditCostView: View {
                             }
                         }
                     }
-
-                    HStack(spacing: AppTheme.Spacing.sm) {
-                        Image(systemName: costCategoryIcon(category))
-                            .foregroundColor(costCategoryColor(category))
-                            .frame(width: 24)
-                        Text(category.categoryGroup.rawValue)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        StatusBadge(text: category.displayName, color: costCategoryColor(category))
-                    }
-                } header: {
-                    Label("Category", systemImage: "tag")
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
                 }
 
-                Section {
-                    TextEditor(text: $coDescription)
-                        .frame(height: 60)
-                        .overlay(
-                            Group {
-                                if coDescription.isEmpty {
-                                    Text("What was this cost for...")
-                                        .foregroundColor(AppTheme.tertiaryText)
-                                        .padding(.leading, 4)
-                                        .padding(.top, 8)
-                                        .allowsHitTesting(false)
-                                }
-                            }, alignment: .topLeading
-                        )
-                    DatePicker("Date", selection: $date, displayedComponents: .date)
-                } header: {
-                    Label("Details", systemImage: "text.alignleft")
-                }
-
-                Section {
-                    HStack {
-                        Text("$")
-                            .foregroundColor(.secondary)
-                            .fontWeight(.semibold)
-                        TextField("Amount", text: $amount)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                            .textFieldStyle(.plain)
-                            .font(.title3)
-                    }
-                } header: {
-                    Label("Amount", systemImage: "dollarsign.circle")
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Image(systemName: costCategoryIcon(category))
+                        .foregroundColor(costCategoryColor(category))
+                        .frame(width: 24)
+                    Text(category.categoryGroup.rawValue)
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                    Spacer()
+                    StatusBadge(text: category.displayName, color: costCategoryColor(category))
                 }
             }
-            .formStyle(.grouped)
+
+            EntrySection("Details", systemImage: "text.alignleft") {
+                LabeledField(label: "Description") {
+                    NotesField(text: $coDescription, minHeight: 60)
+                }
+                LabeledField(label: "Date") {
+                    DatePicker("", selection: $date, displayedComponents: .date)
+                        .labelsHidden().appControlSurface()
+                }
+            }
+
+            EntrySection("Amount", systemImage: "dollarsign.circle") {
+                LabeledField(label: "Amount") {
+                    CurrencyInput(placeholder: "0.00", text: $amount)
+                }
+            }
         }
         #if os(macOS)
-        .frame(width: 520, height: 540)
+        .frame(width: 560, height: 560)
         #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         var updated = cost
@@ -1563,7 +1404,7 @@ struct EditCostView: View {
         updated.amount = parsedAmount
         updated.date = date
         dataStore.updateCost(updated, in: projectID)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -1572,6 +1413,7 @@ struct AddEquipmentRentalView: View {
     let projectID: CKRecord.ID
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var selectedRateIndex = 0
     @State private var startDate = Date()
@@ -1588,113 +1430,88 @@ struct AddEquipmentRentalView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    Image(systemName: "crane.fill")
-                        .foregroundColor(AppTheme.primaryOrange)
-                    Text("Add Equipment Rental")
-                        .font(AppTheme.Typography.title3)
-                }
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.appPrimary)
-            }
-            .padding()
-            Divider()
-
-            Form {
-                // Equipment Selection
-                Section {
-                    Picker("Equipment", selection: $selectedRateIndex) {
+        EntryFormScaffold(
+            title: "Add Equipment Rental",
+            icon: "crane.fill",
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Equipment Selection", systemImage: AppIcons.equipment) {
+                LabeledField(label: "Equipment") {
+                    Picker("", selection: $selectedRateIndex) {
                         ForEach(Array(catalog.enumerated()), id: \.offset) { index, rate in
                             Text(rate.name).tag(index)
                         }
                     }
-
-                    // Rate card
-                    HStack(spacing: AppTheme.Spacing.lg) {
-                        rateDisplay("Daily", selectedRate.dailyRate)
-                        Divider().frame(height: 36)
-                        rateDisplay("Weekly", selectedRate.weeklyRate)
-                        Divider().frame(height: 36)
-                        rateDisplay("4-Week", selectedRate.fourWeekRate)
-                    }
-                    .padding(.vertical, 4)
-                } header: {
-                    Label("Equipment Selection", systemImage: "shippingbox.fill")
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
                 }
-
-                // Rental Details
-                Section {
-                    DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
-                } header: {
-                    Label("Rental Details", systemImage: "calendar")
+                HStack(spacing: AppTheme.Spacing.lg) {
+                    rateDisplay("Daily", selectedRate.dailyRate)
+                    Divider().frame(height: 36)
+                    rateDisplay("Weekly", selectedRate.weeklyRate)
+                    Divider().frame(height: 36)
+                    rateDisplay("4-Week", selectedRate.fourWeekRate)
+                    Spacer()
                 }
+                .padding(AppTheme.Spacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(AppTheme.secondaryBackground)
+                )
+            }
 
-                // Delivery
-                Section {
-                    Toggle(isOn: $includeDelivery) {
-                        HStack {
-                            Text("Delivery")
-                            Spacer()
-                            if includeDelivery {
-                                Text(EquipmentRate.edtxDeliveryCharge.currencyFormatted)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    Toggle(isOn: $includePickup) {
-                        HStack {
-                            Text("Return Pickup")
-                            Spacer()
-                            if includePickup {
-                                Text(EquipmentRate.edtxDeliveryCharge.currencyFormatted)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-
-                    if deliveryTotal > 0 {
-                        HStack {
-                            Text("Transport Total")
-                                .fontWeight(.medium)
-                            Spacer()
-                            Text(deliveryTotal.currencyFormatted)
-                                .fontWeight(.semibold)
-                                .foregroundColor(AppTheme.primaryOrange)
-                        }
-                    }
-                } header: {
-                    Label("Transport", systemImage: "truck.box.fill")
-                }
-
-                // Notes
-                Section {
-                    TextField("PO number, unit ID, notes...", text: $notes)
-                } header: {
-                    Label("Notes", systemImage: "note.text")
-                }
-
-                // Vendor Info
-                Section {
-                    HStack {
-                        Text("Vendor").foregroundColor(.secondary)
-                        Spacer()
-                        Text(selectedRate.vendor).fontWeight(.medium)
-                    }
-                } header: {
-                    Label("Vendor", systemImage: "building.2")
+            EntrySection("Rental Details", systemImage: AppIcons.calendar) {
+                LabeledField(label: "Start Date") {
+                    DatePicker("", selection: $startDate, displayedComponents: .date)
+                        .labelsHidden().appControlSurface()
                 }
             }
-            .formStyle(.grouped)
+
+            EntrySection("Transport", systemImage: "truck.box.fill") {
+                Toggle(isOn: $includeDelivery) {
+                    HStack {
+                        Text("Delivery")
+                        Spacer()
+                        if includeDelivery {
+                            Text(EquipmentRate.edtxDeliveryCharge.currencyFormatted)
+                                .foregroundColor(AppTheme.secondaryText)
+                        }
+                    }
+                }
+                .tint(AppTheme.primaryOrange)
+                Toggle(isOn: $includePickup) {
+                    HStack {
+                        Text("Return Pickup")
+                        Spacer()
+                        if includePickup {
+                            Text(EquipmentRate.edtxDeliveryCharge.currencyFormatted)
+                                .foregroundColor(AppTheme.secondaryText)
+                        }
+                    }
+                }
+                .tint(AppTheme.primaryOrange)
+            }
+
+            EntrySection("Notes", systemImage: "note.text") {
+                TextField("PO number, unit ID, notes...", text: $notes)
+                    .textFieldStyle(.appField)
+            }
+
+            EntrySection("Vendor", systemImage: "building.2") {
+                InfoRow(label: "Vendor", value: selectedRate.vendor)
+            }
+        } footer: {
+            HStack {
+                Text("Transport Total")
+                    .fontWeight(.medium).foregroundColor(AppTheme.primaryText)
+                Spacer()
+                Text(deliveryTotal.currencyFormatted)
+                    .font(.title3).fontWeight(.bold).foregroundColor(AppTheme.primaryOrange)
+            }
         }
-        #if os(macOS)
-        .frame(width: 520, height: 560)
-        #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func rateDisplay(_ label: String, _ rate: Decimal) -> some View {
         VStack(spacing: 2) {
@@ -1721,7 +1538,7 @@ struct AddEquipmentRentalView: View {
             notes: notes
         )
         dataStore.addRental(rental, to: projectID)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -1731,6 +1548,7 @@ struct CloseEquipmentRentalView: View {
     let rental: EquipmentRental
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var endDate = Date()
     @State private var fuelGallons = ""
@@ -1753,178 +1571,155 @@ struct CloseEquipmentRentalView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                    Text("Close Rental")
-                        .font(AppTheme.Typography.title3)
+        EntryFormScaffold(
+            title: "Close Rental",
+            icon: "checkmark.circle.fill",
+            saveTitle: "Close Rental",
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            // Rental Info
+            EntrySection("Rental Summary", systemImage: "info.circle") {
+                InfoRow(label: "Equipment", value: rental.equipmentName, icon: "crane.fill")
+                Divider()
+                InfoRow(label: "Start Date", value: rental.startDate.shortDate, icon: "calendar")
+                if !rental.unitInfo.isEmpty {
+                    Divider()
+                    InfoRow(label: "Unit", value: rental.unitInfo, icon: "number")
                 }
-                Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Close Rental") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.appPrimary)
+                Divider()
+                HStack(spacing: AppTheme.Spacing.lg) {
+                    rateInfo("Daily", rental.dailyRate)
+                    Divider().frame(height: 30)
+                    rateInfo("Weekly", rental.weeklyRate)
+                    Divider().frame(height: 30)
+                    rateInfo("4-Week", rental.fourWeekRate)
+                }
+                .padding(.vertical, 2)
             }
-            .padding()
-            Divider()
 
-            Form {
-                // Rental Info
-                Section {
-                    InfoRow(label: "Equipment", value: rental.equipmentName, icon: "crane.fill")
-                    Divider()
-                    InfoRow(label: "Start Date", value: rental.startDate.shortDate, icon: "calendar")
-                    if !rental.unitInfo.isEmpty {
-                        Divider()
-                        InfoRow(label: "Unit", value: rental.unitInfo, icon: "number")
-                    }
-                    Divider()
-                    HStack(spacing: AppTheme.Spacing.lg) {
-                        rateInfo("Daily", rental.dailyRate)
-                        Divider().frame(height: 30)
-                        rateInfo("Weekly", rental.weeklyRate)
-                        Divider().frame(height: 30)
-                        rateInfo("4-Week", rental.fourWeekRate)
-                    }
-                    .padding(.vertical, 2)
-                } header: {
-                    Label("Rental Summary", systemImage: "info.circle")
-                }
-
-                // Close Date
-                Section {
-                    DatePicker("End Date", selection: $endDate,
+            // Close Date
+            EntrySection("Close Date", systemImage: "calendar.badge.checkmark") {
+                LabeledField(label: "End Date") {
+                    DatePicker("", selection: $endDate,
                                in: rental.startDate...,
                                displayedComponents: .date)
-                    HStack {
-                        Text("Duration").foregroundColor(.secondary)
-                        Spacer()
-                        Text("\(rentalDays) day\(rentalDays == 1 ? "" : "s")")
+                        .labelsHidden().appControlSurface()
+                }
+                HStack {
+                    Text("Duration").foregroundColor(AppTheme.secondaryText)
+                    Spacer()
+                    Text("\(rentalDays) day\(rentalDays == 1 ? "" : "s")")
+                        .fontWeight(.semibold)
+                }
+            }
+
+            // Fuel On Return
+            EntrySection("Fuel On Return", systemImage: "fuelpump.fill") {
+                HStack {
+                    Text("Gallons")
+                    TextField("0", text: $fuelGallons)
+                        #if !os(macOS)
+                        .keyboardType(.decimalPad)
+                        #endif
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 70)
+                    Text("x").foregroundColor(AppTheme.secondaryText)
+                    Text("$").foregroundColor(AppTheme.secondaryText)
+                    TextField("9.95", text: $fuelPrice)
+                        #if !os(macOS)
+                        .keyboardType(.decimalPad)
+                        #endif
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 70)
+                    Text("/gal").foregroundColor(AppTheme.secondaryText)
+                    Spacer()
+                    if parsedFuelGal > 0 {
+                        Text("= \(detail.fuelCharge.currencyFormatted)")
                             .fontWeight(.semibold)
-                    }
-                } header: {
-                    Label("Close Date", systemImage: "calendar.badge.checkmark")
-                }
-
-                // Fuel On Return
-                Section {
-                    HStack {
-                        Text("Gallons")
-                        TextField("0", text: $fuelGallons)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 70)
-                        Text("x").foregroundColor(.secondary)
-                        Text("$").foregroundColor(.secondary)
-                        TextField("9.95", text: $fuelPrice)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 70)
-                        Text("/gal").foregroundColor(.secondary)
-                        Spacer()
-                        if parsedFuelGal > 0 {
-                            Text("= \(detail.fuelCharge.currencyFormatted)")
-                                .fontWeight(.semibold)
-                                .foregroundColor(AppTheme.primaryOrange)
-                        }
-                    }
-                } header: {
-                    Label("Fuel On Return", systemImage: "fuelpump.fill")
-                }
-
-                // Invoice Breakdown
-                Section {
-                    Text(detail.breakdown)
-                        .font(.caption)
-                        .foregroundColor(AppTheme.primaryOrange)
-                        .fontWeight(.medium)
-
-                    Divider()
-
-                    invoiceLine("Equipment Rental", detail.equipmentCost)
-                    invoiceLine("Environmental Fee (2.4%)", detail.environmentalFee)
-                    invoiceLine("Dealer Inventory Tax (0.23%)", detail.dealerInventoryTax)
-                    if detail.deliveryCharges > 0 {
-                        invoiceLine("Delivery + Pickup", detail.deliveryCharges)
-                    }
-                    if detail.fuelCharge > 0 {
-                        invoiceLine("Fuel On Return (\(fuelGallons) gal)", detail.fuelCharge)
-                    }
-
-                    Divider()
-
-                    HStack {
-                        Text("Subtotal").font(.subheadline).foregroundColor(.secondary)
-                        Spacer()
-                        Text(detail.preTaxSubtotal.currencyFormatted)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    invoiceLine("Sales Tax (8.25%)", detail.salesTax)
-
-                    Divider()
-
-                    HStack {
-                        Text("Total")
-                            .font(.headline)
-                        Spacer()
-                        Text(detail.subtotal.currencyFormatted)
-                            .font(.title3)
-                            .fontWeight(.bold)
                             .foregroundColor(AppTheme.primaryOrange)
-                    }
-                } header: {
-                    Label("Invoice Breakdown", systemImage: "doc.text")
-                }
-
-                // Impact Preview
-                if let project = project {
-                    Section {
-                        let currentCosts = project.totalCosts
-                        let afterCosts = currentCosts + detail.subtotal
-                        let afterProfit = project.totalRevenue - afterCosts
-
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text("Current Costs").font(.caption).foregroundColor(.secondary)
-                                Text(currentCosts.currencyFormatted).fontWeight(.semibold)
-                            }
-                            Spacer()
-                            Image(systemName: "arrow.right").foregroundColor(.secondary)
-                            Spacer()
-                            VStack(alignment: .trailing) {
-                                Text("After Close").font(.caption).foregroundColor(.secondary)
-                                Text(afterCosts.currencyFormatted).fontWeight(.semibold).foregroundColor(.red)
-                            }
-                        }
-                        HStack {
-                            Text("Profit Impact").font(.caption).foregroundColor(.secondary)
-                            Spacer()
-                            Text(afterProfit.currencyFormatted)
-                                .fontWeight(.semibold)
-                                .foregroundColor(afterProfit >= 0 ? .green : .red)
-                        }
-                    } header: {
-                        Label("Impact Preview", systemImage: "chart.line.downtrend.xyaxis")
                     }
                 }
             }
-            .formStyle(.grouped)
+
+            // Invoice Breakdown
+            EntrySection("Invoice Breakdown", systemImage: "doc.text") {
+                Text(detail.breakdown)
+                    .font(.caption)
+                    .foregroundColor(AppTheme.primaryOrange)
+                    .fontWeight(.medium)
+
+                Divider()
+
+                invoiceLine("Equipment Rental", detail.equipmentCost)
+                invoiceLine("Environmental Fee (2.4%)", detail.environmentalFee)
+                invoiceLine("Dealer Inventory Tax (0.23%)", detail.dealerInventoryTax)
+                if detail.deliveryCharges > 0 {
+                    invoiceLine("Delivery + Pickup", detail.deliveryCharges)
+                }
+                if detail.fuelCharge > 0 {
+                    invoiceLine("Fuel On Return (\(fuelGallons) gal)", detail.fuelCharge)
+                }
+
+                Divider()
+
+                HStack {
+                    Text("Subtotal").font(.subheadline).foregroundColor(AppTheme.secondaryText)
+                    Spacer()
+                    Text(detail.preTaxSubtotal.currencyFormatted)
+                        .font(.subheadline)
+                        .foregroundColor(AppTheme.secondaryText)
+                }
+                invoiceLine("Sales Tax (8.25%)", detail.salesTax)
+            }
+
+            // Impact Preview
+            if let project = project {
+                EntrySection("Impact Preview", systemImage: "chart.line.downtrend.xyaxis") {
+                    let currentCosts = project.totalCosts
+                    let afterCosts = currentCosts + detail.subtotal
+                    let afterProfit = project.totalRevenue - afterCosts
+
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text("Current Costs").font(.caption).foregroundColor(AppTheme.secondaryText)
+                            Text(currentCosts.currencyFormatted).fontWeight(.semibold)
+                        }
+                        Spacer()
+                        Image(systemName: "arrow.right").foregroundColor(AppTheme.secondaryText)
+                        Spacer()
+                        VStack(alignment: .trailing) {
+                            Text("After Close").font(.caption).foregroundColor(AppTheme.secondaryText)
+                            Text(afterCosts.currencyFormatted).fontWeight(.semibold).foregroundColor(.red)
+                        }
+                    }
+                    HStack {
+                        Text("Profit Impact").font(.caption).foregroundColor(AppTheme.secondaryText)
+                        Spacer()
+                        Text(afterProfit.currencyFormatted)
+                            .fontWeight(.semibold)
+                            .foregroundColor(afterProfit >= 0 ? .green : .red)
+                    }
+                }
+            }
+        } footer: {
+            HStack {
+                Text("Total").font(.headline).foregroundColor(AppTheme.primaryText)
+                Spacer()
+                Text(detail.subtotal.currencyFormatted)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundColor(AppTheme.primaryOrange)
+            }
         }
         #if os(macOS)
-        .frame(width: 560, height: 720)
+        .frame(width: 580, height: 700)
         #endif
     }
 
     private func invoiceLine(_ label: String, _ amount: Decimal) -> some View {
         HStack {
-            Text(label).font(.callout).foregroundColor(.secondary)
+            Text(label).font(.callout).foregroundColor(AppTheme.secondaryText)
             Spacer()
             Text(amount.currencyFormatted).font(.callout).fontWeight(.medium)
         }
@@ -1932,17 +1727,19 @@ struct CloseEquipmentRentalView: View {
 
     private func rateInfo(_ label: String, _ rate: Decimal) -> some View {
         VStack(spacing: 1) {
-            Text(label).font(.caption2).foregroundColor(.secondary)
+            Text(label).font(.caption2).foregroundColor(AppTheme.secondaryText)
             Text(rate.currencyFormatted).font(.caption).fontWeight(.semibold)
         }
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         dataStore.closeRental(rental, endDate: endDate,
                               fuelGallons: parsedFuelGal,
                               fuelPricePerGallon: parsedFuelPrice,
                               in: projectID)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -1952,6 +1749,7 @@ struct QuickEntrySheet: View {
     let project: Project
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     enum EntryCategory: String, CaseIterable {
         case payment = "Payment"
@@ -1995,116 +1793,104 @@ struct QuickEntrySheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Header warning
-                HStack(spacing: 8) {
-                    Image(systemName: "bolt.fill")
-                        .foregroundColor(.yellow)
-                    Text("Quick Entry — Lump Sum")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                    Spacer()
-                    Text("For backfill only. Use detailed forms when possible.")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-                .padding(10)
-                .background(Color.yellow.opacity(0.08))
-
-                Form {
-                    // Category picker
-                    Section("Category") {
-                        Picker("Type", selection: $category) {
-                            ForEach(EntryCategory.allCases, id: \.self) { cat in
-                                Label(cat.rawValue, systemImage: cat.icon).tag(cat)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-
-                    // Amount + date
-                    Section("Amount") {
-                        HStack {
-                            Text("$").font(.title2).foregroundColor(.green).fontWeight(.bold)
-                            TextField("0.00", text: $amount)
-                                .font(.title2)
-                                #if !os(macOS)
-                                .keyboardType(.decimalPad)
-                                #endif
-                        }
-                        DatePicker("Date", selection: $date, displayedComponents: .date)
-                    }
-
-                    // Description
-                    Section("Description") {
-                        TextField(descriptionPlaceholder, text: $description)
-                    }
-
-                    // Category-specific fields
-                    switch category {
-                    case .cost:
-                        Section("Cost Category") {
-                            Picker("Subcategory", selection: $costSubcategory) {
-                                ForEach(Cost.CostCategory.allCases, id: \.self) { cat in
-                                    Text(cat.rawValue).tag(cat)
-                                }
-                            }
-                        }
-                    case .changeOrder:
-                        Section("Billed To") {
-                            Picker("Billed To", selection: $coBilledTo) {
-                                ForEach(COBilledTo.allCases, id: \.self) { bt in
-                                    Text(bt.displayName).tag(bt)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                        }
-                    default:
-                        EmptyView()
-                    }
-
-                    // Summary
-                    if parsedAmount > 0 {
-                        Section("Summary") {
-                            HStack {
-                                Image(systemName: category.icon)
-                                    .foregroundColor(category.color)
-                                Text(category.rawValue)
-                                    .fontWeight(.medium)
-                                Spacer()
-                                Text(parsedAmount.currencyFormatted)
-                                    .font(.headline)
-                                    .foregroundColor(category.color)
-                            }
-                            InfoRow(label: "Project", value: project.title)
-                            InfoRow(label: "Date", value: date.shortDate)
-                            if !description.isEmpty {
-                                InfoRow(label: "Note", value: description)
-                            }
-                        }
-                    }
-                }
-                .formStyle(.grouped)
+        EntryFormScaffold(
+            title: "Quick Entry",
+            icon: "bolt.fill",
+            saveDisabled: parsedAmount == 0,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            // Header warning
+            HStack(spacing: 8) {
+                Image(systemName: "bolt.fill")
+                    .foregroundColor(.yellow)
+                Text("Quick Entry — Lump Sum")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                Spacer()
+                Text("For backfill only. Use detailed forms when possible.")
+                    .font(.caption2)
+                    .foregroundColor(AppTheme.secondaryText)
             }
-            .navigationTitle("Quick Entry")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.yellow.opacity(0.08))
+            )
+
+            // Category picker
+            EntrySection("Category", systemImage: "square.grid.2x2") {
+                Picker("Type", selection: $category) {
+                    ForEach(EntryCategory.allCases, id: \.self) { cat in
+                        Label(cat.rawValue, systemImage: cat.icon).tag(cat)
+                    }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(parsedAmount == 0)
-                        .buttonStyle(.appPrimary)
+                .labelsHidden()
+                .pickerStyle(.segmented)
+            }
+
+            // Amount + date
+            EntrySection("Amount", systemImage: "dollarsign.circle") {
+                LabeledField(label: "Amount") {
+                    CurrencyInput(placeholder: "0.00", text: $amount)
+                }
+                LabeledField(label: "Date") {
+                    DatePicker("", selection: $date, displayedComponents: .date)
+                        .labelsHidden().appControlSurface()
+                }
+            }
+
+            // Description
+            EntrySection("Description", systemImage: "text.alignleft") {
+                TextField(descriptionPlaceholder, text: $description)
+                    .textFieldStyle(.appField)
+            }
+
+            // Category-specific fields
+            switch category {
+            case .cost:
+                EntrySection("Cost Category", systemImage: "tag") {
+                    Picker("", selection: $costSubcategory) {
+                        ForEach(Cost.CostCategory.allCases, id: \.self) { cat in
+                            Text(cat.rawValue).tag(cat)
+                        }
+                    }
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
+                }
+            case .changeOrder:
+                EntrySection("Billed To", systemImage: "person.text.rectangle") {
+                    Picker("", selection: $coBilledTo) {
+                        ForEach(COBilledTo.allCases, id: \.self) { bt in
+                            Text(bt.displayName).tag(bt)
+                        }
+                    }
+                    .labelsHidden().pickerStyle(.segmented)
+                }
+            default:
+                EmptyView()
+            }
+
+            // Summary
+            if parsedAmount > 0 {
+                EntrySection("Summary", systemImage: "checklist") {
+                    HStack {
+                        Image(systemName: category.icon)
+                            .foregroundColor(category.color)
+                        Text(category.rawValue)
+                            .fontWeight(.medium)
+                        Spacer()
+                        Text(parsedAmount.currencyFormatted)
+                            .font(.headline)
+                            .foregroundColor(category.color)
+                    }
+                    InfoRow(label: "Project", value: project.title)
+                    InfoRow(label: "Date", value: date.shortDate)
+                    if !description.isEmpty {
+                        InfoRow(label: "Note", value: description)
+                    }
                 }
             }
         }
-        #if os(macOS)
-        .frame(width: 480, height: 520)
-        #endif
     }
 
     private var descriptionPlaceholder: String {
@@ -2116,6 +1902,8 @@ struct QuickEntrySheet: View {
         case .cost: return "e.g., Hotel stays for crew"
         }
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         let note = description.isEmpty ? "Quick entry (lump sum)" : "\(description) [Quick entry]"
@@ -2159,7 +1947,7 @@ struct QuickEntrySheet: View {
             dataStore.addCost(cost, to: project.id)
         }
 
-        dismiss()
+        closeForm()
     }
 }
 
@@ -2170,6 +1958,7 @@ struct AddRFISheet: View {
     let nextNumber: Int
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var subject = ""
     @State private var submittedTo = ""
@@ -2181,94 +1970,111 @@ struct AddRFISheet: View {
     @State private var uploadedAttachments: [Attachment] = []
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("RFI #\(nextNumber)") {
-                    TextField("Subject (e.g. Beam connection at grid B-4)", text: $subject)
-                    TextField("Submitted To (e.g. Architect)", text: $submittedTo)
-                    Picker("Priority", selection: $priority) {
+        EntryFormScaffold(
+            title: "New RFI",
+            badge: "RFI #\(nextNumber)",
+            saveTitle: "Create",
+            saveDisabled: subject.isEmpty,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Request", systemImage: "questionmark.circle") {
+                LabeledField(label: "Subject") {
+                    TextField("e.g. Beam connection at grid B-4", text: $subject)
+                        .textFieldStyle(.appField)
+                }
+                LabeledField(label: "Submitted To") {
+                    TextField("e.g. Architect", text: $submittedTo)
+                        .textFieldStyle(.appField)
+                }
+                LabeledField(label: "Priority") {
+                    Picker("", selection: $priority) {
                         ForEach(RFIPriority.allCases, id: \.self) { p in
                             Text(p.rawValue).tag(p)
                         }
                     }
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
                 }
-                Section("Dates") {
-                    DatePicker("Submitted", selection: $submittedDate, displayedComponents: .date)
-                    DatePicker("Response Due", selection: $responseDueDate, displayedComponents: .date)
+            }
+
+            EntrySection("Dates", systemImage: AppIcons.calendar) {
+                LabeledField(label: "Submitted") {
+                    DatePicker("", selection: $submittedDate, displayedComponents: .date)
+                        .labelsHidden().appControlSurface()
                 }
-                Section("RFI Document") {
-                    if uploadedAttachments.isEmpty {
-                        Button { showFileImporter = true } label: {
-                            HStack {
-                                Image(systemName: "doc.badge.plus")
-                                    .font(.title2)
-                                    .foregroundColor(AppTheme.primaryOrange)
-                                VStack(alignment: .leading) {
-                                    Text("Upload RFI Sheet")
-                                        .fontWeight(.medium)
-                                    Text("PDF, image, or drawing file")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
+                LabeledField(label: "Response Due") {
+                    DatePicker("", selection: $responseDueDate, displayedComponents: .date)
+                        .labelsHidden().appControlSurface()
+                }
+            }
+
+            EntrySection("RFI Document", systemImage: "doc.text") {
+                if uploadedAttachments.isEmpty {
+                    Button { showFileImporter = true } label: {
+                        HStack {
+                            Image(systemName: "doc.badge.plus")
+                                .font(.title2)
+                                .foregroundColor(AppTheme.primaryOrange)
+                            VStack(alignment: .leading) {
+                                Text("Upload RFI Sheet")
+                                    .fontWeight(.medium)
+                                Text("PDF, image, or drawing file")
+                                    .font(.caption)
+                                    .foregroundColor(AppTheme.secondaryText)
                             }
+                            Spacer()
                         }
-                        .buttonStyle(.plain)
-                    } else {
-                        ForEach(uploadedAttachments) { att in
-                            HStack {
-                                Image(systemName: FileStorageService.iconName(for: att.filename))
-                                    .foregroundColor(AppTheme.primaryOrange)
-                                VStack(alignment: .leading) {
-                                    Text(att.filename).font(.callout).lineLimit(1)
-                                    Text(att.fileSizeFormatted).font(.caption2).foregroundColor(.secondary)
-                                }
-                                Spacer()
-                                Button { uploadedAttachments.removeAll { $0.id == att.id } } label: {
-                                    Image(systemName: "xmark.circle.fill").foregroundColor(.red.opacity(0.6))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        Button { showFileImporter = true } label: {
-                            Label("Add More Files", systemImage: "plus").font(.caption)
-                        }
-                        .buttonStyle(.borderless)
+                        .padding(AppTheme.Spacing.md)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(AppTheme.secondaryBackground)
+                        )
                     }
-                }
-                Section("Notes (optional)") {
-                    TextField("Internal notes", text: $notes)
-                }
-            }
-            .formStyle(.grouped)
-            .navigationTitle("New RFI")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") { save() }
-                        .disabled(subject.isEmpty)
-                        .buttonStyle(.appPrimary)
-                }
-            }
-            .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.pdf, .png, .jpeg, .tiff, .data], allowsMultipleSelection: true) { result in
-                if case .success(let urls) = result {
-                    for url in urls {
-                        let accessed = url.startAccessingSecurityScopedResource()
-                        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
-                        let rfiFolder = "RFI_\(projectID.recordName)"
-                        if case .success(let att) = FileStorageService.importFile(from: url, bidID: rfiFolder) {
-                            uploadedAttachments.append(att)
+                    .buttonStyle(.plain)
+                } else {
+                    ForEach(uploadedAttachments) { att in
+                        HStack {
+                            Image(systemName: FileStorageService.iconName(for: att.filename))
+                                .foregroundColor(AppTheme.primaryOrange)
+                            VStack(alignment: .leading) {
+                                Text(att.filename).font(.callout).lineLimit(1)
+                                Text(att.fileSizeFormatted).font(.caption2).foregroundColor(AppTheme.secondaryText)
+                            }
+                            Spacer()
+                            Button { uploadedAttachments.removeAll { $0.id == att.id } } label: {
+                                Image(systemName: "xmark.circle.fill").foregroundColor(.red.opacity(0.6))
+                            }
+                            .buttonStyle(.plain)
                         }
+                    }
+                    Button { showFileImporter = true } label: {
+                        Label("Add More Files", systemImage: "plus").font(.caption)
+                    }
+                    .buttonStyle(.appSecondary)
+                    .controlSize(.small)
+                }
+            }
+
+            EntrySection("Notes (optional)", systemImage: "note.text") {
+                TextField("Internal notes", text: $notes)
+                    .textFieldStyle(.appField)
+            }
+        }
+        .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.pdf, .png, .jpeg, .tiff, .data], allowsMultipleSelection: true) { result in
+            if case .success(let urls) = result {
+                for url in urls {
+                    let accessed = url.startAccessingSecurityScopedResource()
+                    defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+                    let rfiFolder = "RFI_\(projectID.recordName)"
+                    if case .success(let att) = FileStorageService.importFile(from: url, bidID: rfiFolder) {
+                        uploadedAttachments.append(att)
                     }
                 }
             }
         }
-        #if os(macOS)
-        .frame(width: 500, height: 520)
-        #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         let rfi = RFI(
@@ -2283,7 +2089,7 @@ struct AddRFISheet: View {
             attachments: uploadedAttachments
         )
         dataStore.addRFI(rfi, to: projectID)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -2294,88 +2100,110 @@ struct EditRFISheet: View {
     let projectID: CKRecord.ID
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
     @State private var showFileImporter = false
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("RFI #\(rfi.number)") {
+        EntryFormScaffold(
+            title: "Edit RFI",
+            badge: "RFI #\(rfi.number)",
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Request", systemImage: "questionmark.circle") {
+                LabeledField(label: "Subject") {
                     TextField("Subject", text: $rfi.subject)
+                        .textFieldStyle(.appField)
+                }
+                LabeledField(label: "Submitted To") {
                     TextField("Submitted To", text: $rfi.submittedTo)
-                    Picker("Status", selection: $rfi.status) {
+                        .textFieldStyle(.appField)
+                }
+                LabeledField(label: "Status") {
+                    Picker("", selection: $rfi.status) {
                         ForEach(RFIStatus.allCases, id: \.self) { s in
                             Text(s.rawValue).tag(s)
                         }
                     }
-                    Picker("Priority", selection: $rfi.priority) {
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
+                }
+                LabeledField(label: "Priority") {
+                    Picker("", selection: $rfi.priority) {
                         ForEach(RFIPriority.allCases, id: \.self) { p in
                             Text(p.rawValue).tag(p)
                         }
                     }
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
                 }
-                Section("Dates") {
-                    DatePicker("Submitted", selection: $rfi.submittedDate, displayedComponents: .date)
-                    DatePicker("Response Due", selection: $rfi.responseDueDate, displayedComponents: .date)
-                    if rfi.status == .responded || rfi.status == .closed {
-                        DatePicker("Response Received", selection: Binding(
+            }
+
+            EntrySection("Dates", systemImage: AppIcons.calendar) {
+                LabeledField(label: "Submitted") {
+                    DatePicker("", selection: $rfi.submittedDate, displayedComponents: .date)
+                        .labelsHidden().appControlSurface()
+                }
+                LabeledField(label: "Response Due") {
+                    DatePicker("", selection: $rfi.responseDueDate, displayedComponents: .date)
+                        .labelsHidden().appControlSurface()
+                }
+                if rfi.status == .responded || rfi.status == .closed {
+                    LabeledField(label: "Response Received") {
+                        DatePicker("", selection: Binding(
                             get: { rfi.responseReceivedDate ?? Date() },
                             set: { rfi.responseReceivedDate = $0 }
                         ), displayedComponents: .date)
+                            .labelsHidden().appControlSurface()
                     }
-                }
-                Section("Documents (\(rfi.attachments.count) file\(rfi.attachments.count == 1 ? "" : "s"))") {
-                    ForEach(rfi.attachments) { att in
-                        HStack {
-                            Image(systemName: FileStorageService.iconName(for: att.filename))
-                                .foregroundColor(AppTheme.primaryOrange)
-                            Text(att.filename).font(.callout).lineLimit(1)
-                            Spacer()
-                            Text(att.fileSizeFormatted).font(.caption2).foregroundColor(.secondary)
-                            Button { rfi.attachments.removeAll { $0.id == att.id } } label: {
-                                Image(systemName: "xmark.circle.fill").foregroundColor(.red.opacity(0.6))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    Button { showFileImporter = true } label: {
-                        Label("Upload Document", systemImage: "doc.badge.plus").font(.callout)
-                    }
-                    .buttonStyle(.borderless)
-                }
-                Section("Notes") {
-                    TextField("Internal notes", text: $rfi.notes)
                 }
             }
-            .formStyle(.grouped)
-            .navigationTitle("Edit RFI #\(rfi.number)")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        dataStore.updateRFI(rfi, in: projectID)
-                        dismiss()
-                    }
-                    .buttonStyle(.appPrimary)
-                }
-            }
-            .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.pdf, .png, .jpeg, .tiff, .data], allowsMultipleSelection: true) { result in
-                if case .success(let urls) = result {
-                    for url in urls {
-                        let accessed = url.startAccessingSecurityScopedResource()
-                        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
-                        let rfiFolder = "RFI_\(projectID.recordName)"
-                        if case .success(let att) = FileStorageService.importFile(from: url, bidID: rfiFolder) {
-                            rfi.attachments.append(att)
+
+            EntrySection("Documents (\(rfi.attachments.count) file\(rfi.attachments.count == 1 ? "" : "s"))", systemImage: "doc.text") {
+                ForEach(rfi.attachments) { att in
+                    HStack {
+                        Image(systemName: FileStorageService.iconName(for: att.filename))
+                            .foregroundColor(AppTheme.primaryOrange)
+                        Text(att.filename).font(.callout).lineLimit(1)
+                        Spacer()
+                        Text(att.fileSizeFormatted).font(.caption2).foregroundColor(AppTheme.secondaryText)
+                        Button { rfi.attachments.removeAll { $0.id == att.id } } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundColor(.red.opacity(0.6))
                         }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Button { showFileImporter = true } label: {
+                    Label("Upload Document", systemImage: "doc.badge.plus").font(.callout)
+                }
+                .buttonStyle(.appSecondary)
+                .controlSize(.small)
+            }
+
+            EntrySection("Notes", systemImage: "note.text") {
+                TextField("Internal notes", text: $rfi.notes)
+                    .textFieldStyle(.appField)
+            }
+        }
+        .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.pdf, .png, .jpeg, .tiff, .data], allowsMultipleSelection: true) { result in
+            if case .success(let urls) = result {
+                for url in urls {
+                    let accessed = url.startAccessingSecurityScopedResource()
+                    defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+                    let rfiFolder = "RFI_\(projectID.recordName)"
+                    if case .success(let att) = FileStorageService.importFile(from: url, bidID: rfiFolder) {
+                        rfi.attachments.append(att)
                     }
                 }
             }
         }
         #if os(macOS)
-        .frame(width: 500, height: 550)
+        .frame(width: 540, height: 600)
         #endif
+    }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
+
+    private func save() {
+        dataStore.updateRFI(rfi, in: projectID)
+        closeForm()
     }
 }

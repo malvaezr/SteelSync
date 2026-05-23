@@ -115,7 +115,7 @@ struct OverheadView: View {
                 #endif
             }
         }
-        .sheet(isPresented: $showAddSheet) {
+        .inlineForm(isPresented: $showAddSheet) {
             AddOverheadExpenseView()
         }
         .confirmationDialog(

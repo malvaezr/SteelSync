@@ -121,7 +121,7 @@ struct RFILogView: View {
             }
         }
         .background(AppTheme.background)
-        .sheet(item: $addProject) { project in
+        .inlineForm(item: $addProject) { project in
             AddRFISheet(projectID: project.id, nextNumber: dataStore.nextRFINumber(for: project.id))
         }
         .sheet(item: $editingRFI) { entry in

@@ -76,6 +76,60 @@ class CloudKitService {
         }
     }
 
+    /// Self-healing role detection. If the SHARED database contains a SteelSync
+    /// zone, this device is a participant of someone else's data — adopt that
+    /// role (and persist it). An OWNER never has a SteelSync zone in their
+    /// shared DB (their zone lives in the private DB), so this cannot mis-flip
+    /// an owner. Recovers the participant role when it was lost — e.g. a
+    /// reinstall/update cleared `UserDefaults` — which otherwise leaves the
+    /// device reading its own empty `__defaultOwner__` zone.
+    /// Canonical shared-zone discovery. `CKDatabase.allRecordZones()` is
+    /// unreliable on the SHARED database and can return `[]` even after a share
+    /// was accepted; `CKFetchDatabaseChangesOperation` is the supported way to
+    /// enumerate the zones a participant has access to.
+    private func fetchSharedZoneIDs() async throws -> [CKRecordZone.ID] {
+        guard let shared = sharedDB else { return [] }
+        return try await withCheckedThrowingContinuation { continuation in
+            let op = CKFetchDatabaseChangesOperation(previousServerChangeToken: nil)
+            op.fetchAllChanges = true
+            var zoneIDs: [CKRecordZone.ID] = []
+            op.recordZoneWithIDChangedBlock = { zoneIDs.append($0) }
+            op.fetchDatabaseChangesResultBlock = { result in
+                switch result {
+                case .success: continuation.resume(returning: zoneIDs)
+                case .failure(let error): continuation.resume(throwing: error)
+                }
+            }
+            shared.add(op)
+        }
+    }
+
+    @discardableResult
+    func autoDetectParticipantRole() async -> Bool {
+        guard sharedDB != nil else {
+            print("[CloudKit] autoDetect: sharedDB is nil")
+            return false
+        }
+        do {
+            let zoneIDs = try await fetchSharedZoneIDs()
+            let summary = zoneIDs.map { "\($0.zoneName)|\($0.ownerName)" }.joined(separator: ", ")
+            print("[CloudKit] autoDetect: shared DB has \(zoneIDs.count) zone(s): [\(summary)]")
+            guard let match = zoneIDs.first(where: { $0.zoneName == zoneName }) else {
+                return false
+            }
+            let ownerName = match.ownerName
+            if case .participant(let existing) = role, existing == ownerName {
+                return true   // already correct
+            }
+            print("[CloudKit] Auto-detected participant role (shared zone owner: \(ownerName))")
+            setRole(.participant(ownerRecordName: ownerName))
+            return true
+        } catch {
+            print("[CloudKit] autoDetectParticipantRole error: \(error.localizedDescription)")
+            return false
+        }
+    }
+
     init() {
         loadPersistedRole()
     }
@@ -205,8 +259,15 @@ class CloudKitService {
     func fetchAllRecordsInZone() async throws -> [CKRecord] {
         guard let db = activeDatabase else { throw CloudKitError.notConfigured }
 
+        // Resolve the zone to read. A participant must read the OWNER's zone
+        // from the SHARED database; discovering it via allRecordZones() gives
+        // us the server's exact zone identity. Reading a hand-built zone ID on
+        // the shared DB silently returns 0 records when the ownerName doesn't
+        // match byte-for-byte or the zone hasn't been registered locally yet.
+        let targetZoneID = try await resolveReadZoneID(in: db)
+
         // Try the modern async API first
-        let changes = try await db.recordZoneChanges(inZoneWith: zoneID, since: nil)
+        let changes = try await db.recordZoneChanges(inZoneWith: targetZoneID, since: nil)
         var records: [CKRecord] = []
         var failures = 0
         for (id, result) in changes.modificationResultsByID {
@@ -218,20 +279,34 @@ class CloudKitService {
                 print("[CloudKit] Record \(id.recordName) fetch error: \(error.localizedDescription)")
             }
         }
-        print("[CloudKit] Zone fetch: \(changes.modificationResultsByID.count) results, \(records.count) records, \(failures) failures, \(changes.deletions.count) deletions")
+        print("[CloudKit] Zone fetch [\(targetZoneID.zoneName)|\(targetZoneID.ownerName)]: \(changes.modificationResultsByID.count) results, \(records.count) records, \(failures) failures, \(changes.deletions.count) deletions")
 
         // If async API returned 0, fall back to operation-based fetch
         if records.isEmpty {
             print("[CloudKit] Async API returned 0 records, trying operation-based fallback...")
-            records = try await fetchAllRecordsViaOperation(db: db)
+            records = try await fetchAllRecordsViaOperation(db: db, zoneID: targetZoneID)
             print("[CloudKit] Operation fallback fetched \(records.count) records")
         }
 
         return records
     }
 
+    /// Which zone to READ from. Owner → own constructed zone. Participant →
+    /// the actual shared zone discovered from the shared DB (server-provided
+    /// identity), falling back to the constructed ID if discovery is empty.
+    private func resolveReadZoneID(in db: CKDatabase) async throws -> CKRecordZone.ID {
+        if case .owner = role { return zoneID }
+        let zoneIDs = try await fetchSharedZoneIDs()
+        let summary = zoneIDs.map { "\($0.zoneName)|\($0.ownerName)" }.joined(separator: ", ")
+        print("[CloudKit] read: shared DB has \(zoneIDs.count) zone(s): [\(summary)]")
+        if let match = zoneIDs.first(where: { $0.zoneName == zoneName }) {
+            return match
+        }
+        return zoneIDs.first ?? zoneID
+    }
+
     /// Fallback: fetch all records using CKFetchRecordZoneChangesOperation (more reliable cross-platform)
-    private func fetchAllRecordsViaOperation(db: CKDatabase) async throws -> [CKRecord] {
+    private func fetchAllRecordsViaOperation(db: CKDatabase, zoneID: CKRecordZone.ID) async throws -> [CKRecord] {
         try await withCheckedThrowingContinuation { continuation in
             let config = CKFetchRecordZoneChangesOperation.ZoneConfiguration(
                 previousServerChangeToken: nil
@@ -557,13 +632,31 @@ class CloudKitService {
     func ensureZoneShare() async throws -> CKShare {
         guard role == .owner, let db = privateDB else { throw CloudKitError.notConfigured }
 
+        // `.readWrite` is REQUIRED for the "anyone with the link can join" model.
+        // With `.none`, the link grants access to NOBODY — only participants the
+        // owner explicitly invites by Apple ID can accept, and everyone else
+        // sees "The owner stopped sharing, or your account doesn't have
+        // permission to open it." Public read/write lets any recipient self-add
+        // by opening the link and collaborate (matches our push/pull design).
+        let desiredPermission: CKShare.ParticipantPermission = .readWrite
+
         if let existing = try await fetchExistingZoneShare() {
+            // Upgrade a share created before this setting (e.g. a legacy `.none`
+            // share) in place, so links already sent out start working without
+            // re-issuing a new URL.
+            guard existing.publicPermission != desiredPermission else { return existing }
+            existing.publicPermission = desiredPermission
+            let (results, _) = try await db.modifyRecords(saving: [existing], deleting: [])
+            if case .success(let saved) = results[existing.recordID],
+               let upgraded = saved as? CKShare {
+                return upgraded
+            }
             return existing
         }
 
         let share = CKShare(recordZoneID: zoneID)
         share[CKShare.SystemFieldKey.title] = "SteelSync Data" as CKRecordValue
-        share.publicPermission = .none
+        share.publicPermission = desiredPermission
 
         // CKModifyRecordsOperation reliably populates `share.url`;
         // bare db.save sometimes returns before the URL is provisioned.

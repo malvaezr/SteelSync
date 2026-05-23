@@ -4,6 +4,7 @@ import CloudKit
 struct AddProjectView: View {
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var title = ""
     @State private var location = ""
@@ -22,38 +23,29 @@ struct AddProjectView: View {
     private var subClients: [Client] { dataStore.clients.filter { $0.preferredRateType == .subcontractor } }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "New Project",
-                saveTitle: "Save",
-                saveDisabled: title.isEmpty,
-                onCancel: { dismiss() },
-                onSave: save
+        EntryFormScaffold(
+            title: "New Project",
+            icon: AppIcons.building,
+            saveDisabled: title.isEmpty,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            ProjectClientsSection(
+                gcClients: gcClients, subClients: subClients,
+                selectedGCID: $selectedGCID, selectedSubID: $selectedSubID
             )
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                    ProjectClientsSection(
-                        gcClients: gcClients, subClients: subClients,
-                        selectedGCID: $selectedGCID, selectedSubID: $selectedSubID
-                    )
-                    ProjectInfoSection(
-                        title: $title, location: $location, contractAmount: $contractAmount,
-                        status: $status, statuses: statuses
-                    )
-                    ProjectDatesSection(
-                        startDate: $startDate, endDate: $endDate, hasEndDate: $hasEndDate
-                    )
-                    ProjectNotesSection(notes: $notes)
-                }
-                .padding(AppTheme.Spacing.lg)
-            }
-            .background(AppTheme.background)
+            ProjectInfoSection(
+                title: $title, location: $location, contractAmount: $contractAmount,
+                status: $status, statuses: statuses
+            )
+            ProjectDatesSection(
+                startDate: $startDate, endDate: $endDate, hasEndDate: $hasEndDate
+            )
+            ProjectNotesSection(notes: $notes)
         }
-        #if os(macOS)
-        .frame(width: 560, height: 640)
-        #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         let amount = Decimal(string: contractAmount.replacingOccurrences(of: ",", with: "")) ?? 0
@@ -70,7 +62,7 @@ struct AddProjectView: View {
             balanceSummary: ProjectBalanceSummary(contractAmount: amount)
         )
         dataStore.addProject(project)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -78,6 +70,7 @@ struct EditProjectView: View {
     let project: Project
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var title: String
     @State private var location: String
@@ -110,38 +103,32 @@ struct EditProjectView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SheetHeader(
-                title: "Edit Project",
-                saveTitle: "Save",
-                saveDisabled: title.isEmpty,
-                onCancel: { dismiss() },
-                onSave: save
+        EntryFormScaffold(
+            title: "Edit Project",
+            icon: AppIcons.building,
+            saveDisabled: title.isEmpty,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            ProjectClientsSection(
+                gcClients: gcClients, subClients: subClients,
+                selectedGCID: $selectedGCID, selectedSubID: $selectedSubID
             )
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                    ProjectClientsSection(
-                        gcClients: gcClients, subClients: subClients,
-                        selectedGCID: $selectedGCID, selectedSubID: $selectedSubID
-                    )
-                    ProjectInfoSection(
-                        title: $title, location: $location, contractAmount: $contractAmount,
-                        status: $status, statuses: statuses
-                    )
-                    ProjectDatesSection(
-                        startDate: $startDate, endDate: $endDate, hasEndDate: $hasEndDate
-                    )
-                    ProjectNotesSection(notes: $notes)
-                }
-                .padding(AppTheme.Spacing.lg)
-            }
-            .background(AppTheme.background)
+            ProjectInfoSection(
+                title: $title, location: $location, contractAmount: $contractAmount,
+                status: $status, statuses: statuses
+            )
+            ProjectDatesSection(
+                startDate: $startDate, endDate: $endDate, hasEndDate: $hasEndDate
+            )
+            ProjectNotesSection(notes: $notes)
         }
         #if os(macOS)
-        .frame(width: 560, height: 640)
+        .frame(width: 580, height: 640)
         #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         let amount = Decimal(string: contractAmount.replacingOccurrences(of: ",", with: "")) ?? 0
@@ -159,7 +146,7 @@ struct EditProjectView: View {
         updated.status = status
         updated.notes = notes
         dataStore.updateProject(updated)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -172,8 +159,7 @@ private struct ProjectClientsSection: View {
     @Binding var selectedSubID: CKRecord.ID?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Clients")
+        EntrySection("Clients", systemImage: AppIcons.people) {
             LabeledField(label: "General Contractor") {
                 Picker("", selection: $selectedGCID) {
                     Text("None").tag(nil as CKRecord.ID?)
@@ -208,8 +194,7 @@ private struct ProjectInfoSection: View {
     let statuses: [String]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Project Information")
+        EntrySection("Project Information", systemImage: AppIcons.building) {
             LabeledField(label: "Project Title") {
                 TextField("e.g. Downtown Tower", text: $title)
                     .textFieldStyle(.appField)
@@ -241,8 +226,7 @@ private struct ProjectDatesSection: View {
     @Binding var hasEndDate: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Dates")
+        EntrySection("Dates", systemImage: AppIcons.calendar) {
             LabeledField(label: "Start Date") {
                 DatePicker("", selection: $startDate, displayedComponents: .date)
                     .labelsHidden()
@@ -250,6 +234,7 @@ private struct ProjectDatesSection: View {
             }
             Toggle("Set End Date", isOn: $hasEndDate)
                 .toggleStyle(.switch)
+                .tint(AppTheme.primaryOrange)
             if hasEndDate {
                 LabeledField(label: "End Date") {
                     DatePicker("", selection: $endDate, displayedComponents: .date)
@@ -265,8 +250,7 @@ private struct ProjectNotesSection: View {
     @Binding var notes: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            SectionTitle(text: "Notes")
+        EntrySection("Notes", systemImage: "note.text") {
             NotesField(text: $notes, minHeight: 90)
         }
     }

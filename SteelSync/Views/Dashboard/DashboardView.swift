@@ -164,7 +164,7 @@ struct DashboardView: View {
                 #endif
             }
         }
-        .sheet(isPresented: $showAddProject) {
+        .inlineForm(isPresented: $showAddProject) {
             AddProjectView()
         }
         .onAppear { applyRequestedProjectIfAny() }
