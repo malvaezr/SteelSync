@@ -435,6 +435,21 @@ class CloudKitService {
             return false
         }
 
+        // Reconcile against the server's existing records so UPDATES carry each
+        // record's system fields (PCS key reference + recordChangeTag). A fresh
+        // CKRecord cannot update an existing shared, encrypted record — a
+        // participant gets "couldn't get any dependent PCS data to decrypt
+        // shared record" plus an atomic batch failure. Fetch once here (cheap
+        // for a manual Push) and copy our fields onto the fetched records
+        // below; genuinely new records have no match and upload fresh.
+        var existingByName: [String: CKRecord] = [:]
+        if let fetched = try? await fetchAllRecordsInZone() {
+            for rec in fetched where rec.recordType != "cloudkit.share" {
+                existingByName[rec.recordID.recordName] = rec
+            }
+            print("[CloudKit] Upload: reconciling against \(existingByName.count) existing server record(s)")
+        }
+
         // Build all CKRecords to upload
         var allRecords: [CKRecord] = []
 
@@ -489,6 +504,18 @@ class CloudKitService {
         for (projectID, items) in store.invoices {
             let ref = CKRecord.Reference(recordID: CKRecord.ID(recordName: projectID.recordName, zoneID: zoneID), action: .none)
             for inv in items { let r = inv.toCKRecord(in: zoneID); r["projectRef"] = ref; allRecords.append(r) }
+        }
+
+        // Where the server already has the record, copy our fields onto the
+        // FETCHED CKRecord (preserving its system fields / PCS lineage) instead
+        // of sending a brand-new record. This is what lets a participant edit
+        // existing shared records without the PCS decrypt failure.
+        if !existingByName.isEmpty {
+            allRecords = allRecords.map { fresh in
+                guard let existing = existingByName[fresh.recordID.recordName] else { return fresh }
+                for key in fresh.allKeys() { existing[key] = fresh[key] }
+                return existing
+            }
         }
 
         print("[CloudKit] Uploading \(allRecords.count) records in batches...")
