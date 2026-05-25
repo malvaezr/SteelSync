@@ -107,7 +107,7 @@ struct CrewManagementView: View {
                 }
             }
         }
-        .sheet(isPresented: $showAddRow) {
+        .inlineForm(isPresented: $showAddRow) {
             AddTimesheetRowSheet(weekStart: weekStart)
         }
         .sheet(item: $editingEntry) { entry in
@@ -293,6 +293,7 @@ struct AddTimesheetRowSheet: View {
     let weekStart: Date
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var selectedEmployee: Employee?
     @State private var selectedProject: Project?
@@ -319,92 +320,66 @@ struct AddTimesheetRowSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Worker & Project") {
-                    Picker("Employee", selection: $selectedEmployee) {
+        EntryFormScaffold(
+            title: "Add Timesheet Row",
+            icon: AppIcons.crew,
+            saveTitle: "Add",
+            saveDisabled: selectedEmployee == nil,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Worker & Project", systemImage: AppIcons.person) {
+                LabeledField(label: "Employee") {
+                    Picker("", selection: $selectedEmployee) {
                         Text("Select...").tag(nil as Employee?)
                         ForEach(dataStore.activeEmployees) { emp in
                             Text("\(emp.fullName) (\(emp.employeeType.rawValue))").tag(emp as Employee?)
                         }
                     }
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
                     .onChange(of: selectedEmployee) { _, emp in
                         if let emp {
                             hourlyRate = NSDecimalNumber(decimal: emp.defaultHourlyRate).stringValue
                         }
                     }
-
-                    Picker("Project", selection: $selectedProject) {
+                }
+                LabeledField(label: "Project") {
+                    Picker("", selection: $selectedProject) {
                         Text("Select...").tag(nil as Project?)
                         ForEach(dataStore.projects) { proj in
                             Text(proj.title).tag(proj as Project?)
                         }
                     }
-
-                    HStack {
-                        Text("Hourly Rate")
-                        Spacer()
-                        Text("$")
-                        TextField("0", text: $hourlyRate)
-                            .frame(width: 70)
-                            .multilineTextAlignment(.trailing)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                    }
-
-                    HStack {
-                        Text("Per Diem")
-                        Spacer()
-                        Text("$")
-                        TextField("0", text: $perDiem)
-                            .frame(width: 70)
-                            .multilineTextAlignment(.trailing)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                        Text("/ day")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
                 }
-
-                Section {
-                    dayField("Monday", value: $mon)
-                    dayField("Tuesday", value: $tue)
-                    dayField("Wednesday", value: $wed)
-                    dayField("Thursday", value: $thu)
-                    dayField("Friday", value: $fri)
-                    dayField("Saturday", value: $sat)
-                    dayField("Sunday", value: $sun)
-                } header: {
-                    Text("Daily Hours")
-                } footer: {
-                    if let preview = perDiemPreview {
-                        Text(preview)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+                    LabeledField(label: "Hourly Rate") {
+                        CurrencyInput(placeholder: "0", text: $hourlyRate)
+                    }
+                    LabeledField(label: "Per Diem (/day)") {
+                        CurrencyInput(placeholder: "0", text: $perDiem)
                     }
                 }
             }
-            .formStyle(.grouped)
-            .navigationTitle("Add Timesheet Row")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") { save() }
-                        .disabled(selectedEmployee == nil)
-                        .buttonStyle(.appPrimary)
+
+            EntrySection("Daily Hours", systemImage: AppIcons.clock) {
+                dayField("Monday", value: $mon)
+                dayField("Tuesday", value: $tue)
+                dayField("Wednesday", value: $wed)
+                dayField("Thursday", value: $thu)
+                dayField("Friday", value: $fri)
+                dayField("Saturday", value: $sat)
+                dayField("Sunday", value: $sun)
+                if let preview = perDiemPreview {
+                    Text(preview)
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
                 }
             }
         }
-        #if os(macOS)
-        .frame(width: 450, height: 520)
-        #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func dayField(_ label: String, value: Binding<String>) -> some View {
         HStack {
@@ -440,7 +415,7 @@ struct AddTimesheetRowSheet: View {
             weekStartDate: weekStart
         )
         dataStore.addTimesheetEntry(entry)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -450,6 +425,7 @@ struct EditTimesheetRowSheet: View {
     @State var entry: TimesheetEntry
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var hourlyRate: String
     @State private var perDiem: String
@@ -485,72 +461,45 @@ struct EditTimesheetRowSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("\(entry.employeeName)") {
-                    InfoRow(label: "Project", value: entry.projectName)
-                    HStack {
-                        Text("Hourly Rate")
-                        Spacer()
-                        Text("$")
-                        TextField("0", text: $hourlyRate)
-                            .frame(width: 70)
-                            .multilineTextAlignment(.trailing)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
+        EntryFormScaffold(
+            title: "Edit Hours",
+            icon: AppIcons.clock,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection(entry.employeeName, systemImage: AppIcons.person) {
+                InfoRow(label: "Project", value: entry.projectName)
+                HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+                    LabeledField(label: "Hourly Rate") {
+                        CurrencyInput(placeholder: "0", text: $hourlyRate)
                     }
-                    HStack {
-                        Text("Per Diem")
-                        Spacer()
-                        Text("$")
-                        TextField("0", text: $perDiem)
-                            .frame(width: 70)
-                            .multilineTextAlignment(.trailing)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                        Text("/ day")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                Section {
-                    dayField("Monday", value: $mon)
-                    dayField("Tuesday", value: $tue)
-                    dayField("Wednesday", value: $wed)
-                    dayField("Thursday", value: $thu)
-                    dayField("Friday", value: $fri)
-                    dayField("Saturday", value: $sat)
-                    dayField("Sunday", value: $sun)
-                } header: {
-                    Text("Daily Hours")
-                } footer: {
-                    if let preview = perDiemPreview {
-                        Text(preview)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    LabeledField(label: "Per Diem (/day)") {
+                        CurrencyInput(placeholder: "0", text: $perDiem)
                     }
                 }
             }
-            .formStyle(.grouped)
-            .navigationTitle("Edit Hours")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .buttonStyle(.appPrimary)
+
+            EntrySection("Daily Hours", systemImage: AppIcons.clock) {
+                dayField("Monday", value: $mon)
+                dayField("Tuesday", value: $tue)
+                dayField("Wednesday", value: $wed)
+                dayField("Thursday", value: $thu)
+                dayField("Friday", value: $fri)
+                dayField("Saturday", value: $sat)
+                dayField("Sunday", value: $sun)
+                if let preview = perDiemPreview {
+                    Text(preview)
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
                 }
             }
         }
         #if os(macOS)
-        .frame(width: 400, height: 460)
+        .frame(width: 460, height: 600)
         #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func dayField(_ label: String, value: Binding<String>) -> some View {
         HStack {
@@ -577,6 +526,6 @@ struct EditTimesheetRowSheet: View {
         entry.saturdayHours = Decimal(string: sat) ?? 0
         entry.sundayHours = Decimal(string: sun) ?? 0
         dataStore.updateTimesheetEntry(entry)
-        dismiss()
+        closeForm()
     }
 }
