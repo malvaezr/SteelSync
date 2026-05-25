@@ -13,6 +13,7 @@ struct ApplyCrewPresetSheet: View {
 
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var selectedPresetID: UUID?
     @State private var defaultProject: Project?
@@ -23,15 +24,22 @@ struct ApplyCrewPresetSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    if dataStore.crewPresets.isEmpty {
-                        Text("No presets yet. Create one from the Manage Presets screen.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Picker("Preset", selection: $selectedPresetID) {
+        EntryFormScaffold(
+            title: "Apply Crew Preset",
+            icon: AppIcons.crew,
+            saveTitle: "Apply",
+            saveDisabled: selectedPreset == nil,
+            onCancel: closeForm,
+            onSave: apply
+        ) {
+            EntrySection("Crew Preset", systemImage: AppIcons.people) {
+                if dataStore.crewPresets.isEmpty {
+                    Text("No presets yet. Create one from the Manage Presets screen.")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                } else {
+                    LabeledField(label: "Preset") {
+                        Picker("", selection: $selectedPresetID) {
                             Text("Select…").tag(nil as UUID?)
                             ForEach(dataStore.crewPresets.sorted(by: { $0.name < $1.name })) { preset in
                                 Text(preset.isRoleTemplate
@@ -40,83 +48,71 @@ struct ApplyCrewPresetSheet: View {
                                 ).tag(preset.id as UUID?)
                             }
                         }
+                        .labelsHidden().pickerStyle(.menu).appControlSurface()
                     }
-                } header: {
-                    Text("Crew Preset")
                 }
+            }
 
-                if let preset = selectedPreset {
-                    Section("Members (\(preset.members.count))") {
-                        ForEach(preset.members) { m in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(m.employeeName.isEmpty ? "(unnamed)" : m.employeeName)
-                                    .font(.callout)
-                                    .fontWeight(.medium)
-                                HStack(spacing: 8) {
-                                    if !m.employeeType.isEmpty {
-                                        Text(m.employeeType)
-                                            .font(.caption2)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 1)
-                                            .background(Capsule().fill(Color.gray.opacity(0.18)))
-                                    }
-                                    Text("\(m.totalDefaultHours.formatted()) h default")
+            if let preset = selectedPreset {
+                EntrySection("Members (\(preset.members.count))", systemImage: AppIcons.person) {
+                    ForEach(preset.members) { m in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(m.employeeName.isEmpty ? "(unnamed)" : m.employeeName)
+                                .font(.callout)
+                                .fontWeight(.medium)
+                            HStack(spacing: 8) {
+                                if !m.employeeType.isEmpty {
+                                    Text(m.employeeType)
                                         .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                    if let r = m.hourlyRateOverride {
-                                        Text("@ $\(r.formatted())/hr")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    if m.perDiem > 0 {
-                                        Text("$\(m.perDiem.formatted())/day per diem")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 1)
+                                        .background(Capsule().fill(Color.gray.opacity(0.18)))
+                                }
+                                Text("\(m.totalDefaultHours.formatted()) h default")
+                                    .font(.caption2)
+                                    .foregroundColor(AppTheme.secondaryText)
+                                if let r = m.hourlyRateOverride {
+                                    Text("@ $\(r.formatted())/hr")
+                                        .font(.caption2)
+                                        .foregroundColor(AppTheme.secondaryText)
+                                }
+                                if m.perDiem > 0 {
+                                    Text("$\(m.perDiem.formatted())/day per diem")
+                                        .font(.caption2)
+                                        .foregroundColor(AppTheme.secondaryText)
                                 }
                             }
-                            .padding(.vertical, 2)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Divider()
                     }
+                }
 
-                    Section {
-                        Picker("Default Project", selection: $defaultProject) {
+                EntrySection("Apply To", systemImage: AppIcons.building) {
+                    LabeledField(label: "Default Project") {
+                        Picker("", selection: $defaultProject) {
                             Text("None — assign per row").tag(nil as Project?)
                             ForEach(dataStore.projects) { p in
                                 Text(p.title).tag(p as Project?)
                             }
                         }
-                    } header: {
-                        Text("Apply To")
-                    } footer: {
-                        Text("Members whose employee already has a row in this week will be skipped.")
+                        .labelsHidden().pickerStyle(.menu).appControlSurface()
                     }
-                }
-            }
-            .formStyle(.grouped)
-            .navigationTitle("Apply Crew Preset")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Apply") { apply() }
-                        .buttonStyle(.appPrimary)
-                        .disabled(selectedPreset == nil)
+                    Text("Members whose employee already has a row in this week will be skipped.")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
                 }
             }
         }
-        #if os(macOS)
-        .frame(width: 500, height: 560)
-        #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func apply() {
         guard let preset = selectedPreset else { return }
         let added = dataStore.applyCrewPreset(preset, to: weekStart, defaultProject: defaultProject)
         onApplied(added)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -243,79 +239,88 @@ struct EditCrewPresetSheet: View {
     let isNew: Bool
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var addingMemberFor: UUID?  // sentinel to trigger AddMemberSheet
     @State private var showAddMember = false
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Name") {
-                    TextField("Crew name", text: $preset.name)
-                }
+        EntryFormScaffold(
+            title: isNew ? "New Crew Preset" : "Edit Preset",
+            icon: AppIcons.crew,
+            saveDisabled: preset.name.trimmingCharacters(in: .whitespaces).isEmpty,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Name", systemImage: "tag") {
+                TextField("Crew name", text: $preset.name)
+                    .textFieldStyle(.appField)
+            }
 
-                Section {
-                    if preset.members.isEmpty {
-                        Text("No members yet. Add workers below — you can override rate, per diem, and weekly hours per row.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach($preset.members) { $member in
+            EntrySection("Members (\(preset.members.count))", systemImage: AppIcons.people) {
+                if preset.members.isEmpty {
+                    Text("No members yet. Add workers below — you can override rate, per diem, and weekly hours per row.")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
+                } else {
+                    ForEach($preset.members) { $member in
+                        HStack(alignment: .top, spacing: 8) {
                             CrewPresetMemberEditor(member: $member)
+                            Button {
+                                preset.members.removeAll { $0.id == member.id }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.red.opacity(0.6))
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .onDelete { indexSet in
-                            preset.members.remove(atOffsets: indexSet)
-                        }
+                        Divider()
                     }
+                }
 
+                Button {
+                    showAddMember = true
+                } label: {
+                    Label("Add Member", systemImage: "person.badge.plus")
+                        .font(.callout)
+                        .foregroundColor(AppTheme.primaryOrange)
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text("Default daily hours apply when this preset is dropped onto a new week. You can still edit each row after.")
+                    .font(.caption)
+                    .foregroundColor(AppTheme.secondaryText)
+            }
+
+            if !isNew {
+                EntrySection("Role Template", systemImage: "doc.on.doc") {
                     Button {
-                        showAddMember = true
+                        let template = preset.duplicatedAsRoleTemplate()
+                        dataStore.addCrewPreset(template)
+                        closeForm()
                     } label: {
-                        Label("Add Member", systemImage: "person.badge.plus")
+                        Label("Duplicate as Role Template", systemImage: "doc.on.doc")
+                            .foregroundColor(AppTheme.primaryOrange)
                     }
-                } header: {
-                    Text("Members (\(preset.members.count))")
-                } footer: {
-                    Text("Default daily hours apply when this preset is dropped onto a new week. You can still edit each row after.")
-                }
-
-                if !isNew {
-                    Section {
-                        Button {
-                            let template = preset.duplicatedAsRoleTemplate()
-                            dataStore.addCrewPreset(template)
-                            dismiss()
-                        } label: {
-                            Label("Duplicate as Role Template", systemImage: "doc.on.doc")
-                        }
-                    } footer: {
-                        Text("Creates a copy of this preset with employee links removed, leaving role labels for later assignment.")
-                    }
-                }
-            }
-            .formStyle(.grouped)
-            .navigationTitle(isNew ? "New Crew Preset" : "Edit Preset")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .buttonStyle(.appPrimary)
-                        .disabled(preset.name.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-            .sheet(isPresented: $showAddMember) {
-                AddPresetMemberSheet { newMember in
-                    preset.members.append(newMember)
+                    .buttonStyle(.plain)
+                    Text("Creates a copy of this preset with employee links removed, leaving role labels for later assignment.")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
                 }
             }
         }
         #if os(macOS)
-        .frame(width: 540, height: 620)
+        .frame(width: 560, height: 640)
         #endif
+        .sheet(isPresented: $showAddMember) {
+            AddPresetMemberSheet { newMember in
+                preset.members.append(newMember)
+            }
+        }
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func save() {
         if isNew {
@@ -323,7 +328,7 @@ struct EditCrewPresetSheet: View {
         } else {
             dataStore.updateCrewPreset(preset)
         }
-        dismiss()
+        closeForm()
     }
 }
 
@@ -460,6 +465,7 @@ private struct DailyHoursField: View {
 struct AddPresetMemberSheet: View {
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     let onAdd: (CrewPresetMember) -> Void
 
@@ -488,60 +494,52 @@ struct AddPresetMemberSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Employee") {
-                    Picker("Employee", selection: $selectedEmployee) {
+        EntryFormScaffold(
+            title: "Add Member",
+            icon: AppIcons.person,
+            saveTitle: "Add",
+            saveDisabled: !canAdd,
+            onCancel: closeForm,
+            onSave: add
+        ) {
+            EntrySection("Employee", systemImage: AppIcons.person) {
+                LabeledField(label: "Employee") {
+                    Picker("", selection: $selectedEmployee) {
                         Text("Role-only (no employee)").tag(nil as Employee?)
                         ForEach(dataStore.activeEmployees) { e in
                             Text("\(e.fullName) — \(e.employeeType.rawValue)").tag(e as Employee?)
                         }
                     }
-                    if selectedEmployee == nil {
-                        TextField("Role label (e.g. Foreman, Ironworker)", text: $roleLabel)
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
+                }
+                if selectedEmployee == nil {
+                    LabeledField(label: "Role Label") {
+                        TextField("e.g. Foreman, Ironworker", text: $roleLabel)
+                            .textFieldStyle(.appField)
                     }
                 }
+            }
 
-                Section("Defaults") {
-                    Picker("Default weekly pattern", selection: $pattern) {
+            EntrySection("Defaults", systemImage: AppIcons.calendar) {
+                LabeledField(label: "Default weekly pattern") {
+                    Picker("", selection: $pattern) {
                         ForEach(WeeklyPattern.allCases) { p in
                             Text(p.rawValue).tag(p)
                         }
                     }
-                    HStack {
-                        Text("Per diem")
-                        Spacer()
-                        Text("$")
-                        TextField("0", text: $perDiem)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                        Text("/ day")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
                 }
-            }
-            .formStyle(.grouped)
-            .navigationTitle("Add Member")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") { add() }
-                        .buttonStyle(.appPrimary)
-                        .disabled(!canAdd)
+                LabeledField(label: "Per Diem (/day)") {
+                    CurrencyInput(placeholder: "0", text: $perDiem)
                 }
             }
         }
         #if os(macOS)
-        .frame(width: 460, height: 380)
+        .frame(width: 480, height: 420)
         #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private var canAdd: Bool {
         if let _ = selectedEmployee { return true }
@@ -571,6 +569,6 @@ struct AddPresetMemberSheet: View {
             )
         }
         onAdd(member)
-        dismiss()
+        closeForm()
     }
 }

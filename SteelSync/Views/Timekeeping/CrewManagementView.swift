@@ -113,7 +113,7 @@ struct CrewManagementView: View {
         .sheet(item: $editingEntry) { entry in
             EditTimesheetRowSheet(entry: entry)
         }
-        .sheet(isPresented: $showApplyPreset) {
+        .inlineForm(isPresented: $showApplyPreset) {
             ApplyCrewPresetSheet(weekStart: weekStart) { added in
                 presetApplyToast = added > 0
                     ? "Added \(added) row\(added == 1 ? "" : "s") to this week"

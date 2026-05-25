@@ -9,6 +9,7 @@ struct GanttTaskEditSheet: View {
     var onDelete: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var name = ""
     @State private var projectID = ""
@@ -53,142 +54,153 @@ struct GanttTaskEditSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text(isEditing ? "Edit Task" : "New Task")
-                    .font(AppTheme.Typography.title3)
-                Spacer()
-                if isEditing, let onDelete = onDelete {
-                    Button("Delete", role: .destructive) {
-                        onDelete()
-                        dismiss()
-                    }
+        EntryFormScaffold(
+            title: isEditing ? "Edit Task" : "New Task",
+            icon: AppIcons.calendar,
+            saveDisabled: name.isEmpty || projectID.isEmpty,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Task Details", systemImage: "list.bullet.rectangle") {
+                LabeledField(label: "Task Name") {
+                    TextField("Task Name", text: $name).textFieldStyle(.appField)
                 }
-                Button("Cancel") { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-                Button("Save") { save() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(name.isEmpty || projectID.isEmpty)
-                    .buttonStyle(.appPrimary)
-            }
-            .padding()
-            Divider()
-
-            Form {
-                Section("Task Details") {
-                    TextField("Task Name", text: $name)
-                    Picker("Project", selection: $projectID) {
+                LabeledField(label: "Project") {
+                    Picker("", selection: $projectID) {
                         Text("Select Project").tag("")
                         ForEach(projects) { p in
                             Text(p.title).tag(p.id.recordName)
                         }
                     }
-                    Picker("Category", selection: $category) {
-                        ForEach(TaskCategory.allCases) { cat in
-                            Label(cat.rawValue, systemImage: cat.icon).tag(cat)
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
+                }
+                HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+                    LabeledField(label: "Category") {
+                        Picker("", selection: $category) {
+                            ForEach(TaskCategory.allCases) { cat in
+                                Label(cat.rawValue, systemImage: cat.icon).tag(cat)
+                            }
                         }
+                        .labelsHidden().pickerStyle(.menu).appControlSurface()
                     }
-                    Picker("Status", selection: $status) {
-                        ForEach(TaskStatus.allCases) { s in
-                            Label(s.rawValue, systemImage: s.icon).tag(s)
+                    LabeledField(label: "Status") {
+                        Picker("", selection: $status) {
+                            ForEach(TaskStatus.allCases) { s in
+                                Label(s.rawValue, systemImage: s.icon).tag(s)
+                            }
                         }
+                        .labelsHidden().pickerStyle(.menu).appControlSurface()
                     }
                 }
+            }
 
-                Section("Schedule") {
-                    DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
-                    Stepper("Duration: \(durationDays) day\(durationDays == 1 ? "" : "s")",
-                            value: $durationDays, in: 1...365)
-                    Toggle("Include Saturdays", isOn: $includesSaturdays)
-                    HStack {
-                        Text("End Date")
-                        Spacer()
-                        Text(endDate.shortDate)
-                            .foregroundColor(.secondary)
-                    }
-                    HStack {
-                        Text("Work Schedule")
-                        Spacer()
-                        Text(includesSaturdays ? "Mon - Sat" : "Mon - Fri")
-                            .foregroundColor(.secondary)
-                    }
+            EntrySection("Schedule", systemImage: AppIcons.calendar) {
+                LabeledField(label: "Start Date") {
+                    DatePicker("", selection: $startDate, displayedComponents: .date)
+                        .labelsHidden().appControlSurface()
                 }
+                Stepper("Duration: \(durationDays) day\(durationDays == 1 ? "" : "s")",
+                        value: $durationDays, in: 1...365)
+                Toggle("Include Saturdays", isOn: $includesSaturdays)
+                    .tint(AppTheme.primaryOrange)
+                InfoRow(label: "End Date", value: endDate.shortDate)
+                InfoRow(label: "Work Schedule", value: includesSaturdays ? "Mon - Sat" : "Mon - Fri")
+            }
 
-                Section("Progress") {
-                    HStack {
-                        Slider(value: $progress, in: 0...1, step: 0.05)
-                        Text("\(Int(progress * 100))%")
-                            .font(.system(.body, design: .monospaced))
-                            .frame(width: 40)
-                    }
+            EntrySection("Progress", systemImage: "chart.bar.fill") {
+                HStack {
+                    Slider(value: $progress, in: 0...1, step: 0.05)
+                    Text("\(Int(progress * 100))%")
+                        .font(.system(.body, design: .monospaced))
+                        .frame(width: 40)
                 }
+            }
 
-                Section("Dependencies") {
-                    Menu {
-                        if availablePredecessors.isEmpty {
-                            Text("No other tasks in this project yet.")
-                        } else {
-                            ForEach(availablePredecessors, id: \.id) { other in
-                                Button {
-                                    if predecessorIDs.contains(other.id) {
-                                        predecessorIDs.remove(other.id)
-                                    } else {
-                                        predecessorIDs.insert(other.id)
-                                    }
-                                } label: {
-                                    if predecessorIDs.contains(other.id) {
-                                        Label("\(other.name) — \(other.startDate.shortDate)", systemImage: "checkmark")
-                                    } else {
-                                        Text("\(other.name) — \(other.startDate.shortDate)")
-                                    }
+            EntrySection("Dependencies", systemImage: "arrow.turn.down.right") {
+                Menu {
+                    if availablePredecessors.isEmpty {
+                        Text("No other tasks in this project yet.")
+                    } else {
+                        ForEach(availablePredecessors, id: \.id) { other in
+                            Button {
+                                if predecessorIDs.contains(other.id) {
+                                    predecessorIDs.remove(other.id)
+                                } else {
+                                    predecessorIDs.insert(other.id)
+                                }
+                            } label: {
+                                if predecessorIDs.contains(other.id) {
+                                    Label("\(other.name) — \(other.startDate.shortDate)", systemImage: "checkmark")
+                                } else {
+                                    Text("\(other.name) — \(other.startDate.shortDate)")
                                 }
                             }
                         }
-                    } label: {
-                        HStack {
-                            Label("Depends On", systemImage: "arrow.turn.down.right")
-                            Spacer()
-                            Text(predecessorSummary)
-                                .foregroundColor(.secondary)
-                        }
                     }
-                    if !predecessorIDs.isEmpty {
-                        Text("Finish-to-start: this task's earliest start is after its predecessors finish. Connector lines will be drawn in the chart.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                } label: {
+                    HStack {
+                        Label("Depends On", systemImage: "arrow.turn.down.right")
+                        Spacer()
+                        Text(predecessorSummary)
+                            .foregroundColor(AppTheme.secondaryText)
                     }
+                    .appControlSurface()
                 }
-
-                Section("Protection") {
-                    Toggle(isOn: $isPinned) {
-                        Label("Pin Task", systemImage: "pin.fill")
-                    }
-                    Text("Pinned tasks cannot be dragged or resized in the chart. Use the context menu to unpin.")
+                .buttonStyle(.plain)
+                if !predecessorIDs.isEmpty {
+                    Text("Finish-to-start: this task's earliest start is after its predecessors finish. Connector lines will be drawn in the chart.")
                         .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-
-                Section("Manpower") {
-                    Toggle(isOn: $hasManpower) {
-                        Label("Assign Manpower", systemImage: "person.3.fill")
-                    }
-                    if hasManpower {
-                        Stepper("Crew: \(manpower) worker\(manpower == 1 ? "" : "s")",
-                                value: $manpower, in: 1...999)
-                    }
-                }
-
-                Section("Additional") {
-                    TextField("Assigned To", text: $assignedTo)
-                    TextField("Notes", text: $notes, axis: .vertical)
-                        .lineLimit(3...6)
+                        .foregroundColor(AppTheme.secondaryText)
                 }
             }
-            .formStyle(.grouped)
+
+            EntrySection("Protection", systemImage: AppIcons.pinned) {
+                Toggle(isOn: $isPinned) {
+                    Label("Pin Task", systemImage: "pin.fill")
+                }
+                .tint(AppTheme.primaryOrange)
+                Text("Pinned tasks cannot be dragged or resized in the chart. Use the context menu to unpin.")
+                    .font(.caption)
+                    .foregroundColor(AppTheme.secondaryText)
+            }
+
+            EntrySection("Manpower", systemImage: AppIcons.crew) {
+                Toggle(isOn: $hasManpower) {
+                    Label("Assign Manpower", systemImage: "person.3.fill")
+                }
+                .tint(AppTheme.primaryOrange)
+                if hasManpower {
+                    Stepper("Crew: \(manpower) worker\(manpower == 1 ? "" : "s")",
+                            value: $manpower, in: 1...999)
+                }
+            }
+
+            EntrySection("Additional", systemImage: "note.text") {
+                LabeledField(label: "Assigned To") {
+                    TextField("Assigned To", text: $assignedTo).textFieldStyle(.appField)
+                }
+                LabeledField(label: "Notes") {
+                    NotesField(text: $notes, minHeight: 70)
+                }
+            }
+
+            if isEditing, let onDelete = onDelete {
+                EntrySection("Danger Zone", systemImage: AppIcons.delete) {
+                    Button(role: .destructive) {
+                        onDelete()
+                        closeForm()
+                    } label: {
+                        Label("Delete Task", systemImage: "trash")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.appDestructive)
+                }
+            }
         }
         #if os(macOS)
-        .frame(width: 480, height: 620)
+        // Fixed size when presented as a sheet (edit); fill the pane when inline (add).
+        .frame(width: inlineDismiss == nil ? 520 : nil,
+               height: inlineDismiss == nil ? 640 : nil)
         #endif
         .onAppear {
             if let task = editingTask {
@@ -231,6 +243,8 @@ struct GanttTaskEditSheet: View {
             )
             onSave(task)
         }
-        dismiss()
+        closeForm()
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 }

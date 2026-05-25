@@ -164,7 +164,7 @@ struct GanttChartView: View {
                     }
             }
         }
-        .sheet(isPresented: $showAddTask) {
+        .inlineForm(isPresented: $showAddTask) {
             GanttTaskEditSheet(projects: dataStore.projects, selectedProjectID: soleSelectedProjectID) { newTask in
                 dataStore.addGanttTask(newTask)
             }
