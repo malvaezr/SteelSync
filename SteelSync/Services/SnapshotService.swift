@@ -1,5 +1,46 @@
 import Foundation
 
+/// Stores (as a security-scoped bookmark) an optional user-chosen folder where
+/// snapshots should be written, OUTSIDE the app's sandbox container. This
+/// protects backups from being lost if the app/container is removed. When no
+/// folder is set, snapshots fall back to the in-container Documents location.
+///
+/// The app is sandboxed (`com.apple.security.files.user-selected.read-write`),
+/// so persistent access to a user-picked folder requires a security-scoped
+/// bookmark + start/stopAccessingSecurityScopedResource around file access.
+enum SnapshotDestination {
+    private static let bookmarkKey = "SteelSync.SnapshotFolderBookmark"
+
+    /// The user-chosen folder if one is set and still resolvable; else nil.
+    static func resolvedFolder() -> URL? {
+        guard let data = UserDefaults.standard.data(forKey: bookmarkKey) else { return nil }
+        var stale = false
+        #if os(macOS)
+        let url = try? URL(resolvingBookmarkData: data, options: [.withSecurityScope],
+                           relativeTo: nil, bookmarkDataIsStale: &stale)
+        #else
+        let url = try? URL(resolvingBookmarkData: data, options: [],
+                           relativeTo: nil, bookmarkDataIsStale: &stale)
+        #endif
+        return url
+    }
+
+    /// Persist the chosen folder as a security-scoped bookmark.
+    static func setFolder(_ url: URL) throws {
+        #if os(macOS)
+        let data = try url.bookmarkData(options: [.withSecurityScope],
+                                        includingResourceValuesForKeys: nil, relativeTo: nil)
+        #else
+        let data = try url.bookmarkData(options: [],
+                                        includingResourceValuesForKeys: nil, relativeTo: nil)
+        #endif
+        UserDefaults.standard.set(data, forKey: bookmarkKey)
+    }
+
+    /// Revert to the in-container default location.
+    static func clear() { UserDefaults.standard.removeObject(forKey: bookmarkKey) }
+}
+
 /// Creates time-machine-style backups of all SteelSync data. Read-only by
 /// design: the live `DataStore` is never modified while exporting.
 ///
@@ -24,15 +65,44 @@ struct SnapshotService {
 
     // MARK: - Snapshot Root
 
-    static var snapshotRoot: URL {
+    /// In-container fallback location (used when no external folder is chosen).
+    private static var defaultSnapshotRoot: URL {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         return docs.appendingPathComponent("SteelSync/Snapshots", isDirectory: true)
     }
 
+    /// Resolve the active snapshot root. If the user chose an external folder,
+    /// start security-scoped access and return a `release` closure to call when
+    /// done (in a `defer`); otherwise use the in-container default with a no-op
+    /// release. ALL snapshot file access must go through this so the sandbox
+    /// grants access to an external folder.
+    private static func resolveRoot() -> (root: URL, release: () -> Void) {
+        if let ext = SnapshotDestination.resolvedFolder() {
+            let didStart = ext.startAccessingSecurityScopedResource()
+            let root = ext.appendingPathComponent("SteelSync Snapshots", isDirectory: true)
+            try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            return (root, { if didStart { ext.stopAccessingSecurityScopedResource() } })
+        }
+        return (defaultSnapshotRoot, {})
+    }
+
+    /// Where snapshots are currently saved (for display in Settings).
+    static var currentLocationPath: String {
+        if let ext = SnapshotDestination.resolvedFolder() {
+            return ext.appendingPathComponent("SteelSync Snapshots").path
+        }
+        return defaultSnapshotRoot.path
+    }
+
+    /// True when snapshots are being written to a user-chosen external folder.
+    static var isUsingExternalFolder: Bool { SnapshotDestination.resolvedFolder() != nil }
+
     /// All saved snapshots on disk, newest first.
     static func listSnapshots() -> [SnapshotDescriptor] {
+        let (root, release) = resolveRoot()
+        defer { release() }
         guard let contents = try? FileManager.default.contentsOfDirectory(
-            at: snapshotRoot,
+            at: root,
             includingPropertiesForKeys: [.contentModificationDateKey, .isDirectoryKey],
             options: [.skipsHiddenFiles]
         ) else {
@@ -63,9 +133,12 @@ struct SnapshotService {
         // Flush any in-memory changes first so the copy picks them up.
         store.persistNow()
 
+        let (root, release) = resolveRoot()
+        defer { release() }
+
         let timestamp = Date()
         let folderName = folderName(for: timestamp, label: label)
-        let snapshotURL = snapshotRoot.appendingPathComponent(folderName, isDirectory: true)
+        let snapshotURL = root.appendingPathComponent(folderName, isDirectory: true)
         try FileManager.default.createDirectory(at: snapshotURL, withIntermediateDirectories: true)
 
         // 1. Copy the entire AppData directory. This is whatever PersistenceService
@@ -140,6 +213,11 @@ struct SnapshotService {
     /// Takes a "pre-restore" safety snapshot first so the operation is reversible.
     /// After files are in place, calls `store.reloadFromDisk()` so the UI updates.
     static func restore(from snapshot: SnapshotDescriptor, into store: DataStore) throws {
+        // Grant access to the (possibly external) snapshot folder for the
+        // duration of the restore. createSnapshot below manages its own access.
+        let (_, release) = resolveRoot()
+        defer { release() }
+
         // Safety net
         _ = try? createSnapshot(from: store, label: "pre-restore")
 
@@ -167,6 +245,8 @@ struct SnapshotService {
     // MARK: - Delete
 
     static func delete(_ snapshot: SnapshotDescriptor) throws {
+        let (_, release) = resolveRoot()
+        defer { release() }
         try FileManager.default.removeItem(at: snapshot.url)
     }
 

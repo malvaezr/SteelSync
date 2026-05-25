@@ -1,4 +1,8 @@
 import SwiftUI
+import UniformTypeIdentifiers
+#if os(macOS)
+import AppKit
+#endif
 
 struct SettingsView: View {
     @EnvironmentObject var dataStore: DataStore
@@ -13,6 +17,10 @@ struct SettingsView: View {
     @State private var snapshotBusy: Bool = false
     @State private var snapshotToRestore: SnapshotDescriptor?
     @State private var snapshotToDelete: SnapshotDescriptor?
+    @State private var snapshotFolderPath: String? = nil   // nil = in-app default
+    #if !os(macOS)
+    @State private var showSnapshotFolderImporter = false
+    #endif
 
     // Confirmation PIN management
     @State private var pinCurrentInput: String = ""
@@ -144,9 +152,33 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
                         }
 
-                        Text("Captures EVERY tab's data into one read-only archive: projects, clients, bids, employees, todos, calendar events, change orders, payments, payroll, costs, equipment rentals, schedule tasks, pay applications, invoices, timesheets, RFIs, planning pads, assistant conversations, and the audit log — plus copies of every referenced file. Stored in your Documents folder. The live data is never modified when creating a snapshot. Restore later to revert to that exact state.")
+                        Text("Captures EVERY tab's data into one read-only archive: projects, clients, bids, employees, todos, calendar events, change orders, payments, payroll, costs, equipment rentals, schedule tasks, pay applications, invoices, timesheets, RFIs, planning pads, assistant conversations, and the audit log — plus copies of every referenced file. The live data is never modified when creating a snapshot. Restore later to revert to that exact state.")
                             .font(.caption)
                             .foregroundColor(.secondary)
+
+                        // Save location — pick an external folder so snapshots
+                        // survive even if the app/container is removed.
+                        HStack(spacing: 8) {
+                            Image(systemName: snapshotFolderPath == nil ? "exclamationmark.triangle.fill" : "externaldrive.fill")
+                                .foregroundColor(snapshotFolderPath == nil ? .orange : AppTheme.primaryGreen)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Save location")
+                                    .font(.caption2).foregroundColor(.secondary)
+                                Text(snapshotFolderPath ?? "Inside the app — lost if the app is removed")
+                                    .font(.caption).fontWeight(.medium)
+                                    .foregroundColor(snapshotFolderPath == nil ? .orange : AppTheme.primaryText)
+                                    .lineLimit(1).truncationMode(.middle)
+                            }
+                            Spacer()
+                            Button("Change…") { chooseSnapshotFolder() }
+                                .buttonStyle(.appSecondary).controlSize(.small)
+                            if snapshotFolderPath != nil {
+                                Button("Use Default") { useDefaultSnapshotFolder() }
+                                    .buttonStyle(.appGhost).controlSize(.small)
+                            }
+                        }
+                        .padding(10)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(AppTheme.secondaryBackground))
 
                         HStack {
                             TextField("Optional label (e.g., before year-end close)", text: $snapshotLabel)
@@ -182,6 +214,15 @@ struct SettingsView: View {
                     }
                     .padding(.vertical, AppTheme.Spacing.sm)
                 }
+                #if !os(macOS)
+                .fileImporter(isPresented: $showSnapshotFolderImporter,
+                              allowedContentTypes: [.folder],
+                              allowsMultipleSelection: false) { result in
+                    if case .success(let urls) = result, let url = urls.first {
+                        applySnapshotFolder(url)
+                    }
+                }
+                #endif
 
                 // Confirmation PIN Section
                 GroupBox {
@@ -478,6 +519,43 @@ struct SettingsView: View {
 
     private func refreshSnapshotList() {
         snapshots = SnapshotService.listSnapshots()
+        snapshotFolderPath = SnapshotService.isUsingExternalFolder ? SnapshotService.currentLocationPath : nil
+    }
+
+    /// Present a folder chooser (NSOpenPanel on Mac, .fileImporter on iOS).
+    private func chooseSnapshotFolder() {
+        #if os(macOS)
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Use This Folder"
+        panel.message = "Choose where to save SteelSync snapshots. Pick a folder OUTSIDE the app — an external drive or an iCloud Drive folder — so backups survive even if the app is removed."
+        if panel.runModal() == .OK, let url = panel.url {
+            applySnapshotFolder(url)
+        }
+        #else
+        showSnapshotFolderImporter = true
+        #endif
+    }
+
+    /// Persist the chosen folder as a security-scoped bookmark and refresh.
+    private func applySnapshotFolder(_ url: URL) {
+        let didStart = url.startAccessingSecurityScopedResource()
+        defer { if didStart { url.stopAccessingSecurityScopedResource() } }
+        do {
+            try SnapshotDestination.setFolder(url)
+            snapshotStatus = "Snapshots will save to \(url.lastPathComponent)."
+            refreshSnapshotList()
+        } catch {
+            snapshotStatus = "Error: couldn't set folder — \(error.localizedDescription)"
+        }
+    }
+
+    private func useDefaultSnapshotFolder() {
+        SnapshotDestination.clear()
+        snapshotStatus = "Snapshots will save inside the app again."
+        refreshSnapshotList()
     }
 
     private func createSnapshot() {
