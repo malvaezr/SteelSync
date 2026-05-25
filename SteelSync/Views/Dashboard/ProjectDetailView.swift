@@ -66,6 +66,7 @@ struct ProjectDetailView: View {
     @State private var rentalToClose: EquipmentRental? = nil
     @State private var requestContext: RentalRequestContext? = nil  // log delivery/pickup/note request
     @State private var rentalForInvoice: EquipmentRental? = nil     // reconcile supplier invoice
+    @State private var rentalToDelete: EquipmentRental? = nil        // PIN-gated delete
     @State private var showEditProgress = false
     @State private var showQuickEntry = false
     @State private var showAddRFI = false
@@ -133,6 +134,14 @@ struct ProjectDetailView: View {
         }
         .sheet(item: $rentalForInvoice) { rental in
             ReconcileInvoiceSheet(rental: rental, projectID: project.id)
+        }
+        .sheet(item: $rentalToDelete) { rental in
+            ConfirmationPinSheet(
+                title: "Delete Equipment Rental",
+                detail: "\(rental.equipmentName) — \(rental.startDate.shortDate)\(rental.endDate.map { " to \($0.shortDate)" } ?? " (active)"). This also removes its linked cost and request log. This cannot be undone.",
+                confirmLabel: "Delete",
+                onConfirm: { dataStore.deleteRental(rental, from: project.id) }
+            )
         }
         .inlineForm(isPresented: $showQuickEntry) {
             QuickEntrySheet(project: project)
@@ -1278,6 +1287,8 @@ struct ProjectDetailView: View {
                                     Button { requestContext = RentalRequestContext(rental: rental, kind: .deliveryConfirmed) } label: { Label("Confirm Delivery", systemImage: "checkmark.circle.fill") }
                                     Button { requestContext = RentalRequestContext(rental: rental, kind: .pickupConfirmed) } label: { Label("Confirm Pickup", systemImage: "checkmark.seal.fill") }
                                     Button { requestContext = RentalRequestContext(rental: rental, kind: .note) } label: { Label("Add Note", systemImage: "note.text") }
+                                    Divider()
+                                    Button(role: .destructive) { rentalToDelete = rental } label: { Label("Delete Rental", systemImage: "trash") }
                                 }
                                 if rental.id != active.last?.id {
                                     Divider()
@@ -1330,6 +1341,11 @@ struct ProjectDetailView: View {
                                     }
                                 }
                                 .padding(.vertical, 4)
+                                .contextMenu {
+                                    Button { rentalForInvoice = rental } label: { Label("Reconcile Invoice", systemImage: "doc.text.magnifyingglass") }
+                                    Divider()
+                                    Button(role: .destructive) { rentalToDelete = rental } label: { Label("Delete Rental", systemImage: "trash") }
+                                }
                                 if rental.id != closed.last?.id { Divider() }
                             }
                         }

@@ -1787,6 +1787,8 @@ struct QuickEntrySheet: View {
     // Category-specific optional fields
     @State private var costSubcategory: Cost.CostCategory = .other
     @State private var coBilledTo: COBilledTo = .gc
+    @State private var attachments: [Attachment] = []
+    @State private var showFileImporter = false
 
     private var parsedAmount: Decimal {
         Decimal(string: amount) ?? 0
@@ -1846,6 +1848,47 @@ struct QuickEntrySheet: View {
                     .textFieldStyle(.appField)
             }
 
+            // Attachments (PDFs, images, etc.) — attached to the created record
+            EntrySection("Attachments", systemImage: AppIcons.attachment) {
+                if attachments.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "arrow.down.doc.fill")
+                            .font(.title2).foregroundColor(AppTheme.secondaryText)
+                        Text("Drag a PDF or image here")
+                            .font(.callout).foregroundColor(AppTheme.secondaryText)
+                        Button { showFileImporter = true } label: {
+                            Label("Or choose a file…", systemImage: "paperclip")
+                        }
+                        .buttonStyle(.appSecondary).controlSize(.small)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Color.gray.opacity(0.06)))
+                    .fileDrop(folderID: "quickentry-\(project.id.recordName)") { attachment in
+                        attachments.append(attachment)
+                    }
+                } else {
+                    ForEach(attachments, id: \.id) { att in
+                        HStack {
+                            Image(systemName: "doc.fill").foregroundColor(.green)
+                            Text(att.filename).font(.callout)
+                            Spacer()
+                            Button(role: .destructive) {
+                                attachments.removeAll { $0.id == att.id }
+                            } label: { Image(systemName: "xmark.circle.fill") }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    Button { showFileImporter = true } label: {
+                        Label("Add Another", systemImage: "plus").foregroundColor(AppTheme.primaryOrange)
+                    }
+                    .buttonStyle(.plain)
+                }
+                if category == .payroll && !attachments.isEmpty {
+                    Text("Note: payroll entries don't store attachments — these will be ignored. Use Payment, Change Order, or Cost.")
+                        .font(.caption2).foregroundColor(.orange)
+                }
+            }
+
             // Category-specific fields
             switch category {
             case .cost:
@@ -1891,6 +1934,23 @@ struct QuickEntrySheet: View {
                 }
             }
         }
+        .fileImporter(
+            isPresented: $showFileImporter,
+            allowedContentTypes: [.pdf, .image, .data],
+            allowsMultipleSelection: true
+        ) { result in
+            handleFilePick(result)
+        }
+    }
+
+    private func handleFilePick(_ result: Result<[URL], Error>) {
+        guard case .success(let urls) = result else { return }
+        let folderID = "quickentry-\(project.id.recordName)"
+        for url in urls {
+            if case .success(let att) = FileStorageService.importFile(from: url, bidID: folderID) {
+                attachments.append(att)
+            }
+        }
     }
 
     private var descriptionPlaceholder: String {
@@ -1910,12 +1970,13 @@ struct QuickEntrySheet: View {
 
         switch category {
         case .payment:
-            let payment = Payment(amount: parsedAmount, date: date, notes: note)
+            var payment = Payment(amount: parsedAmount, date: date, notes: note)
+            payment.attachments = attachments
             dataStore.addPayment(payment, to: project.id)
 
         case .changeOrder:
             let nextNum = (dataStore.changeOrders(for: project.id).count) + 1
-            let co = ChangeOrder(
+            var co = ChangeOrder(
                 number: nextNum,
                 description: description.isEmpty ? "Quick entry CO" : description,
                 amount: parsedAmount,
@@ -1923,6 +1984,7 @@ struct QuickEntrySheet: View {
                 signedDate: date,
                 billedTo: coBilledTo
             )
+            co.attachments = attachments
             dataStore.addChangeOrder(co, to: project.id)
 
         case .payroll:
@@ -1936,14 +1998,16 @@ struct QuickEntrySheet: View {
                 totalAmount: parsedAmount,
                 notes: note
             )
-            dataStore.addPayrollEntry(entry, to: project.id)
+            dataStore.addPayrollEntry(entry, to: project.id)   // PayrollEntry has no attachments
 
         case .equipment:
-            let cost = Cost(category: .machinery, description: note, amount: parsedAmount, date: date)
+            var cost = Cost(category: .machinery, description: note, amount: parsedAmount, date: date)
+            cost.attachments = attachments
             dataStore.addCost(cost, to: project.id)
 
         case .cost:
-            let cost = Cost(category: costSubcategory, description: note, amount: parsedAmount, date: date)
+            var cost = Cost(category: costSubcategory, description: note, amount: parsedAmount, date: date)
+            cost.attachments = attachments
             dataStore.addCost(cost, to: project.id)
         }
 
