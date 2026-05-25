@@ -799,6 +799,7 @@ struct MarkAsSentSheet: View {
     let project: Project
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var sentDate = Date()
     @State private var termsDays = 30
@@ -821,35 +822,35 @@ struct MarkAsSentSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Invoice Details") {
-                    HStack {
-                        Text("Invoice Number")
-                        Spacer()
-                        TextField("Auto-suggested", text: $invoiceNumber)
-                            .multilineTextAlignment(.trailing)
-                            .frame(maxWidth: 180)
-                    }
-                    DatePicker("Sent Date", selection: $sentDate, displayedComponents: .date)
-                    Stepper("Payment Terms: Net \(termsDays)", value: $termsDays, in: 7...120, step: 1)
-                    HStack {
-                        Text("Due Date")
-                        Spacer()
-                        Text((Calendar.current.date(byAdding: .day, value: termsDays, to: sentDate) ?? sentDate).shortDate)
-                            .foregroundColor(.secondary)
-                    }
+        EntryFormScaffold(
+            title: "Mark as Sent",
+            icon: AppIcons.invoice,
+            saveTitle: "Create Invoice",
+            onCancel: closeForm,
+            onSave: markSent
+        ) {
+            EntrySection("Invoice Details", systemImage: AppIcons.invoice) {
+                LabeledField(label: "Invoice Number") {
+                    TextField("Auto-suggested", text: $invoiceNumber).textFieldStyle(.appField)
                 }
+                LabeledField(label: "Sent Date") {
+                    DatePicker("", selection: $sentDate, displayedComponents: .date)
+                        .labelsHidden().appControlSurface()
+                }
+                Stepper("Payment Terms: Net \(termsDays)", value: $termsDays, in: 7...120, step: 1)
+                InfoRow(label: "Due Date", value: (Calendar.current.date(byAdding: .day, value: termsDays, to: sentDate) ?? sentDate).shortDate)
+            }
 
-                Section {
-                    if billToCandidates.isEmpty {
-                        Text("No client linked to this project. Add a GC or Sub on the project to set a bill-to.")
-                            .font(.caption)
-                            .foregroundColor(.orange)
-                    } else if billToCandidates.count == 1, let only = billToCandidates.first {
-                        InfoRow(label: only.name, value: roleLabel(for: only))
-                    } else {
-                        Picker("Bill To", selection: Binding(
+            EntrySection("Bill To", systemImage: AppIcons.person) {
+                if billToCandidates.isEmpty {
+                    Text("No client linked to this project. Add a GC or Sub on the project to set a bill-to.")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                } else if billToCandidates.count == 1, let only = billToCandidates.first {
+                    InfoRow(label: only.name, value: roleLabel(for: only))
+                } else {
+                    LabeledField(label: "Bill To") {
+                        Picker("", selection: Binding(
                             get: { billToClientID ?? billToCandidates.first?.id.recordName ?? "" },
                             set: { billToClientID = $0 }
                         )) {
@@ -857,50 +858,38 @@ struct MarkAsSentSheet: View {
                                 Text("\(c.name) — \(roleLabel(for: c))").tag(c.id.recordName)
                             }
                         }
+                        .labelsHidden().pickerStyle(.menu).appControlSurface()
                     }
-                } header: {
-                    Text("Bill To")
-                } footer: {
-                    if billToCandidates.count > 1 {
-                        Text("Defaults to the subcontractor when both a GC and a Sub are linked. Change if billing the GC directly.")
-                    }
+                    Text("Defaults to the subcontractor when both a GC and a Sub are linked. Change if billing the GC directly.")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.secondaryText)
                 }
+            }
 
-                Section("Summary") {
-                    InfoRow(label: "Application #", value: "\(payApp.applicationNumber)")
-                    InfoRow(label: "Amount This Period", value: payApp.netAmountThisPeriod.currencyFormatted)
-                    InfoRow(label: "Retainage Withheld", value: payApp.totalRetainage.currencyFormatted)
-                    InfoRow(label: "Net Invoice Amount", value: (payApp.netAmountThisPeriod - payApp.totalRetainage).currencyFormatted)
-                }
-            }
-            .formStyle(.grouped)
-            .navigationTitle("Mark as Sent")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Create Invoice") { markSent() }
-                        .buttonStyle(.appPrimary)
-                }
-            }
-            .onAppear {
-                if invoiceNumber.isEmpty {
-                    invoiceNumber = dataStore.suggestedInvoiceNumber(
-                        for: project.id,
-                        type: payApp.isRetainageRelease ? .retainageRelease : .payApplication
-                    )
-                }
-                if billToClientID == nil {
-                    billToClientID = dataStore.defaultBillToClient(for: project)?.id.recordName
-                }
+            EntrySection("Summary", systemImage: AppIcons.money) {
+                InfoRow(label: "Application #", value: "\(payApp.applicationNumber)")
+                InfoRow(label: "Amount This Period", value: payApp.netAmountThisPeriod.currencyFormatted)
+                InfoRow(label: "Retainage Withheld", value: payApp.totalRetainage.currencyFormatted)
+                InfoRow(label: "Net Invoice Amount", value: (payApp.netAmountThisPeriod - payApp.totalRetainage).currencyFormatted)
             }
         }
         #if os(macOS)
-        .frame(width: 500, height: 540)
+        .frame(width: 520, height: 560)
         #endif
+        .onAppear {
+            if invoiceNumber.isEmpty {
+                invoiceNumber = dataStore.suggestedInvoiceNumber(
+                    for: project.id,
+                    type: payApp.isRetainageRelease ? .retainageRelease : .payApplication
+                )
+            }
+            if billToClientID == nil {
+                billToClientID = dataStore.defaultBillToClient(for: project)?.id.recordName
+            }
+        }
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func markSent() {
         var invoice = dataStore.createInvoiceFromPayApp(
@@ -914,7 +903,7 @@ struct MarkAsSentSheet: View {
             invoice.invoiceNumber = invoiceNumber
             dataStore.updateInvoice(invoice, in: project.id)
         }
-        dismiss()
+        closeForm()
     }
 }
 
@@ -927,6 +916,7 @@ struct LogPaymentSheet: View {
     let project: Project
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     @State private var amount: Decimal = 0
     @State private var date = Date()
@@ -951,126 +941,124 @@ struct LogPaymentSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Payment Details") {
-                    InfoRow(label: "Invoice", value: invoice.invoiceNumber)
-                    InfoRow(label: "Balance Due", value: balanceDue.currencyFormatted)
-                    HStack {
-                        Text("Amount")
-                        Spacer()
-                        TextField("0", value: $amount, format: .currency(code: "USD"))
-                            .multilineTextAlignment(.trailing)
-                            .frame(maxWidth: 140)
-                            #if !os(macOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                    }
-                    DatePicker("Date Received", selection: $date, displayedComponents: .date)
-                    Picker("Method", selection: $method) {
-                        ForEach(PaymentMethod.allCases) { m in
-                            Label(m.rawValue, systemImage: m.icon).tag(m)
-                        }
-                    }
-                    TextField("Reference Number", text: $referenceNumber, prompt: Text("Check #, wire confirmation, ACH ref"))
+        EntryFormScaffold(
+            title: "Log Payment",
+            icon: AppIcons.payment,
+            saveDisabled: !canSave,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Payment Details", systemImage: AppIcons.payment) {
+                InfoRow(label: "Invoice", value: invoice.invoiceNumber)
+                InfoRow(label: "Balance Due", value: balanceDue.currencyFormatted)
+                LabeledField(label: "Amount") {
+                    TextField("0", value: $amount, format: .currency(code: "USD"))
+                        .textFieldStyle(.appField)
+                        #if !os(macOS)
+                        .keyboardType(.decimalPad)
+                        #endif
                 }
-
-                Section {
-                    VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                        if attachments.isEmpty {
-                            // Drop zone + click-to-attach
-                            VStack(spacing: 8) {
-                                Image(systemName: "arrow.down.doc.fill")
-                                    .font(.title2)
-                                    .foregroundColor(.secondary)
-                                Text("Drag a check image or PDF here")
-                                    .font(.callout)
-                                    .foregroundColor(.secondary)
-                                Button {
-                                    showFilePicker = true
-                                } label: {
-                                    Label("Or choose a file…", systemImage: "paperclip")
-                                }
-                                .buttonStyle(.appSecondary)
-                                .controlSize(.small)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.gray.opacity(0.06))
-                            )
-                            .fileDrop(folderID: "payment-\(invoice.id.uuidString)") { attachment in
-                                attachments.append(attachment)
-                            }
-
-                            TextField("", text: $proofReason, prompt: Text("Or explain why no proof is attached (required if no file)"), axis: .vertical)
-                                .lineLimit(2...4)
-                        } else {
-                            ForEach(attachments, id: \.id) { att in
-                                HStack {
-                                    Image(systemName: "doc.fill")
-                                        .foregroundColor(.green)
-                                    Text(att.filename)
-                                        .font(.callout)
-                                    Spacer()
-                                    Button(role: .destructive) {
-                                        attachments.removeAll { $0.id == att.id }
-                                    } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            Button {
-                                showFilePicker = true
-                            } label: {
-                                Label("Add Another", systemImage: "plus")
+                HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+                    LabeledField(label: "Date Received") {
+                        DatePicker("", selection: $date, displayedComponents: .date)
+                            .labelsHidden().appControlSurface()
+                    }
+                    LabeledField(label: "Method") {
+                        Picker("", selection: $method) {
+                            ForEach(PaymentMethod.allCases) { m in
+                                Label(m.rawValue, systemImage: m.icon).tag(m)
                             }
                         }
-                    }
-                } header: {
-                    Text("Proof of Payment")
-                } footer: {
-                    if !hasProofOrReason {
-                        Text("⚠️ Attach a check image or payment receipt, OR type a reason to save without proof.")
-                            .foregroundColor(.orange)
+                        .labelsHidden().pickerStyle(.menu).appControlSurface()
                     }
                 }
+                LabeledField(label: "Reference Number") {
+                    TextField("Check #, wire confirmation, ACH ref", text: $referenceNumber)
+                        .textFieldStyle(.appField)
+                }
+            }
 
-                Section("Notes") {
-                    TextField("", text: $notes, prompt: Text("Optional notes"), axis: .vertical)
+            EntrySection("Proof of Payment", systemImage: "checkmark.shield") {
+                if attachments.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "arrow.down.doc.fill")
+                            .font(.title2)
+                            .foregroundColor(AppTheme.secondaryText)
+                        Text("Drag a check image or PDF here")
+                            .font(.callout)
+                            .foregroundColor(AppTheme.secondaryText)
+                        Button {
+                            showFilePicker = true
+                        } label: {
+                            Label("Or choose a file…", systemImage: "paperclip")
+                        }
+                        .buttonStyle(.appSecondary)
+                        .controlSize(.small)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.gray.opacity(0.06))
+                    )
+                    .fileDrop(folderID: "payment-\(invoice.id.uuidString)") { attachment in
+                        attachments.append(attachment)
+                    }
+
+                    TextField("", text: $proofReason, prompt: Text("Or explain why no proof is attached (required if no file)"), axis: .vertical)
+                        .textFieldStyle(.appField)
                         .lineLimit(2...4)
+                } else {
+                    ForEach(attachments, id: \.id) { att in
+                        HStack {
+                            Image(systemName: "doc.fill")
+                                .foregroundColor(.green)
+                            Text(att.filename)
+                                .font(.callout)
+                            Spacer()
+                            Button(role: .destructive) {
+                                attachments.removeAll { $0.id == att.id }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    Button {
+                        showFilePicker = true
+                    } label: {
+                        Label("Add Another", systemImage: "plus")
+                            .foregroundColor(AppTheme.primaryOrange)
+                    }
+                    .buttonStyle(.plain)
+                }
+                if !hasProofOrReason {
+                    Text("⚠️ Attach a check image or payment receipt, OR type a reason to save without proof.")
+                        .font(.caption)
+                        .foregroundColor(.orange)
                 }
             }
-            .formStyle(.grouped)
-            .navigationTitle("Log Payment")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .buttonStyle(.appPrimary)
-                        .disabled(!canSave)
-                }
-            }
-            .fileImporter(
-                isPresented: $showFilePicker,
-                allowedContentTypes: [.image, .pdf],
-                allowsMultipleSelection: false
-            ) { result in
-                handleFilePick(result)
-            }
-            .onAppear {
-                if amount == 0 { amount = balanceDue }
+
+            EntrySection("Notes", systemImage: "note.text") {
+                NotesField(text: $notes, minHeight: 60)
             }
         }
         #if os(macOS)
-        .frame(width: 520, height: 620)
+        .frame(width: 540, height: 640)
         #endif
+        .fileImporter(
+            isPresented: $showFilePicker,
+            allowedContentTypes: [.image, .pdf],
+            allowsMultipleSelection: false
+        ) { result in
+            handleFilePick(result)
+        }
+        .onAppear {
+            if amount == 0 { amount = balanceDue }
+        }
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func handleFilePick(_ result: Result<[URL], Error>) {
         guard case .success(let urls) = result, let url = urls.first else { return }
@@ -1100,7 +1088,7 @@ struct LogPaymentSheet: View {
         payment.projectRef = CKRecord.Reference(recordID: project.id, action: .deleteSelf)
         dataStore.addPayment(payment, to: project.id)
         dataStore.refreshInvoiceStatus(invoice, in: project.id)
-        dismiss()
+        closeForm()
     }
 }
 
@@ -1243,6 +1231,7 @@ struct RetainageReleaseSheet: View {
     let project: Project
     @EnvironmentObject var dataStore: DataStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
 
     private var totalRetainageHeld: Decimal {
         dataStore.payApps(for: project.id)
@@ -1251,35 +1240,28 @@ struct RetainageReleaseSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    InfoRow(label: "Project", value: project.title)
-                    InfoRow(label: "Total Retainage Held", value: totalRetainageHeld.currencyFormatted)
-                } header: {
-                    Text("Closeout Retainage Release")
-                } footer: {
-                    Text("This creates a new pay application marked as a retainage release. Use this only at project closeout when the GC is releasing withheld retainage.")
-                }
-            }
-            .formStyle(.grouped)
-            .navigationTitle("Retainage Release")
-            #if !os(macOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") { create() }
-                        .buttonStyle(.appPrimary)
-                        .disabled(totalRetainageHeld <= 0)
-                }
+        EntryFormScaffold(
+            title: "Retainage Release",
+            icon: AppIcons.money,
+            saveTitle: "Create",
+            saveDisabled: totalRetainageHeld <= 0,
+            onCancel: closeForm,
+            onSave: create
+        ) {
+            EntrySection("Closeout Retainage Release", systemImage: "lock.open.fill") {
+                InfoRow(label: "Project", value: project.title)
+                InfoRow(label: "Total Retainage Held", value: totalRetainageHeld.currencyFormatted)
+                Text("This creates a new pay application marked as a retainage release. Use this only at project closeout when the GC is releasing withheld retainage.")
+                    .font(.caption)
+                    .foregroundColor(AppTheme.secondaryText)
             }
         }
         #if os(macOS)
-        .frame(width: 500, height: 350)
+        .frame(width: 520, height: 380)
         #endif
     }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
 
     private func create() {
         let previousApps = dataStore.payApps(for: project.id)
@@ -1305,6 +1287,6 @@ struct RetainageReleaseSheet: View {
             isRetainageRelease: true
         )
         dataStore.addPayApplication(payApp, to: project.id)
-        dismiss()
+        closeForm()
     }
 }
