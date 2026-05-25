@@ -949,6 +949,70 @@ class DataStore: ObservableObject {
         addCost(cost, to: projectID)
     }
 
+    /// Append a timestamped entry to a rental's request log (delivery/pickup
+    /// requests, confirmations, notes) — the documented record for resolving
+    /// date disputes with the supplier.
+    func logRentalRequest(_ event: RentalRequestEvent, on rental: EquipmentRental, in projectID: CKRecord.ID) {
+        guard var list = equipmentRentals[projectID],
+              let idx = list.firstIndex(where: { $0.id == rental.id }) else { return }
+        var updated = list[idx]
+        updated.events.append(event)
+        list[idx] = updated
+        equipmentRentals[projectID] = list
+        let forDate = event.requestedDate.map { " for \($0.shortDate)" } ?? ""
+        logAudit(.updated, type: "Equipment Rental", name: updated.equipmentName,
+                 details: "\(event.kind.rawValue)\(forDate) (logged \(event.loggedAt.shortDate))")
+        syncChild(updated, projectID: projectID)
+    }
+
+    /// Record supplier-invoice details + the result of checking them against our
+    /// documented dates. On `.approved`, the linked machinery Cost is updated to
+    /// the billed amount (or created) so job costing reflects the real charge.
+    func reconcileInvoice(
+        _ rental: EquipmentRental,
+        invoiceNumber: String,
+        receivedDate: Date?,
+        billedStart: Date?,
+        billedEnd: Date?,
+        billedAmount: Decimal?,
+        status: InvoiceCheckStatus,
+        notes: String,
+        in projectID: CKRecord.ID
+    ) {
+        guard var list = equipmentRentals[projectID],
+              let idx = list.firstIndex(where: { $0.id == rental.id }) else { return }
+        var updated = list[idx]
+        updated.supplierInvoiceNumber = invoiceNumber.isEmpty ? nil : invoiceNumber
+        updated.invoiceReceivedDate = receivedDate
+        updated.billedStartDate = billedStart
+        updated.billedEndDate = billedEnd
+        updated.billedAmount = billedAmount
+        updated.invoiceStatus = status
+        updated.invoiceCheckNotes = notes.isEmpty ? nil : notes
+
+        // On approval, reflect the actual billed amount in job costing.
+        if status == .approved, let billed = billedAmount {
+            updated.calculatedCost = billed
+            let desc = "Equipment Rental: \(updated.equipmentName) — supplier invoice \(invoiceNumber.isEmpty ? "(no #)" : invoiceNumber) (approved)"
+            if let costID = updated.linkedCostID,
+               var c = costs[projectID]?.first(where: { $0.id == costID }) {
+                c.amount = billed
+                c.description = desc
+                updateCost(c, in: projectID)
+            } else {
+                let c = Cost(category: .machinery, description: desc, amount: billed, date: billedEnd ?? Date())
+                updated.linkedCostID = c.id
+                addCost(c, to: projectID)
+            }
+        }
+
+        list[idx] = updated
+        equipmentRentals[projectID] = list
+        logAudit(.updated, type: "Equipment Rental", name: updated.equipmentName,
+                 details: "Invoice \(invoiceNumber.isEmpty ? "(no #)" : invoiceNumber) — \(status.rawValue)")
+        syncChild(updated, projectID: projectID)
+    }
+
     var allActiveRentalCount: Int {
         equipmentRentals.values.flatMap { $0 }.filter { $0.isActive }.count
     }

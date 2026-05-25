@@ -35,7 +35,9 @@
 		130AE1D68EBAAEC93B33AF9B /* QueryParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 062E9F90EF9A227D6B3A84BA /* QueryParser.swift */; };
 		1348029DBE42409885CC5D44 /* AddProjectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52278865AEFCBD823BDEC6C1 /* AddProjectView.swift */; };
 		13EA98E4228EB2E971FF940A /* GlobalSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23069DD6BB4B28FFACD931EF /* GlobalSearchService.swift */; };
+		13F653132C21D2F8ADF8EBE7 /* EquipmentRequestSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06759E4AAC18A9D898DF7896 /* EquipmentRequestSheets.swift */; };
 		14944B2C4D92BCEFA3115CE3 /* PhoneEquipmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05696EA88AFDF328A1548B80 /* PhoneEquipmentView.swift */; };
+		1496E00796B180FF3671D28B /* EquipmentRequestSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06759E4AAC18A9D898DF7896 /* EquipmentRequestSheets.swift */; };
 		14BC3885EA461CB13B060178 /* DataContextBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD983F907DFBB240BC58830 /* DataContextBuilder.swift */; };
 		14CC8EEE31D389D4192A55AA /* WeeklyAssignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9295F43337F5AB4398EC520E /* WeeklyAssignment.swift */; };
 		153D7735DA36C7181B4B358E /* ChatBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF7CCD36013F2C98AAB86D4E /* ChatBubbleView.swift */; };
@@ -260,6 +262,7 @@
 		B44DAFB47E7E58BB6C2FC811 /* AssistantMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B4736E176810AB66924CAB0 /* AssistantMessage.swift */; };
 		B4642A8116F634DF7C794A13 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB8D10C49A60882B9F6EBA0 /* Project.swift */; };
 		B5C47F59DF21EF53C304AE83 /* InvoiceAgingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA963E7D349BE555D63F7EC9 /* InvoiceAgingWidget.swift */; };
+		B5D8DAD0AC2EA5D84B856FAE /* EquipmentRequestSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06759E4AAC18A9D898DF7896 /* EquipmentRequestSheets.swift */; };
 		B72FF7AEA4FCF2D1A5B01B32 /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2493EBC395F13A8EE6F94B4A /* WidgetBridge.swift */; };
 		B84C0F87BF9079178F06363E /* DailyLogSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3A97A58F909F9E21625E60 /* DailyLogSheets.swift */; };
 		B8CEB4D53BDAB93835B520AD /* MinimalXLSXWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F53834DFCDE3DE80B12BD2E /* MinimalXLSXWriter.swift */; };
@@ -440,6 +443,7 @@
 		05696EA88AFDF328A1548B80 /* PhoneEquipmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneEquipmentView.swift; sourceTree = "<group>"; };
 		05F33D378A68D315E61C16E5 /* SteelSyncPhone.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SteelSyncPhone.entitlements; sourceTree = "<group>"; };
 		062E9F90EF9A227D6B3A84BA /* QueryParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryParser.swift; sourceTree = "<group>"; };
+		06759E4AAC18A9D898DF7896 /* EquipmentRequestSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentRequestSheets.swift; sourceTree = "<group>"; };
 		09F1E7862A298462D13FE606 /* SteelSync.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SteelSync.entitlements; sourceTree = "<group>"; };
 		0A892989AA1EB9BDD692EFB8 /* GanttExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GanttExportSheet.swift; sourceTree = "<group>"; };
 		0BDB71A2FF57BA549C7FDF68 /* PhoneProjectDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneProjectDetailView.swift; sourceTree = "<group>"; };
@@ -942,6 +946,7 @@
 				52278865AEFCBD823BDEC6C1 /* AddProjectView.swift */,
 				AB3A97A58F909F9E21625E60 /* DailyLogSheets.swift */,
 				9328DFEC95485FE83580A9FA /* DashboardView.swift */,
+				06759E4AAC18A9D898DF7896 /* EquipmentRequestSheets.swift */,
 				84676B7C0A4D5D79E4F93B51 /* PayAppView.swift */,
 				7E400BF6C446F19B0101B2A3 /* ProjectDetailView.swift */,
 				C688ECAD2EB3B55FE5B19133 /* ProjectFormSheets.swift */,
@@ -1369,6 +1374,7 @@
 				3E944CEE31E9BEEDBBE31AA4 /* EntryForm.swift in Sources */,
 				C2A4B1C4986D7313497897B5 /* EquipmentOverviewView.swift in Sources */,
 				E7945B6D14CB5FF1F9CDEF0A /* EquipmentRental.swift in Sources */,
+				1496E00796B180FF3671D28B /* EquipmentRequestSheets.swift in Sources */,
 				F038579942D400560EDB43F0 /* ExportBidsSheet.swift in Sources */,
 				9B4944B4210723F96836E84F /* Extensions.swift in Sources */,
 				87678CC2B8B5E0E701922C7B /* FileDropModifier.swift in Sources */,
@@ -1489,6 +1495,7 @@
 				2F42139D4B810A59392FA39E /* EntryForm.swift in Sources */,
 				1E3C94F14EF867BEAB6CDC59 /* EquipmentOverviewView.swift in Sources */,
 				55C2D9E3FDA1B680C3678297 /* EquipmentRental.swift in Sources */,
+				13F653132C21D2F8ADF8EBE7 /* EquipmentRequestSheets.swift in Sources */,
 				F90900CA84F36D28F208302C /* ExportBidsSheet.swift in Sources */,
 				F9CBB947308776017FE1458A /* Extensions.swift in Sources */,
 				AE55A3D6730D5A9F7998BCD3 /* FileDropModifier.swift in Sources */,
@@ -1625,6 +1632,7 @@
 				FED8705EAA52BEC33CDB4741 /* EntryForm.swift in Sources */,
 				421313FAAF4CAE1AC6488D07 /* EquipmentOverviewView.swift in Sources */,
 				A2D9055F8A3C8C6E0A01011B /* EquipmentRental.swift in Sources */,
+				B5D8DAD0AC2EA5D84B856FAE /* EquipmentRequestSheets.swift in Sources */,
 				431083DB018E4A294DF5E714 /* ExportBidsSheet.swift in Sources */,
 				88F47B86C0BC08134B80DAB9 /* Extensions.swift in Sources */,
 				A7BA6453EA8056CA9D9BA418 /* FileDropModifier.swift in Sources */,

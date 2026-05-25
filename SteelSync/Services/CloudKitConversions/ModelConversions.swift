@@ -471,6 +471,17 @@ extension EquipmentRental: CloudKitConvertible {
         CKField.setOptDecimal(r, "calculatedCost", calculatedCost)
         if let s = costBreakdown { r["costBreakdown"] = s as CKRecordValue }
         if let c = linkedCostID { r["linkedCostID"] = c.uuidString as CKRecordValue }
+        // Request log + supplier-invoice reconciliation
+        if let log = requestLog, !log.isEmpty {
+            r["requestLogJSON"] = CKField.encodeJSON(log) as CKRecordValue
+        }
+        if let s = supplierInvoiceNumber { r["supplierInvoiceNumber"] = s as CKRecordValue }
+        if let d = invoiceReceivedDate { r["invoiceReceivedDate"] = d as CKRecordValue }
+        if let d = billedStartDate { r["billedStartDate"] = d as CKRecordValue }
+        if let d = billedEndDate { r["billedEndDate"] = d as CKRecordValue }
+        CKField.setOptDecimal(r, "billedAmount", billedAmount)
+        if let s = invoiceStatusRaw { r["invoiceStatusRaw"] = s as CKRecordValue }
+        if let s = invoiceCheckNotes { r["invoiceCheckNotes"] = s as CKRecordValue }
         return r
     }
 
@@ -490,7 +501,15 @@ extension EquipmentRental: CloudKitConvertible {
             notes: CKField.string(record, "notes"),
             calculatedCost: CKField.optDecimal(record, "calculatedCost"),
             costBreakdown: CKField.optString(record, "costBreakdown"),
-            linkedCostID: CKField.optUUID(record, "linkedCostID")
+            linkedCostID: CKField.optUUID(record, "linkedCostID"),
+            requestLog: CKField.decodeJSON(record, "requestLogJSON", as: [RentalRequestEvent].self),
+            supplierInvoiceNumber: CKField.optString(record, "supplierInvoiceNumber"),
+            invoiceReceivedDate: CKField.optDate(record, "invoiceReceivedDate"),
+            billedStartDate: CKField.optDate(record, "billedStartDate"),
+            billedEndDate: CKField.optDate(record, "billedEndDate"),
+            billedAmount: CKField.optDecimal(record, "billedAmount"),
+            invoiceStatusRaw: CKField.optString(record, "invoiceStatusRaw"),
+            invoiceCheckNotes: CKField.optString(record, "invoiceCheckNotes")
         )
     }
 }

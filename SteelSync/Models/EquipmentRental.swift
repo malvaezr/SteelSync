@@ -50,6 +50,99 @@ struct EquipmentRate: Identifiable, Hashable {
     ]
 }
 
+// MARK: - Equipment Request & Reconciliation
+
+/// How a request was communicated to the supplier (for the documented record).
+enum RentalContactMethod: String, Codable, CaseIterable, Identifiable {
+    case phone = "Phone Call"
+    case text = "Text"
+    case email = "Email"
+    case inPerson = "In Person"
+    case portal = "Online Portal"
+    case other = "Other"
+    var id: String { rawValue }
+    var icon: String {
+        switch self {
+        case .phone: return "phone.fill"
+        case .text: return "message.fill"
+        case .email: return "envelope.fill"
+        case .inPerson: return "person.fill"
+        case .portal: return "globe"
+        case .other: return "ellipsis.circle"
+        }
+    }
+}
+
+/// Kind of entry in a rental's request/communication log.
+enum RentalRequestKind: String, Codable {
+    case deliveryRequested = "Delivery Requested"
+    case deliveryConfirmed = "Delivery Confirmed"
+    case pickupRequested = "Pickup Requested"     // the "cut" / off-rent request
+    case pickupConfirmed = "Pickup Confirmed"
+    case note = "Note"
+
+    var icon: String {
+        switch self {
+        case .deliveryRequested: return "shippingbox.and.arrow.backward.fill"
+        case .deliveryConfirmed: return "checkmark.circle.fill"
+        case .pickupRequested: return "arrow.up.bin.fill"
+        case .pickupConfirmed: return "checkmark.seal.fill"
+        case .note: return "note.text"
+        }
+    }
+    var isPickup: Bool { self == .pickupRequested || self == .pickupConfirmed }
+    var isDelivery: Bool { self == .deliveryRequested || self == .deliveryConfirmed }
+}
+
+/// A single timestamped entry in a rental's request log — the documented paper
+/// trail used to resolve date disputes with the supplier. `loggedAt` is set
+/// once at creation and never edited.
+struct RentalRequestEvent: Codable, Identifiable, Hashable {
+    var id: UUID
+    var kind: RentalRequestKind
+    var requestedDate: Date?     // the date we asked the action to happen (deliver-by / pickup-by)
+    var loggedAt: Date           // immutable timestamp this entry was recorded
+    var method: RentalContactMethod
+    var contactName: String      // supplier rep contacted
+    var loggedBy: String         // our team member who made the request
+    var notes: String
+
+    init(id: UUID = UUID(), kind: RentalRequestKind, requestedDate: Date? = nil,
+         loggedAt: Date = Date(), method: RentalContactMethod = .text,
+         contactName: String = "", loggedBy: String = "", notes: String = "") {
+        self.id = id; self.kind = kind; self.requestedDate = requestedDate
+        self.loggedAt = loggedAt; self.method = method
+        self.contactName = contactName; self.loggedBy = loggedBy; self.notes = notes
+    }
+}
+
+/// State of checking a supplier invoice against our documented dates.
+enum InvoiceCheckStatus: String, Codable, CaseIterable, Identifiable {
+    case notReceived = "Not Received"
+    case underReview = "Under Review"
+    case matches = "Matches Our Records"
+    case disputed = "Disputed"
+    case approved = "Approved"
+    var id: String { rawValue }
+    var icon: String {
+        switch self {
+        case .notReceived: return "tray"
+        case .underReview: return "magnifyingglass"
+        case .matches: return "checkmark.circle"
+        case .disputed: return "exclamationmark.triangle.fill"
+        case .approved: return "checkmark.seal.fill"
+        }
+    }
+}
+
+/// High-level lifecycle stage, derived from dates + the request log.
+enum RentalLifecycle: String {
+    case requested = "Requested"
+    case onRent = "On Rent"
+    case pickupRequested = "Pickup Requested"
+    case closed = "Closed"
+}
+
 // MARK: - Equipment Rental (Per-Project Instance)
 
 struct EquipmentRental: Identifiable, Codable, Hashable {
@@ -74,11 +167,25 @@ struct EquipmentRental: Identifiable, Codable, Hashable {
     var recordID: CKRecord.ID?
     var projectRef: CKRecord.Reference?
 
+    // MARK: - Request log + supplier-invoice reconciliation
+    // All optional for Codable back-compat: rentals saved before this feature
+    // decode these missing keys as nil (synthesized Codable handles optionals).
+    var requestLog: [RentalRequestEvent]?
+    var supplierInvoiceNumber: String?
+    var invoiceReceivedDate: Date?
+    var billedStartDate: Date?
+    var billedEndDate: Date?
+    var billedAmount: Decimal?
+    var invoiceStatusRaw: String?
+    var invoiceCheckNotes: String?
+
     enum CodingKeys: String, CodingKey {
         case id, equipmentRateID, equipmentName, dailyRate, weeklyRate, fourWeekRate
         case startDate, endDate, includeDelivery, includePickup, deliveryChargePerTrip
         case unitInfo, fuelGallons, fuelPricePerGallon
         case notes, calculatedCost, costBreakdown, linkedCostID
+        case requestLog, supplierInvoiceNumber, invoiceReceivedDate
+        case billedStartDate, billedEndDate, billedAmount, invoiceStatusRaw, invoiceCheckNotes
     }
 
     init(
@@ -101,7 +208,15 @@ struct EquipmentRental: Identifiable, Codable, Hashable {
         costBreakdown: String? = nil,
         linkedCostID: UUID? = nil,
         recordID: CKRecord.ID? = nil,
-        projectRef: CKRecord.Reference? = nil
+        projectRef: CKRecord.Reference? = nil,
+        requestLog: [RentalRequestEvent]? = nil,
+        supplierInvoiceNumber: String? = nil,
+        invoiceReceivedDate: Date? = nil,
+        billedStartDate: Date? = nil,
+        billedEndDate: Date? = nil,
+        billedAmount: Decimal? = nil,
+        invoiceStatusRaw: String? = nil,
+        invoiceCheckNotes: String? = nil
     ) {
         self.id = id; self.equipmentRateID = equipmentRateID
         self.equipmentName = equipmentName
@@ -113,6 +228,76 @@ struct EquipmentRental: Identifiable, Codable, Hashable {
         self.fuelGallons = fuelGallons; self.fuelPricePerGallon = fuelPricePerGallon
         self.notes = notes; self.calculatedCost = calculatedCost; self.costBreakdown = costBreakdown
         self.linkedCostID = linkedCostID; self.recordID = recordID; self.projectRef = projectRef
+        self.requestLog = requestLog
+        self.supplierInvoiceNumber = supplierInvoiceNumber
+        self.invoiceReceivedDate = invoiceReceivedDate
+        self.billedStartDate = billedStartDate
+        self.billedEndDate = billedEndDate
+        self.billedAmount = billedAmount
+        self.invoiceStatusRaw = invoiceStatusRaw
+        self.invoiceCheckNotes = invoiceCheckNotes
+    }
+
+    // MARK: - Request log + lifecycle + reconciliation
+
+    /// Ergonomic accessor over the optional `requestLog`.
+    var events: [RentalRequestEvent] {
+        get { requestLog ?? [] }
+        set { requestLog = newValue.isEmpty ? nil : newValue }
+    }
+
+    var invoiceStatus: InvoiceCheckStatus {
+        get { InvoiceCheckStatus(rawValue: invoiceStatusRaw ?? "") ?? .notReceived }
+        set { invoiceStatusRaw = newValue.rawValue }
+    }
+
+    /// Most recent pickup ("cut") request — the off-rent date we're on record for.
+    var latestPickupRequest: RentalRequestEvent? {
+        events.filter { $0.kind == .pickupRequested }.max { $0.loggedAt < $1.loggedAt }
+    }
+    /// Earliest delivery request — our documented on-rent ask.
+    var firstDeliveryRequest: RentalRequestEvent? {
+        events.filter { $0.kind == .deliveryRequested }.min { $0.loggedAt < $1.loggedAt }
+    }
+
+    var lifecycle: RentalLifecycle {
+        if endDate != nil { return .closed }
+        if events.contains(where: { $0.kind == .pickupRequested }) { return .pickupRequested }
+        let confirmedDelivery = events.contains { $0.kind == .deliveryConfirmed }
+        let futureStartRequested = startDate.startOfDay > Date().startOfDay
+            && events.contains { $0.kind == .deliveryRequested }
+        if futureStartRequested && !confirmedDelivery { return .requested }
+        return .onRent
+    }
+
+    /// Our documented start date: first delivery request's requested date, else `startDate`.
+    var documentedStartDate: Date { firstDeliveryRequest?.requestedDate ?? startDate }
+    /// Our documented off-rent date: latest pickup request's requested date, else actual `endDate`.
+    var documentedOffRentDate: Date? { latestPickupRequest?.requestedDate ?? endDate }
+
+    /// Comparison of a supplier invoice's billed dates against our documented
+    /// dates. nil until any billed field is entered.
+    var invoiceComparison: InvoiceComparison? {
+        guard billedStartDate != nil || billedEndDate != nil || billedAmount != nil else { return nil }
+        let cal = Calendar.current
+        var startDelta: Int?
+        if let bs = billedStartDate {
+            startDelta = cal.dateComponents([.day], from: documentedStartDate.startOfDay, to: bs.startOfDay).day
+        }
+        var endOver: Int?
+        var estOver: Decimal?
+        if let be = billedEndDate, let off = documentedOffRentDate {
+            let d = cal.dateComponents([.day], from: off.startOfDay, to: be.startOfDay).day ?? 0
+            endOver = d
+            if d > 0 { estOver = Decimal(d) * dailyRate }  // rough: extra days at the daily rate
+        }
+        var amtDelta: Decimal?
+        if let ba = billedAmount, let est = calculatedCost { amtDelta = ba - est }
+        let mismatch = (startDelta ?? 0) != 0 || (endOver ?? 0) != 0
+        return InvoiceComparison(
+            startDeltaDays: startDelta, endOverbillDays: endOver,
+            estimatedOverbillAmount: estOver, amountDelta: amtDelta, hasMismatch: mismatch
+        )
     }
 
     // MARK: - Rounding Helper
@@ -289,4 +474,19 @@ struct RentalCostDetail {
     let salesTax: Decimal
     /// Final invoice total (`preTaxSubtotal + salesTax`).
     let subtotal: Decimal
+}
+
+// MARK: - Invoice Comparison (supplier invoice vs our documented dates)
+
+struct InvoiceComparison {
+    /// billedStart − our documented start, in days (≠0 ⇒ start-date mismatch).
+    var startDeltaDays: Int?
+    /// billedEnd − our documented off-rent date, in days (>0 ⇒ billed past our cut date).
+    var endOverbillDays: Int?
+    /// Rough $ of the over-billed days at the daily rate.
+    var estimatedOverbillAmount: Decimal?
+    /// billedAmount − our calculated estimate.
+    var amountDelta: Decimal?
+    /// True when start or end dates don't line up with our records.
+    var hasMismatch: Bool
 }

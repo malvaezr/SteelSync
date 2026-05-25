@@ -64,6 +64,8 @@ struct ProjectDetailView: View {
     @State private var showAddCost = false
     @State private var showAddRental = false
     @State private var rentalToClose: EquipmentRental? = nil
+    @State private var requestContext: RentalRequestContext? = nil  // log delivery/pickup/note request
+    @State private var rentalForInvoice: EquipmentRental? = nil     // reconcile supplier invoice
     @State private var showEditProgress = false
     @State private var showQuickEntry = false
     @State private var showAddRFI = false
@@ -125,6 +127,12 @@ struct ProjectDetailView: View {
         }
         .sheet(item: $rentalToClose) { rental in
             CloseEquipmentRentalView(projectID: project.id, rental: rental)
+        }
+        .inlineForm(item: $requestContext) { ctx in
+            RentalRequestSheet(rental: ctx.rental, projectID: project.id, kind: ctx.kind)
+        }
+        .sheet(item: $rentalForInvoice) { rental in
+            ReconcileInvoiceSheet(rental: rental, projectID: project.id)
         }
         .inlineForm(isPresented: $showQuickEntry) {
             QuickEntrySheet(project: project)
@@ -1223,31 +1231,54 @@ struct ProjectDetailView: View {
                             }
 
                             ForEach(active) { rental in
-                                VStack(spacing: AppTheme.Spacing.sm) {
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(rental.equipmentName)
-                                                .fontWeight(.semibold)
+                                VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                                    HStack(alignment: .top) {
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            HStack(spacing: 6) {
+                                                Text(rental.equipmentName).fontWeight(.semibold)
+                                                RentalLifecycleBadge(lifecycle: rental.lifecycle)
+                                            }
                                             Text("Since \(rental.startDate.shortDate) (\(rental.daysSinceStart) days)")
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
+                                            if let pr = rental.latestPickupRequest {
+                                                Label("Pickup requested for \(pr.requestedDate?.shortDate ?? "?") — logged \(pr.loggedAt.shortDate)",
+                                                      systemImage: "arrow.up.bin.fill")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.orange)
+                                            }
                                         }
                                         Spacer()
-                                        VStack(alignment: .trailing, spacing: 2) {
+                                        VStack(alignment: .trailing, spacing: 4) {
                                             Text("Est. \(rental.estimatedActiveCost.currencyFormatted)")
                                                 .font(.callout)
                                                 .fontWeight(.semibold)
                                                 .foregroundColor(AppTheme.primaryOrange)
-                                            Button("Close Rental") {
-                                                rentalToClose = rental
+                                            HStack(spacing: 6) {
+                                                Button("Request Pickup") { requestContext = RentalRequestContext(rental: rental, kind: .pickupRequested) }
+                                                    .font(.caption).buttonStyle(.appSecondary).tint(.orange)
+                                                Button("Close Rental") { rentalToClose = rental }
+                                                    .font(.caption).buttonStyle(.appSecondary).tint(.green)
                                             }
-                                            .font(.caption)
-                                            .buttonStyle(.appSecondary)
-                                            .tint(.green)
+                                        }
+                                    }
+                                    if !rental.events.isEmpty {
+                                        DisclosureGroup {
+                                            RentalRequestLogView(events: rental.events).padding(.top, 4)
+                                        } label: {
+                                            Text("Request log (\(rental.events.count))")
+                                                .font(.caption2).foregroundColor(AppTheme.secondaryText)
                                         }
                                     }
                                 }
                                 .padding(.vertical, 4)
+                                .contextMenu {
+                                    Button { requestContext = RentalRequestContext(rental: rental, kind: .deliveryRequested) } label: { Label("Log Delivery Request", systemImage: "shippingbox.and.arrow.backward.fill") }
+                                    Button { requestContext = RentalRequestContext(rental: rental, kind: .pickupRequested) } label: { Label("Request Pickup (Cut Off)", systemImage: "arrow.up.bin.fill") }
+                                    Button { requestContext = RentalRequestContext(rental: rental, kind: .deliveryConfirmed) } label: { Label("Confirm Delivery", systemImage: "checkmark.circle.fill") }
+                                    Button { requestContext = RentalRequestContext(rental: rental, kind: .pickupConfirmed) } label: { Label("Confirm Pickup", systemImage: "checkmark.seal.fill") }
+                                    Button { requestContext = RentalRequestContext(rental: rental, kind: .note) } label: { Label("Add Note", systemImage: "note.text") }
+                                }
                                 if rental.id != active.last?.id {
                                     Divider()
                                 }
@@ -1260,25 +1291,49 @@ struct ProjectDetailView: View {
                 // Closed Rentals
                 if !closed.isEmpty {
                     GroupBox("Closed Rentals") {
-                        Table(closed) {
-                            TableColumn("Equipment") { r in Text(r.equipmentName).fontWeight(.medium) }
-                            TableColumn("Period") { r in
-                                Text("\(r.startDate.shortDate) - \(r.endDate?.shortDate ?? "")")
-                                    .font(.caption)
-                            }
-                            TableColumn("Days") { r in Text("\(r.rentalDays ?? 0)") }
-                                .width(min: 40, max: 60)
-                            TableColumn("Cost") { r in
-                                Text(r.totalCost?.currencyFormatted ?? "-")
-                                    .fontWeight(.medium)
-                            }.width(min: 80, max: 120)
-                            TableColumn("Breakdown") { r in
-                                Text(r.costBreakdown ?? "-")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                            ForEach(closed) { rental in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack(alignment: .top) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(rental.equipmentName).fontWeight(.medium)
+                                            Text("\(rental.startDate.shortDate) – \(rental.endDate?.shortDate ?? "") · \(rental.rentalDays ?? 0) days")
+                                                .font(.caption).foregroundColor(.secondary)
+                                            if let bd = rental.costBreakdown {
+                                                Text(bd).font(.caption2).foregroundColor(AppTheme.tertiaryText)
+                                            }
+                                            InvoiceStatusBadge(status: rental.invoiceStatus)
+                                        }
+                                        Spacer()
+                                        VStack(alignment: .trailing, spacing: 4) {
+                                            Text(rental.totalCost?.currencyFormatted ?? "-").fontWeight(.semibold)
+                                            Button("Reconcile Invoice") { rentalForInvoice = rental }
+                                                .font(.caption).buttonStyle(.appSecondary)
+                                        }
+                                    }
+                                    if let cmp = rental.invoiceComparison, cmp.hasMismatch {
+                                        let over = cmp.endOverbillDays ?? 0
+                                        let amt = cmp.estimatedOverbillAmount?.currencyFormatted ?? ""
+                                        Label(over > 0
+                                              ? "Supplier billed \(over) day\(over == 1 ? "" : "s") past your off-rent\(amt.isEmpty ? "" : " · ~\(amt)")"
+                                              : "Invoice dates differ from your records",
+                                              systemImage: "exclamationmark.triangle.fill")
+                                            .font(.caption2).foregroundColor(.orange)
+                                    }
+                                    if !rental.events.isEmpty {
+                                        DisclosureGroup {
+                                            RentalRequestLogView(events: rental.events).padding(.top, 4)
+                                        } label: {
+                                            Text("Request log (\(rental.events.count))")
+                                                .font(.caption2).foregroundColor(AppTheme.secondaryText)
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                                if rental.id != closed.last?.id { Divider() }
                             }
                         }
-                        .frame(minHeight: 120)
+                        .padding(.vertical, AppTheme.Spacing.sm)
                     }
                 }
 
