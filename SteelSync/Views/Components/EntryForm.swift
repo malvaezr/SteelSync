@@ -104,7 +104,9 @@ struct EntryFormScaffold<Content: View, Footer: View>: View {
          badge: String? = nil,
          saveTitle: String = "Save",
          saveDisabled: Bool = false,
-         maxContentWidth: CGFloat = .infinity,
+         // Fills the pane on normal windows, but caps line length on very wide
+         // (external/6K) displays so a single field doesn't stretch edge-to-edge.
+         maxContentWidth: CGFloat = 1040,
          onCancel: @escaping () -> Void,
          onSave: @escaping () -> Void,
          @ViewBuilder content: @escaping () -> Content,

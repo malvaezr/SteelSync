@@ -477,7 +477,11 @@ struct EditPayAppSheet: View {
                 .frame(minWidth: 878)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // Cap the G703 worksheet to a document width and center it at the top,
+        // so on wide displays it reads as a focused document rather than a
+        // stretched table with empty canvas to the right/below.
+        .frame(maxWidth: 1000)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     @ViewBuilder
