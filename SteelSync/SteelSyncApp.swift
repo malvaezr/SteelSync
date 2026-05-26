@@ -29,8 +29,17 @@ struct SteelSyncApp: App {
                 .environmentObject(dataStore)
                 .environmentObject(navigationState)
                 .environmentObject(themeManager)
-                .tint(themeManager.current.accent)
-                .background(themeManager.current.background(dark: themeManager.isDarkMode))
+                .tint(AppTheme.primaryOrange)
+                .background {
+                    // Glass revamp: the graphite/forge "wallpaper" sits at the
+                    // true window root so frosted chrome (sidebar, top bar)
+                    // blurs over its gradient. Legacy themes keep their flat fill.
+                    if themeManager.glassEnabled {
+                        GlassWallpaper()
+                    } else {
+                        themeManager.current.background(dark: themeManager.isDarkMode)
+                    }
+                }
                 .preferredColorScheme(themeManager.colorScheme)
                 .onReceive(NotificationCenter.default.publisher(for: .willTerminate)) { _ in
                     dataStore.persistNow()

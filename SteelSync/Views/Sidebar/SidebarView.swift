@@ -4,6 +4,7 @@ import CloudKit
 struct SidebarView: View {
     @EnvironmentObject var dataStore: DataStore
     @EnvironmentObject var navigationState: NavigationState
+    @EnvironmentObject var themeManager: ThemeManager
     @State private var showSyncOptions = false
     @State private var pendingShare: CKShare?
     @State private var shareError: String?
@@ -24,27 +25,27 @@ struct SidebarView: View {
 
             List(selection: $navigationState.selectedSection) {
                 if !pinnedProjects.isEmpty {
-                    Section("PINNED") {
+                    Section {
                         ForEach(pinnedProjects) { project in
                             pinnedProjectRow(project)
                         }
-                    }
+                    } header: { glassSectionLabel("Pinned") }
                 }
 
-                Section("TODAY") {
+                Section {
                     sidebarRow(.today, badge: todayBadgeCount)
                     sidebarRow(.schedule)
                     sidebarRow(.todo, badge: dataStore.overdueTodos.count)
-                }
+                } header: { glassSectionLabel("Today") }
 
-                Section("PROJECTS") {
+                Section {
                     sidebarRow(.dashboard, badge: dataStore.activeProjects.count)
                     sidebarRow(.rfis, badge: openRFICount)
                     sidebarRow(.invoices, badge: outstandingInvoiceCount)
                     sidebarRow(.reports)
-                }
+                } header: { glassSectionLabel("Projects") }
 
-                Section("OPERATIONS") {
+                Section {
                     sidebarRow(.timekeeping, badge: dataStore.activeEmployees.count)
                     sidebarRow(.equipment, badge: dataStore.allActiveRentalCount)
                     sidebarRow(.calendar)
@@ -54,26 +55,35 @@ struct SidebarView: View {
                         sidebarRow(.planningPad)
                     }
                     #endif
-                }
+                } header: { glassSectionLabel("Operations") }
 
-                Section("PIPELINE") {
+                Section {
                     sidebarRow(.bidding, badge: dataStore.pendingBids.count + dataStore.bids.filter { $0.status == .readyToSubmit }.count)
                     sidebarRow(.clients, badge: dataStore.clients.count)
-                }
+                } header: { glassSectionLabel("Pipeline") }
 
-                Section("TOOLS") {
+                Section {
                     sidebarRow(.assistant)
                     sidebarRow(.activity)
                     sidebarRow(.settings)
-                }
+                } header: { glassSectionLabel("Tools") }
             }
             .listStyle(.sidebar)
+            .scrollContentBackground(themeManager.glassEnabled ? .hidden : .automatic)
 
             Divider()
 
             syncButton
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
+        }
+        .background {
+            // Frosted glass chrome: the regular material blurs the graphite
+            // wallpaper behind it (§3 — sidebar gets blur). Legacy themes keep
+            // the system sidebar appearance.
+            if themeManager.glassEnabled {
+                Rectangle().fill(.regularMaterial).ignoresSafeArea()
+            }
         }
         .navigationTitle("SteelSync")
         .confirmationDialog("Sync Options", isPresented: $showSyncOptions) {
@@ -166,6 +176,22 @@ struct SidebarView: View {
         }
     }
 
+    /// Section label per the Glass spec (§4): 11/600, tertiary, sentence case —
+    /// never the system's auto-uppercased sidebar header. `.textCase(nil)`
+    /// suppresses that uppercasing.
+    @ViewBuilder
+    private func glassSectionLabel(_ text: String) -> some View {
+        if themeManager.glassEnabled {
+            Text(text)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(AppTheme.tertiaryText)
+                .textCase(nil)
+                .tracking(0.4)
+        } else {
+            Text(text.uppercased())
+        }
+    }
+
     @ViewBuilder
     private func sidebarRow(_ item: SidebarItem, badge: Int = 0) -> some View {
         Label {
@@ -174,11 +200,11 @@ struct SidebarView: View {
                 Spacer()
                 if badge > 0 {
                     Text("\(badge)")
-                        .font(.caption2)
-                        .fontWeight(.bold)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(AppTheme.primaryOrange.opacity(0.2))
+                        .font(.system(size: 11, weight: .medium))
+                        .monospacedDigit()
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 1)
+                        .background(AppTheme.primaryOrange.opacity(0.18))
                         .foregroundColor(AppTheme.primaryOrange)
                         .clipShape(Capsule())
                 }

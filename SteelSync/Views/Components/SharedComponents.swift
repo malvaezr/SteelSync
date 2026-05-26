@@ -10,6 +10,7 @@ import SwiftUI
 //       Button("Add Project") { ... }.buttonStyle(.appPrimary)
 //   }
 struct ScreenHeader<Actions: View>: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
     let title: String
     var subtitle: String? = nil
     var icon: String? = nil
@@ -37,7 +38,7 @@ struct ScreenHeader<Actions: View>: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: 22, weight: .semibold))
                     .foregroundColor(AppTheme.primaryText)
                     .lineLimit(2)
                     .minimumScaleFactor(0.6)
@@ -45,6 +46,7 @@ struct ScreenHeader<Actions: View>: View {
                 if let subtitle = subtitle {
                     Text(subtitle)
                         .font(.caption)
+                        .monospacedDigit()
                         .foregroundColor(AppTheme.secondaryText)
                         .lineLimit(2)
                         .minimumScaleFactor(0.75)
@@ -58,11 +60,19 @@ struct ScreenHeader<Actions: View>: View {
         }
         .padding(.horizontal, AppTheme.Spacing.lg)
         .padding(.vertical, AppTheme.Spacing.md)
-        .background(AppTheme.background)
+        .background {
+            // Glass top bar: frosted chrome over the wallpaper (§5). Legacy
+            // themes keep the flat background fill.
+            if themeManager.glassEnabled {
+                Rectangle().fill(.regularMaterial)
+            } else {
+                AppTheme.background
+            }
+        }
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(Color.gray.opacity(0.15))
-                .frame(height: 0.5)
+                .fill(themeManager.glassEnabled ? Glass.hairline : Color.gray.opacity(0.15))
+                .frame(height: themeManager.glassEnabled ? 1 : 0.5)
         }
     }
 }
@@ -87,7 +97,8 @@ struct MetricCard: View {
             }
 
             Text(value)
-                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .font(.system(size: 22, weight: .semibold))
+                .monospacedDigit()
                 .foregroundColor(AppTheme.primaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
@@ -95,8 +106,6 @@ struct MetricCard: View {
             Text(title)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundColor(AppTheme.secondaryText)
-                .textCase(.uppercase)
-                .tracking(0.3)
 
             if let subtitle = subtitle {
                 Text(subtitle)
@@ -123,12 +132,14 @@ struct StatusBadge: View {
     let color: Color
 
     var body: some View {
+        // Glass status pill (§4): soft fill + label color, mono numerals so any
+        // embedded figure aligns. Always carries a text label (never color-only).
         Text(text)
-            .font(.caption)
-            .fontWeight(.semibold)
-            .padding(.horizontal, 8)
+            .font(.system(size: 11, weight: .medium))
+            .monospacedDigit()
+            .padding(.horizontal, 9)
             .padding(.vertical, 3)
-            .background(color.opacity(0.15))
+            .background(color.opacity(0.18))
             .foregroundColor(color)
             .clipShape(Capsule())
     }

@@ -399,31 +399,28 @@ private struct AttentionCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Image(systemName: icon)
-                        .font(.system(size: 14))
-                        .foregroundColor(color)
-                    Spacer()
+            ZStack(alignment: .topTrailing) {
+                VStack(alignment: .leading, spacing: 4) {
+                    // Metric — 28/600 mono. Urgent (non-zero) figures take the
+                    // single accent per the design's "one accent" rule.
+                    Text("\(count)")
+                        .font(.system(size: 28, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundColor(count > 0 ? AppTheme.primaryOrange : AppTheme.tertiaryText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    Text(title)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(AppTheme.secondaryText)
+                        .lineLimit(1)
                 }
-                Text("\(count)")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(count > 0 ? AppTheme.primaryText : AppTheme.tertiaryText)
-                Text(title)
-                    .font(.caption)
-                    .foregroundColor(AppTheme.secondaryText)
-                    .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                GlassChip(systemImage: icon, color: color)
             }
-            .frame(width: 140, alignment: .leading)
-            .padding(AppTheme.Spacing.md)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(AppTheme.secondaryBackground)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(count > 0 ? color.opacity(0.4) : Color.gray.opacity(0.15), lineWidth: 1)
-            )
+            .frame(width: 150, alignment: .leading)
+            .padding(16)
+            .appPanel(cornerRadius: 12)
         }
         .buttonStyle(.plain)
     }
@@ -436,21 +433,23 @@ private struct SectionCard<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 9) {
                 Image(systemName: icon)
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(tint)
                 Text(title)
-                    .font(AppTheme.Typography.headline)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(AppTheme.primaryText)
                 Spacer()
             }
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
             content()
         }
-        .padding(AppTheme.Spacing.md)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(AppTheme.secondaryBackground)
-        )
+        .padding(.bottom, 4)
+        .appPanel(cornerRadius: 16)
     }
 }
 
@@ -465,41 +464,36 @@ private struct BriefingRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: AppTheme.Spacing.sm) {
-                Image(systemName: icon)
-                    .font(.system(size: 12))
-                    .foregroundColor(color)
-                    .frame(width: 16)
+            HStack(spacing: 12) {
+                GlassChip(systemImage: icon, color: color)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title)
-                        .font(.callout)
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(AppTheme.primaryText)
                         .lineLimit(1)
                     Text(subtitle)
-                        .font(.caption)
+                        .font(.system(size: 12))
+                        .monospacedDigit()
                         .foregroundColor(AppTheme.secondaryText)
                         .lineLimit(1)
                 }
-                Spacer()
+                Spacer(minLength: 8)
                 if let reason = reason, !reason.isEmpty {
                     Text(reason)
-                        .font(.caption2.monospacedDigit())
-                        .fontWeight(.semibold)
+                        .font(.system(size: 11, weight: .medium))
+                        .monospacedDigit()
                         .foregroundColor(reasonColor)
-                        .padding(.horizontal, 8)
+                        .padding(.horizontal, 9)
                         .padding(.vertical, 3)
-                        .background(
-                            Capsule().fill(reasonColor.opacity(0.12))
-                        )
-                        .overlay(
-                            Capsule().stroke(reasonColor.opacity(0.35), lineWidth: 0.5)
-                        )
+                        .background(Capsule().fill(reasonColor.opacity(0.18)))
                 }
                 Image(systemName: "chevron.right")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(AppTheme.tertiaryText)
             }
-            .padding(.vertical, 4)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .appRow(cornerRadius: 12)
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())

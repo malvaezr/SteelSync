@@ -189,6 +189,62 @@ extension View {
     }
     /// Tabular monospaced digits — the app's signature for any figure.
     func monoDigits() -> some View { monospacedDigit() }
+
+    // MARK: Toggle-aware surfaces
+    //
+    // These bridge Phase 1 tokens to the Phase 2 "form": when the glass design
+    // is on they apply the translucent panel/row treatment (fill + specular +
+    // hairline); when off they fall back to the legacy `AppTheme` card/row fill
+    // so the original themes render unchanged. Use these in screens instead of
+    // the raw `glassPanel`/`glassRow` so the Settings toggle is honored.
+
+    /// Card / KPI-tile / section surface (honors the glass toggle).
+    @ViewBuilder
+    func appPanel(cornerRadius: CGFloat = 12, strong: Bool = false) -> some View {
+        if ThemeManager.shared.glassEnabled {
+            glassPanel(cornerRadius: cornerRadius, strong: strong)
+        } else {
+            background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(AppTheme.cardBackground)
+            )
+        }
+    }
+
+    /// List-row surface (honors the glass toggle). No blur either way.
+    @ViewBuilder
+    func appRow(cornerRadius: CGFloat = 12, hover: Bool = false) -> some View {
+        if ThemeManager.shared.glassEnabled {
+            glassRow(cornerRadius: cornerRadius, hover: hover)
+        } else {
+            background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(AppTheme.secondaryBackground)
+            )
+        }
+    }
+}
+
+// MARK: - Category chip (leading 28pt tinted square — list rows & KPI tiles)
+
+/// The leading icon "chip" used on glass rows and KPI tiles (§4): a 28pt rounded
+/// square tinted with a soft semantic color and a brighter glyph.
+struct GlassChip: View {
+    let systemImage: String
+    let color: Color
+    var brightText: Color? = nil
+    var size: CGFloat = 28
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .fill(color.opacity(0.18))
+            .frame(width: size, height: size)
+            .overlay(
+                Image(systemName: systemImage)
+                    .font(.system(size: size * 0.46, weight: .semibold))
+                    .foregroundColor(brightText ?? color)
+            )
+    }
 }
 
 private struct GlassChromeModifier: ViewModifier {
