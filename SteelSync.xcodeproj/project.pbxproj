@@ -186,6 +186,7 @@
 		765D7EF3B7A8D7F516CF2ABB /* ModelConversions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58398A718E943CC2D34502F3 /* ModelConversions.swift */; };
 		7722908EB7777EE7187F8640 /* SteelSyncWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F02A8419E7F23A58A8DA9A92 /* SteelSyncWidgetBundle.swift */; };
 		783F1EA3E27AF24EEB1C7E86 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F67E9D199056D732376E0C57 /* SettingsView.swift */; };
+		784B49F13B056575C0306EB8 /* SpellCheckedTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EA67BC51125ADDAB1D424F /* SpellCheckedTextEditor.swift */; };
 		784D4B64EC5106EB02E154D6 /* PlatformHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6300CD8818402187D0ABD23A /* PlatformHelpers.swift */; };
 		792D0D68A1F891F87E615614 /* Client.swift in Sources */ = {isa = PBXBuildFile; fileRef = D94423C9C5229CC31078E9B3 /* Client.swift */; };
 		7A7343F4158A418966C6C8A9 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4653DF72B79DC7583A950CC8 /* TodayView.swift */; };
@@ -219,6 +220,7 @@
 		8E1FB7DF35B0346F173902F1 /* GlobalSearchSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE2EBEB487618192E7B94A1C /* GlobalSearchSheet.swift */; };
 		8F53C661A087D62137C4A8B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A34FD2CA99294B4131EAC97 /* Assets.xcassets */; };
 		902AFEDEE46533DC42E16094 /* ProjectFormSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C688ECAD2EB3B55FE5B19133 /* ProjectFormSheets.swift */; };
+		90DA31C74D44E1D8B2B11C51 /* SpellCheckedTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EA67BC51125ADDAB1D424F /* SpellCheckedTextEditor.swift */; };
 		913896951CDA4C6F4F5BF537 /* PDFExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 812971A7EA828E9BF47A7BB6 /* PDFExportService.swift */; };
 		9262AE753635BB1106F78285 /* PinService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34DE6E6E2BB8C72C6687F79 /* PinService.swift */; };
 		93F541157CA6635691298474 /* Employee.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92C10C75857F4F50E8DB20F0 /* Employee.swift */; };
@@ -237,6 +239,7 @@
 		9EBE2C4C5A504CB8A2D08324 /* PayAppPDFRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552E763F0EDDEF16D47F1055 /* PayAppPDFRenderer.swift */; };
 		9F96BAEB7DDD001C0BAC2794 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21737A4F1A7835C79DF0F894 /* AppTheme.swift */; };
 		9FC623C31AF5EB84DC3A36B6 /* CloudKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CB1A29BC6181124FA4E4DDD /* CloudKitService.swift */; };
+		A23A5C69960861053BDC79E9 /* SpellCheckedTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EA67BC51125ADDAB1D424F /* SpellCheckedTextEditor.swift */; };
 		A2D9055F8A3C8C6E0A01011B /* EquipmentRental.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA34885EDE9A7BE1C05F3A42 /* EquipmentRental.swift */; };
 		A499B40C156A3EE3E06CA71B /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28562AE650F8CE57BFC51B94 /* NotificationService.swift */; };
 		A4EE959C674B3420C1DE0429 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4653DF72B79DC7583A950CC8 /* TodayView.swift */; };
@@ -540,6 +543,7 @@
 		AB2E2EF4FCA2EC8FD48F4C36 /* SteelSyncWidgets-iPad.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "SteelSyncWidgets-iPad.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB3A97A58F909F9E21625E60 /* DailyLogSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyLogSheets.swift; sourceTree = "<group>"; };
 		B08744754F83C0EF0B550A65 /* WidgetDataProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetDataProvider.swift; sourceTree = "<group>"; };
+		B8EA67BC51125ADDAB1D424F /* SpellCheckedTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpellCheckedTextEditor.swift; sourceTree = "<group>"; };
 		B907F19131C74D97A2392725 /* PhoneLogPaymentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneLogPaymentView.swift; sourceTree = "<group>"; };
 		BADCA49EBF740AF2392D2B80 /* PDFShareButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFShareButton.swift; sourceTree = "<group>"; };
 		BBEDCAD4902D180D053827CE /* ShareAcceptanceDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareAcceptanceDelegate.swift; sourceTree = "<group>"; };
@@ -715,6 +719,7 @@
 				BADCA49EBF740AF2392D2B80 /* PDFShareButton.swift */,
 				ED56B7484A529A5F7C23A349 /* RowReorderDropDelegate.swift */,
 				A9D1E8322F91B9CB44B59AC7 /* SharedComponents.swift */,
+				B8EA67BC51125ADDAB1D424F /* SpellCheckedTextEditor.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -1440,6 +1445,7 @@
 				80502C7C9B069BB083671525 /* SharedComponents.swift in Sources */,
 				6045BC46947CC793AE3C044D /* SidebarView.swift in Sources */,
 				6DAC1B289ACF4D8DDE6072FF /* SnapshotService.swift in Sources */,
+				90DA31C74D44E1D8B2B11C51 /* SpellCheckedTextEditor.swift in Sources */,
 				CF7FE85565A8EC4325A7456F /* SteelSyncPhoneApp.swift in Sources */,
 				4BE510047D4B8D0AD1A7D0A8 /* SteelSyncShortcuts.swift in Sources */,
 				6D5310A0AA4E07AFF6597750 /* SubcontractorAIAPDFViews.swift in Sources */,
@@ -1549,6 +1555,7 @@
 				392B398CAD9A73ED089CD5A0 /* SharedComponents.swift in Sources */,
 				A88DA653DA112C12BE1F6F6E /* SidebarView.swift in Sources */,
 				0676C333BFC98F9776E3562D /* SnapshotService.swift in Sources */,
+				784B49F13B056575C0306EB8 /* SpellCheckedTextEditor.swift in Sources */,
 				E21CA5F133C0EB2E107215A1 /* SteelSyncApp.swift in Sources */,
 				7F4EDB713C0760F7A014AFDD /* SubcontractorAIAPDFViews.swift in Sources */,
 				29A3ED37F3F3099597392BB3 /* TimeEntry.swift in Sources */,
@@ -1686,6 +1693,7 @@
 				61B2E0DBFF869FB7CB5379F5 /* SharedComponents.swift in Sources */,
 				2774A4E85CD00742C2BECCAC /* SidebarView.swift in Sources */,
 				F5F7EDD34991B92EA922C8FD /* SnapshotService.swift in Sources */,
+				A23A5C69960861053BDC79E9 /* SpellCheckedTextEditor.swift in Sources */,
 				3746863015B5871F4B01E406 /* SteelSyncApp.swift in Sources */,
 				CA2A7947457FF4671EDB98DC /* SubcontractorAIAPDFViews.swift in Sources */,
 				194F5FF10F04FFBF8F217946 /* TimeEntry.swift in Sources */,

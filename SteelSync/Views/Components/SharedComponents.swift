@@ -402,11 +402,9 @@ struct NotesField: View {
     var minHeight: CGFloat = 80
 
     var body: some View {
-        TextEditor(text: $text)
-            .font(.system(size: 14))
-            .scrollContentBackground(.hidden)
-            .padding(8)
-            .frame(minHeight: minHeight)
+        // Routed through SpellCheckedTextEditor so notes get live spell +
+        // grammar checking with automatic EN/ES language detection.
+        SpellCheckedTextEditor(text: $text, minHeight: minHeight)
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(AppTheme.secondaryBackground)
