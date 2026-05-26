@@ -52,7 +52,8 @@ class GanttViewModel: ObservableObject {
     // MARK: - Timeline Colors
     let weekendFill = Color.gray.opacity(0.08)
     let todayLineColor = Color.red.opacity(0.7)
-    let gridLineColor = Color.gray.opacity(0.15)
+    /// Hairline gridlines — `--divider` under the glass design, neutral gray otherwise.
+    var gridLineColor: Color { ThemeManager.shared.glassEnabled ? Glass.divider : Color.gray.opacity(0.15) }
 
     // MARK: - Timeline Calculations (All Projects)
 

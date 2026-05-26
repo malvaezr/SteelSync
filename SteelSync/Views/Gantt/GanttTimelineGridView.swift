@@ -96,31 +96,38 @@ struct GanttTodayMarkerView: View {
     var body: some View {
         let x = vm.xPosition(for: now, tasks: tasks)
         let columnWidth = vm.dayWidth
+        // Glass: the Today marker is the one accent in the chart (§4) — accent
+        // edge lines + an accent "Today" chip. Legacy keeps the neutral gray.
+        let glass = ThemeManager.shared.glassEnabled
+        let edgeColor = glass ? Glass.accent : Color.gray.opacity(0.5)
+        let columnFill = glass ? Glass.accent.opacity(0.10) : Color.gray.opacity(0.25)
+        let chipBG = glass ? Glass.accent : Color.gray.opacity(0.7)
+        let chipFG = glass ? Glass.textOnAccent : Color.white
 
         ZStack(alignment: .top) {
             // Full-day highlight column — scales with zoom
             Rectangle()
-                .fill(Color.gray.opacity(0.25))
+                .fill(columnFill)
                 .frame(width: max(columnWidth, 2), height: height)
                 .position(x: x + columnWidth / 2, y: height / 2)
 
             // Left and right edge lines
             Rectangle()
-                .fill(Color.gray.opacity(0.5))
+                .fill(edgeColor)
                 .frame(width: 1, height: height)
                 .position(x: x, y: height / 2)
             Rectangle()
-                .fill(Color.gray.opacity(0.5))
+                .fill(edgeColor)
                 .frame(width: 1, height: height)
                 .position(x: x + columnWidth, y: height / 2)
 
-            // "Today" badge
+            // "Today" chip
             Text("Today")
                 .font(.system(size: 9, weight: .bold))
-                .foregroundColor(.white)
+                .foregroundColor(chipFG)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
-                .background(Color.gray.opacity(0.7))
+                .background(chipBG)
                 .clipShape(RoundedRectangle(cornerRadius: 3))
                 .position(x: x + columnWidth / 2, y: 8)
         }

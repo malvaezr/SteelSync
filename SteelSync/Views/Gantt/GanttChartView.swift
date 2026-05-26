@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct GanttChartView: View {
     @EnvironmentObject var dataStore: DataStore
+    @ObservedObject private var themeManager = ThemeManager.shared
     @StateObject private var vm = GanttViewModel()
     @State private var showAddTask = false
     @State private var showExportSheet = false
@@ -371,8 +372,13 @@ struct GanttChartView: View {
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(Color.gray.opacity(0.1))
+                .background(themeManager.glassEnabled ? Glass.row : Color.gray.opacity(0.1))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    themeManager.glassEnabled
+                        ? RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Glass.hairline, lineWidth: 1)
+                        : nil
+                )
                 .frame(maxWidth: 260)
 
                 // Status filter
@@ -435,10 +441,11 @@ struct GanttChartView: View {
                         Text("\(crewConflictIDs.count / 2) conflict\(crewConflictIDs.count / 2 == 1 ? "" : "s")")
                     }
                     .font(.caption2)
-                    .foregroundColor(.white)
+                    .monospacedDigit()
+                    .foregroundColor(themeManager.glassEnabled ? Glass.dangerBright : .white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(Color.red.opacity(0.85))
+                    .background(themeManager.glassEnabled ? Glass.danger.opacity(0.18) : Color.red.opacity(0.85))
                     .clipShape(Capsule())
                     .help("Crew double-bookings — bars outlined in red")
                 }
@@ -494,8 +501,10 @@ struct GanttChartView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(TaskCategory.allCases) { cat in
-                        HStack(spacing: 4) {
-                            Circle().fill(cat.color).frame(width: 8, height: 8)
+                        HStack(spacing: 5) {
+                            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                                .fill(cat.color)
+                                .frame(width: 9, height: 9)
                             Text(cat.rawValue).font(.system(size: 10)).foregroundColor(.secondary)
                         }
                     }
@@ -519,7 +528,15 @@ struct GanttChartView: View {
         }
         .padding(.horizontal, AppTheme.Spacing.md)
         .padding(.vertical, AppTheme.Spacing.sm)
-        .background(AppTheme.secondaryBackground)
+        .background {
+            // Schedule toolbar = glass chrome (§5). Frosted over the wallpaper
+            // when glass is on; legacy keeps the flat secondary fill.
+            if themeManager.glassEnabled {
+                Rectangle().fill(.regularMaterial)
+            } else {
+                AppTheme.secondaryBackground
+            }
+        }
     }
 
     // MARK: - Task List Panel
@@ -543,18 +560,19 @@ struct GanttChartView: View {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                         switch row {
                         case .projectHeader(let project):
-                            HStack(spacing: 6) {
-                                RoundedRectangle(cornerRadius: 2)
+                            HStack(spacing: 8) {
+                                RoundedRectangle(cornerRadius: 1.5)
                                     .fill(projectColor(for: project.id.recordName))
-                                    .frame(width: 4, height: 16)
+                                    .frame(width: 3, height: 16)
                                 Text(project.title)
-                                    .font(.system(size: 11, weight: .semibold))
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(AppTheme.primaryText)
                                     .lineLimit(1)
                                 Spacer()
                             }
                             .padding(.horizontal, 8)
                             .frame(height: vm.projectHeaderHeight)
-                            .background(Color.gray.opacity(0.08))
+                            .background(themeManager.glassEnabled ? AppTheme.tertiaryBackground : Color.gray.opacity(0.08))
 
                         case .task(let task):
                             taskListRow(task)
@@ -812,7 +830,7 @@ struct GanttTaskListRow: View {
                 .frame(width: 20)
         }
         .padding(.horizontal, 8)
-        .background(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
+        .background(isSelected ? AppTheme.primaryOrange.opacity(0.12) : Color.clear)
     }
 }
 

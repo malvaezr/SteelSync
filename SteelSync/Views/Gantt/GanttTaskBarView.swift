@@ -154,6 +154,18 @@ struct GanttTaskBarView: View {
                 .gesture(resizeRightDrag)
         }
         .frame(width: effectiveBarWidth, height: barHeight)
+        .overlay(alignment: .top) {
+            // Specular top highlight — the glass sheen on every bar (§4).
+            if ThemeManager.shared.glassEnabled {
+                RoundedRectangle(cornerRadius: vm.barRadius)
+                    .stroke(
+                        LinearGradient(colors: [Color.white.opacity(0.30), .clear],
+                                       startPoint: .top, endPoint: .center),
+                        lineWidth: 1
+                    )
+                    .allowsHitTesting(false)
+            }
+        }
         .overlay(
             RoundedRectangle(cornerRadius: vm.barRadius)
                 .stroke(borderColor, lineWidth: borderWidth)
