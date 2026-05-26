@@ -68,6 +68,37 @@ struct SettingsView: View {
                     .padding(.vertical, AppTheme.Spacing.sm)
                 }
 
+                // Glass Design Section
+                GroupBox {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                        Text("Glass Design")
+                            .font(AppTheme.Typography.headline)
+
+                        Text("The Liquid-Glass look — graphite wallpaper, frosted chrome, and tabular figures. Turn it off to use the classic color themes above.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        Toggle("Liquid Glass", isOn: $themeManager.glassEnabled.animation(.easeInOut(duration: 0.25)))
+                            .toggleStyle(.switch)
+
+                        if themeManager.glassEnabled {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Skin")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                                Picker("Skin", selection: $themeManager.glassSkin.animation(.easeInOut(duration: 0.25))) {
+                                    ForEach(GlassSkin.allCases) { skin in
+                                        Text(skin.displayName).tag(skin)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+                                .labelsHidden()
+                            }
+                        }
+                    }
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                }
+
                 // AI Model Section
                 GroupBox {
                     VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
