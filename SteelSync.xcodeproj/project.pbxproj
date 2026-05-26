@@ -89,6 +89,7 @@
 		36823C9B65827EE767080B6A /* GanttTaskEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7942C645F9E3BF0378EFFFBF /* GanttTaskEditSheet.swift */; };
 		36FCD20FCD1D6F37B36CF87C /* HandwritingRecognitionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2953DF713912AE6F41BA1451 /* HandwritingRecognitionService.swift */; };
 		3746863015B5871F4B01E406 /* SteelSyncApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21EE9F075420DFE63E74A2C1 /* SteelSyncApp.swift */; };
+		37F8566E634E4EDE4F9F99AD /* Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A225DB886949A33D3F111E9 /* Glass.swift */; };
 		383E68556FD14673D1241F39 /* BidDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F89C7F8FCAE982405AB863B9 /* BidDetailView.swift */; };
 		38639948FE776D64897DF5DA /* CrewPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBBCA5C8F455442C8C271728 /* CrewPreset.swift */; };
 		392B398CAD9A73ED089CD5A0 /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D1E8322F91B9CB44B59AC7 /* SharedComponents.swift */; };
@@ -125,6 +126,7 @@
 		4BE21E0936CA8D3C35C3EFCC /* RFI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530A1552340FF002D1AB9A8C /* RFI.swift */; };
 		4BE510047D4B8D0AD1A7D0A8 /* SteelSyncShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A800CC308927F8E692D3235 /* SteelSyncShortcuts.swift */; };
 		4C039FA5BBE0222A1421ED7F /* PayAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84676B7C0A4D5D79E4F93B51 /* PayAppView.swift */; };
+		4CE9EEA22484AD276D6B0200 /* Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A225DB886949A33D3F111E9 /* Glass.swift */; };
 		4D9F5C25078587377C0F00CA /* WidgetHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 186A0414E37E1B8158AB72AA /* WidgetHelpers.swift */; };
 		4E1735C8ADE52AE4ADFECF41 /* Invoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 974F3DBE56C2C2D69C94EC91 /* Invoice.swift */; };
 		4E5AA43963F0AFBFF77112F6 /* GanttPreviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C29620A98DF4DA632CB4332 /* GanttPreviewWidget.swift */; };
@@ -291,6 +293,7 @@
 		C9D68512441FF880E231EE23 /* ResponseFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45C110DB5B14052C675D8B39 /* ResponseFormatter.swift */; };
 		CA2A7947457FF4671EDB98DC /* SubcontractorAIAPDFViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E7F411A108A2A42E227A28 /* SubcontractorAIAPDFViews.swift */; };
 		CA73F202BC163C1FB5BB2038 /* Info-iPad.plist in Resources */ = {isa = PBXBuildFile; fileRef = 77CB62E66A92406BB160C58A /* Info-iPad.plist */; };
+		CC04C895CAD5E2C6E7CF868F /* Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A225DB886949A33D3F111E9 /* Glass.swift */; };
 		CC5583BB2C9C1E468B355FAD /* AppNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2380E2E3DB04FD3BFBBC87CB /* AppNavigation.swift */; };
 		CD216864AB1517EA5F0C6E4C /* PlatformHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6300CD8818402187D0ABD23A /* PlatformHelpers.swift */; };
 		CD2288A9B75FD298AD0A0729 /* AssistantService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6802A78CD49EA90FA355F1A6 /* AssistantService.swift */; };
@@ -513,6 +516,7 @@
 		77B10D2CBB3202FC8A534723 /* SnapshotService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotService.swift; sourceTree = "<group>"; };
 		77CB62E66A92406BB160C58A /* Info-iPad.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Info-iPad.plist"; sourceTree = "<group>"; };
 		7942C645F9E3BF0378EFFFBF /* GanttTaskEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GanttTaskEditSheet.swift; sourceTree = "<group>"; };
+		7A225DB886949A33D3F111E9 /* Glass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Glass.swift; sourceTree = "<group>"; };
 		7A51DBCAC0070BC1988CE5F3 /* PhoneContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneContentView.swift; sourceTree = "<group>"; };
 		7A8E550E7DDAFD4619DE39D6 /* OverheadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverheadView.swift; sourceTree = "<group>"; };
 		7D8968AE25CF9FEFEBC09B15 /* GanttViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GanttViewModel.swift; sourceTree = "<group>"; };
@@ -823,6 +827,7 @@
 			isa = PBXGroup;
 			children = (
 				21737A4F1A7835C79DF0F894 /* AppTheme.swift */,
+				7A225DB886949A33D3F111E9 /* Glass.swift */,
 			);
 			path = Theme;
 			sourceTree = "<group>";
@@ -1392,6 +1397,7 @@
 				0C09DA6A45D80F80EE199E8A /* GanttTaskEditSheet.swift in Sources */,
 				EE2FD36BC39A5B5B28F76472 /* GanttTimelineGridView.swift in Sources */,
 				ED104C62D201762EF33D37A0 /* GanttViewModel.swift in Sources */,
+				37F8566E634E4EDE4F9F99AD /* Glass.swift in Sources */,
 				13EA98E4228EB2E971FF940A /* GlobalSearchService.swift in Sources */,
 				51DBE6F157519A413DD8263A /* GlobalSearchSheet.swift in Sources */,
 				E5CA94BE7937A80045EECC89 /* HandwritingRecognitionService.swift in Sources */,
@@ -1514,6 +1520,7 @@
 				36823C9B65827EE767080B6A /* GanttTaskEditSheet.swift in Sources */,
 				74CF3C75ED9458B5BFF4BA2C /* GanttTimelineGridView.swift in Sources */,
 				3A247D839B405B336AB2FEE9 /* GanttViewModel.swift in Sources */,
+				CC04C895CAD5E2C6E7CF868F /* Glass.swift in Sources */,
 				D5DE45A9C0BE7E0CEB2CCAAD /* GlobalSearchService.swift in Sources */,
 				66FECCA12BD71BB79479C296 /* GlobalSearchSheet.swift in Sources */,
 				FF7C3AE14704BF47635D7F7F /* HandwritingRecognitionService.swift in Sources */,
@@ -1652,6 +1659,7 @@
 				C69A0E6BA7DE1E9391AF8B47 /* GanttTaskEditSheet.swift in Sources */,
 				B2408C1833EDB55AAE433B41 /* GanttTimelineGridView.swift in Sources */,
 				6D44218E45225BB9ED30BE6C /* GanttViewModel.swift in Sources */,
+				4CE9EEA22484AD276D6B0200 /* Glass.swift in Sources */,
 				A5471316AE232E4FC7392A84 /* GlobalSearchService.swift in Sources */,
 				8E1FB7DF35B0346F173902F1 /* GlobalSearchSheet.swift in Sources */,
 				36FCD20FCD1D6F37B36CF87C /* HandwritingRecognitionService.swift in Sources */,

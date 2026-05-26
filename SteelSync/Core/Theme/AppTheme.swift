@@ -542,37 +542,57 @@ class ThemeManager: ObservableObject {
         didSet { UserDefaults.standard.set(isDarkMode, forKey: "isDarkMode") }
     }
 
+    // MARK: - Glass design system (Liquid-Glass revamp)
+    /// When true, AppTheme's global tokens resolve to the graphite/glass
+    /// palette (see Glass.swift). The legacy 4 themes still work when off.
+    @Published var glassEnabled: Bool {
+        didSet { UserDefaults.standard.set(glassEnabled, forKey: "glassEnabled") }
+    }
+    @Published var glassSkin: GlassSkin {
+        didSet { UserDefaults.standard.set(glassSkin.rawValue, forKey: "glassSkin") }
+    }
+    @Published var density: GlassDensity {
+        didSet { UserDefaults.standard.set(density.rawValue, forKey: "glassDensity") }
+    }
+
     var colorScheme: ColorScheme { isDarkMode ? .dark : .light }
 
     init() {
         let saved = UserDefaults.standard.string(forKey: "selectedTheme") ?? ""
         current = AppColorTheme(rawValue: saved) ?? .flame
         isDarkMode = UserDefaults.standard.object(forKey: "isDarkMode") as? Bool ?? true
+        // Glass is the default look on this branch (first launch → on).
+        glassEnabled = UserDefaults.standard.object(forKey: "glassEnabled") as? Bool ?? true
+        glassSkin = GlassSkin(rawValue: UserDefaults.standard.string(forKey: "glassSkin") ?? "") ?? .graphite
+        density = GlassDensity(rawValue: UserDefaults.standard.string(forKey: "glassDensity") ?? "") ?? .comfortable
     }
 }
 
 struct AppTheme {
     private static var theme: AppColorTheme { ThemeManager.shared.current }
     private static var dark: Bool { ThemeManager.shared.isDarkMode }
+    /// When the glass design is active, the global tokens below resolve to the
+    /// graphite/forge palette (Glass.swift) instead of the legacy themes.
+    private static var glass: Bool { ThemeManager.shared.glassEnabled }
 
     // MARK: - Brand Colors (dynamic)
-    static var primaryOrange: Color { theme.accent }
-    static var primaryGreen: Color { theme.secondaryAccent }
+    static var primaryOrange: Color { glass ? Glass.accent : theme.accent }
+    static var primaryGreen: Color { glass ? Glass.success : theme.secondaryAccent }
     /// Foreground color that contrasts cleanly against `primaryOrange`
     /// (the theme accent). Used by primary / destructive button styles
     /// instead of a hardcoded `.white` so future themes with light
     /// accents can override.
-    static var accentForeground: Color { theme.accentForeground }
+    static var accentForeground: Color { glass ? Glass.textOnAccent : theme.accentForeground }
 
-    // MARK: - Full Palette (dynamic per theme + mode)
-    static var background: Color { theme.background(dark: dark) }
-    static var secondaryBackground: Color { theme.secondaryBackground(dark: dark) }
-    static var tertiaryBackground: Color { theme.tertiaryBackground(dark: dark) }
-    static var cardBackground: Color { theme.cardBackground(dark: dark) }
-    static var primaryText: Color { theme.primaryText(dark: dark) }
-    static var secondaryText: Color { theme.secondaryText(dark: dark) }
-    static var tertiaryText: Color { theme.tertiaryText(dark: dark) }
-    static var sidebarBackground: Color { theme.sidebarBackground(dark: dark) }
+    // MARK: - Full Palette (dynamic per theme + mode; glass overrides when on)
+    static var background: Color { glass ? Glass.windowBase : theme.background(dark: dark) }
+    static var secondaryBackground: Color { glass ? Glass.row : theme.secondaryBackground(dark: dark) }
+    static var tertiaryBackground: Color { glass ? Glass.panelStrong : theme.tertiaryBackground(dark: dark) }
+    static var cardBackground: Color { glass ? Glass.panel : theme.cardBackground(dark: dark) }
+    static var primaryText: Color { glass ? Glass.textPrimary : theme.primaryText(dark: dark) }
+    static var secondaryText: Color { glass ? Glass.textSecondary : theme.secondaryText(dark: dark) }
+    static var tertiaryText: Color { glass ? Glass.textTertiary : theme.tertiaryText(dark: dark) }
+    static var sidebarBackground: Color { glass ? Glass.chrome : theme.sidebarBackground(dark: dark) }
 
     // MARK: - Semantic Colors
     static let success = Color.green
