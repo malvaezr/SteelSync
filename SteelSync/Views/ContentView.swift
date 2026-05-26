@@ -10,6 +10,10 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
         } detail: {
             detailView
+                // Hybrid wallpaper policy: the detail area defaults to flat
+                // graphite so dense data screens stay legible; overview screens
+                // (e.g. Today) opt into the gradient via .glassScreenBackground(true).
+                .background(AppTheme.background)
                 .modifier(IPadMenuCollapseToolbar(visibility: $navigationState.columnVisibility))
         }
         .navigationSplitViewStyle(.balanced)

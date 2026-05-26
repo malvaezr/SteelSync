@@ -211,6 +211,20 @@ extension View {
         }
     }
 
+    /// Screen-root background under the "hybrid" wallpaper policy: overview
+    /// screens (Today, dashboards) pass `wallpaper: true` to let the graphite
+    /// gradient glow through behind their translucent panels; dense data
+    /// screens leave it false and sit on flat graphite for legibility. Legacy
+    /// themes always get their flat `AppTheme.background`.
+    @ViewBuilder
+    func glassScreenBackground(_ wallpaper: Bool = true) -> some View {
+        if ThemeManager.shared.glassEnabled && wallpaper {
+            background { GlassWallpaper() }
+        } else {
+            background(AppTheme.background)
+        }
+    }
+
     /// List-row surface (honors the glass toggle). No blur either way.
     @ViewBuilder
     func appRow(cornerRadius: CGFloat = 12, hover: Bool = false) -> some View {

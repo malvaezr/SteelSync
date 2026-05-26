@@ -52,7 +52,8 @@ struct TodayView: View {
             }
             .padding(AppTheme.Spacing.lg)
         }
-        .background(AppTheme.background)
+        // Overview screen → opt into the graphite gradient wallpaper (hybrid policy).
+        .glassScreenBackground(true)
         .onReceive(timer) { value in now = value }
         .sheet(isPresented: $showQuickEntryProjectPicker) {
             QuickEntryProjectPicker(onPick: { project in
