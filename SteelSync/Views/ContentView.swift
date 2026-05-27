@@ -17,6 +17,7 @@ struct ContentView: View {
                 .modifier(IPadMenuCollapseToolbar(visibility: $navigationState.columnVisibility))
         }
         .navigationSplitViewStyle(.balanced)
+        .glassGroupBoxes()
         .sheet(isPresented: $navigationState.showGlobalSearch) {
             GlobalSearchSheet()
                 .environmentObject(dataStore)

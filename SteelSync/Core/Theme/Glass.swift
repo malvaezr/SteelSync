@@ -299,3 +299,39 @@ struct GlassPill: View {
             .overlay(critical ? Capsule().strokeBorder(Glass.danger, lineWidth: 1.5) : nil)
     }
 }
+
+// MARK: - GroupBox style
+//
+// Turns every `GroupBox` in the app into a glass panel: a styled label header
+// (when one is given) over a translucent panel + specular + hairline. Applied
+// app-wide via `.glassGroupBoxes()` so the many data screens (Reports,
+// Equipment, Overhead, Clients, Settings, detail views) pick it up at once.
+
+struct GlassGroupBoxStyle: GroupBoxStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Empty for `GroupBox { … }` (self-titled content) — contributes no
+            // row, so no stray gap; styled header for `GroupBox("Title") { … }`.
+            configuration.label
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(AppTheme.secondaryText)
+            configuration.content
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .appPanel(cornerRadius: 14)
+    }
+}
+
+extension View {
+    /// Apply the glass panel look to every GroupBox in the subtree while the
+    /// glass design is on; leave the system GroupBox intact otherwise.
+    @ViewBuilder
+    func glassGroupBoxes() -> some View {
+        if ThemeManager.shared.glassEnabled {
+            groupBoxStyle(GlassGroupBoxStyle())
+        } else {
+            self
+        }
+    }
+}

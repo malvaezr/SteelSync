@@ -633,7 +633,7 @@ struct UnassignedInvoicesRow: View {
         .padding(.vertical, AppTheme.Spacing.xs)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.orange.opacity(0.12) : Color.clear)
+                .fill(isSelected ? AppTheme.primaryOrange.opacity(0.12) : Color.clear)
         )
     }
 }
