@@ -37,7 +37,11 @@ class GanttViewModel: ObservableObject {
     @Published var availableWidth: CGFloat = 0
 
     // MARK: - Layout Constants
-    let rowHeight: CGFloat = 36
+    /// Row height honors the glass density toggle (Comfortable 42 / Compact 30,
+    /// per §5's Schedule density control); legacy themes keep the classic 36.
+    var rowHeight: CGFloat {
+        ThemeManager.shared.glassEnabled ? ThemeManager.shared.density.rowHeight : 36
+    }
     #if os(macOS)
     let taskListWidth: CGFloat = 280
     #else

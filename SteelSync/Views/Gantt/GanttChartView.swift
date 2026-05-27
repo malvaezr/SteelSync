@@ -17,6 +17,8 @@ struct GanttChartView: View {
     @State private var didSeedProjectFilters = false
     @State private var currentDate = Date()
     @State private var isVisible = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
     // Marquee (rubber-band) selection — content-space points while dragging.
     @State private var marqueeStart: CGPoint?
     @State private var marqueeCurrent: CGPoint?
@@ -165,6 +167,7 @@ struct GanttChartView: View {
                     }
             }
         }
+        .opacity(appeared ? 1 : 0)
         .inlineForm(isPresented: $showAddTask) {
             GanttTaskEditSheet(projects: dataStore.projects, selectedProjectID: soleSelectedProjectID) { newTask in
                 dataStore.addGanttTask(newTask)
@@ -187,7 +190,11 @@ struct GanttChartView: View {
             .environmentObject(dataStore)
         }
         .navigationTitle("Schedule")
-        .onAppear { isVisible = true; currentDate = Date() }
+        .onAppear {
+            isVisible = true; currentDate = Date()
+            if reduceMotion { appeared = true }
+            else { withAnimation(.easeOut(duration: 0.3)) { appeared = true } }
+        }
         .onDisappear { isVisible = false }
         .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in
             if isVisible { currentDate = Date() }

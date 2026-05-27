@@ -8,6 +8,8 @@ struct TodayView: View {
     @EnvironmentObject var dataStore: DataStore
     @EnvironmentObject var navigationState: NavigationState
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
     @State private var showQuickEntryProjectPicker = false
     @State private var quickEntryProject: Project?
     @State private var now = Date()
@@ -51,9 +53,16 @@ struct TodayView: View {
                 }
             }
             .padding(AppTheme.Spacing.lg)
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 8)
         }
         // Overview screen → opt into the graphite gradient wallpaper (hybrid policy).
         .glassScreenBackground(true)
+        .onAppear {
+            // Page-load fade + rise (§5), skipped under Reduce Motion.
+            if reduceMotion { appeared = true }
+            else { withAnimation(.easeOut(duration: 0.3)) { appeared = true } }
+        }
         .onReceive(timer) { value in now = value }
         .sheet(isPresented: $showQuickEntryProjectPicker) {
             QuickEntryProjectPicker(onPick: { project in

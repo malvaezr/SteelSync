@@ -94,6 +94,22 @@ struct SettingsView: View {
                                 .pickerStyle(.segmented)
                                 .labelsHidden()
                             }
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Density")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                                Picker("Density", selection: $themeManager.density.animation(.easeInOut(duration: 0.25))) {
+                                    ForEach(GlassDensity.allCases) { d in
+                                        Text(d.displayName).tag(d)
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+                                .labelsHidden()
+                                Text("Affects the Schedule row height.")
+                                    .font(.caption2)
+                                    .foregroundColor(AppTheme.tertiaryText)
+                            }
                         }
                     }
                     .padding(.vertical, AppTheme.Spacing.sm)
