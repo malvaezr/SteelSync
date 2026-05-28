@@ -81,12 +81,20 @@ enum Glass {
         return forgeDark ? Color(hex: "#ffd7af").opacity(0.14) : Color.white.opacity(0.12)
     }
 
-    // MARK: Accent (one accent — safety orange)
-    static var accent: Color { dark ? Color(hex: "#ff7a1a") : Color(hex: "#e0590c") }
-    static var accentBright: Color { dark ? Color(hex: "#ff9554") : Color(hex: "#d8540b") }
+    // MARK: Accent
+    // The accent follows the selected Color Theme so that picker stays
+    // functional in glass mode — only the accent recolors (buttons, highlights,
+    // badges, Today marker); the graphite/forge surfaces are unchanged. Default
+    // theme (Flame) keeps it the signature orange.
+    static var accent: Color { ThemeManager.shared.current.accent }
+    static var accentBright: Color { ThemeManager.shared.current.accent }
     static var accentSoft: Color { accent.opacity(0.18) }
     static var accentRing: Color { accent.opacity(0.50) }
-    static var textOnAccent: Color { dark ? Color(hex: "#1a0e04") : .white }
+    /// Dark ink on the bright Flame orange (best contrast); white on the
+    /// deeper Steel/Forge/Rose accents.
+    static var textOnAccent: Color {
+        ThemeManager.shared.current == .flame ? Color(hex: "#1a0e04") : .white
+    }
 
     // MARK: Semantic
     static let info = Color(hex: "#4d9bff"); static let infoBright = Color(hex: "#7fb8ff")
@@ -135,7 +143,8 @@ struct GlassWallpaper: View {
                 Color(hex: "#0a0b0f")
                 RadialGradient(colors: [Color(hex: "#2b2e3c"), Color(hex: "#14151b"), Color(hex: "#0a0b0f")],
                                center: UnitPoint(x: 0.82, y: -0.10), startRadius: 0, endRadius: 1500)
-                RadialGradient(colors: [Color(hex: "#ff6e28").opacity(0.16), .clear],
+                // Ambient corner glow follows the accent so theme switches feel cohesive.
+                RadialGradient(colors: [Glass.accent.opacity(0.16), .clear],
                                center: UnitPoint(x: 0.12, y: 1.15), startRadius: 0, endRadius: 800)
             }
         }

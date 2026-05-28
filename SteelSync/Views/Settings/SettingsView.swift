@@ -74,7 +74,7 @@ struct SettingsView: View {
                         Text("Glass Design")
                             .font(AppTheme.Typography.headline)
 
-                        Text("The Liquid-Glass look — graphite wallpaper, frosted chrome, and tabular figures. Turn it off to use the classic color themes above.")
+                        Text("The Liquid-Glass look — graphite wallpaper, frosted chrome, and tabular figures. Your Color Theme above still sets the accent; turn this off for the classic full-color themes.")
                             .font(.caption)
                             .foregroundColor(.secondary)
 
