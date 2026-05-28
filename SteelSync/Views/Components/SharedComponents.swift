@@ -219,7 +219,10 @@ struct EmptyStateView: View {
                 Button(action: action) {
                     Label(buttonTitle, systemImage: "plus")
                 }
-                .primaryButtonStyle()
+                // Use the proper ButtonStyle (not the old .primaryButtonStyle()
+                // view modifier, which wrapped a default-styled Button and left
+                // the label invisible on macOS).
+                .buttonStyle(.appPrimary)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
