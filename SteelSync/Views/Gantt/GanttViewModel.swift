@@ -253,8 +253,13 @@ class GanttViewModel: ObservableObject {
     func crewConflictTaskIDs(tasks: [GanttTask]) -> Set<UUID> {
         var conflicts: Set<UUID> = []
         var byAssignee: [String: [GanttTask]] = [:]
-        for t in tasks where !t.assignedTo.trimmingCharacters(in: .whitespaces).isEmpty {
-            byAssignee[t.assignedTo.trimmingCharacters(in: .whitespaces), default: []].append(t)
+        // Multi-assignee: bucket the task once per assignee so a person on two
+        // overlapping tasks is detected even when one of those tasks lists
+        // additional crew alongside them.
+        for t in tasks {
+            for assignee in t.assignees {
+                byAssignee[assignee.lowercased(), default: []].append(t)
+            }
         }
         for (_, group) in byAssignee where group.count > 1 {
             let sorted = group.sorted { $0.startDate < $1.startDate }

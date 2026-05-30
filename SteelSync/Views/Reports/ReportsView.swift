@@ -1137,7 +1137,7 @@ struct ReportsView: View {
                                             HStack(spacing: 6) {
                                                 Text("\(Int(item.completionPct * 100))% completed")
                                                 Text("·")
-                                                Text("\(item.foremanDays) / \(item.projectTotalDays) d")
+                                                Text("\(item.foremanDays.formatted(.number.precision(.fractionLength(0...1)))) / \(item.projectTotalDays) d")
                                                 Text("·")
                                                 Text("\(bonusBasis.rawValue) \(item.basis.currencyFormatted)")
                                             }
@@ -1156,7 +1156,7 @@ struct ReportsView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(b.foreman.fullName)
                                         .font(AppTheme.Typography.headline)
-                                    Text("\(b.perProject.count) project\(b.perProject.count == 1 ? "" : "s") · \(b.totalCompletionDays) day\(b.totalCompletionDays == 1 ? "" : "s")")
+                                    Text("\(b.perProject.count) project\(b.perProject.count == 1 ? "" : "s") · \(b.totalCompletionDays.formatted(.number.precision(.fractionLength(0...1)))) days")
                                         .font(.caption.monospacedDigit())
                                         .foregroundColor(.secondary)
                                 }
@@ -1194,6 +1194,7 @@ struct ReportsView: View {
             return []
         }
         let foremen = dataStore.employees.filter { $0.isForeman }
+        let foremanNamesLower = Set(foremen.map { $0.fullName.lowercased() })
         let multiplierFactor = Decimal(multiplierPct / 100.0)
 
         // Precompute project total task-days once.
@@ -1204,17 +1205,26 @@ struct ReportsView: View {
 
         var result: [BonusBreakdown] = []
         for foreman in foremen {
-            let name = foreman.fullName
+            let nameLower = foreman.fullName.lowercased()
+            // Multi-assignee: include any task that LISTS this foreman among
+            // its assignees (case-insensitive). A task assigned to "Joe; Mike"
+            // qualifies for both Joe's and Mike's bonus runs.
             let matching = dataStore.ganttTasks.filter { t in
                 t.status == .completed
                     && t.endDate >= yearStart && t.endDate < yearEnd
-                    && t.assignedTo
-                        .trimmingCharacters(in: .whitespaces)
-                        .caseInsensitiveCompare(name) == .orderedSame
+                    && t.assignees.contains(where: { $0.lowercased() == nameLower })
             }
-            var byProject: [String: Int] = [:]
+
+            // For each qualifying task, count how many FOREMEN appear on it,
+            // and credit each foreman with `durationDays / foremenOnTask` of
+            // the task. Non-foreman assignees don't dilute the share (the
+            // user only wants the duration split among foremen).
+            var byProject: [String: Decimal] = [:]
             for t in matching {
-                byProject[t.projectID, default: 0] += t.durationDays
+                let foremenOnTask = t.assignees.filter { foremanNamesLower.contains($0.lowercased()) }
+                let denominator = max(1, foremenOnTask.count)
+                let share = Decimal(t.durationDays) / Decimal(denominator)
+                byProject[t.projectID, default: Decimal.zero] += share
             }
 
             var items: [BonusBreakdownItem] = []
@@ -1227,7 +1237,7 @@ struct ReportsView: View {
                 case .revenue: basisValue = project.totalRevenue
                 case .profit:  basisValue = max(0, project.profit)
                 }
-                let pct = Decimal(foremanDays) / Decimal(projectDays)
+                let pct = foremanDays / Decimal(projectDays)
                 let contribution = basisValue * pct * multiplierFactor
                 items.append(BonusBreakdownItem(
                     project: project,
@@ -1256,18 +1266,21 @@ struct BonusBreakdown: Identifiable {
     let foreman: Employee
     let perProject: [BonusBreakdownItem]
     var total: Decimal { perProject.reduce(Decimal.zero) { $0 + $1.contribution } }
-    var totalCompletionDays: Int { perProject.reduce(0) { $0 + $1.foremanDays } }
+    var totalCompletionDays: Decimal { perProject.reduce(Decimal.zero) { $0 + $1.foremanDays } }
     var id: UUID { foreman.id }
 }
 
 struct BonusBreakdownItem: Identifiable {
     let project: Project
     let projectTotalDays: Int
-    let foremanDays: Int
+    /// Decimal because multi-foreman tasks split their duration evenly — a
+    /// 41-day task with two foremen contributes 20.5 to each.
+    let foremanDays: Decimal
     let basis: Decimal
     let contribution: Decimal
     var completionPct: Double {
-        projectTotalDays > 0 ? Double(foremanDays) / Double(projectTotalDays) : 0
+        guard projectTotalDays > 0 else { return 0 }
+        return Double(truncating: (foremanDays / Decimal(projectTotalDays)) as NSDecimalNumber)
     }
     var id: String { project.id.recordName }
 }

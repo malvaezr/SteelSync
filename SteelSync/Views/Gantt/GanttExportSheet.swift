@@ -79,11 +79,20 @@ struct GanttExportSheet: View {
     private var availableAssignees: [String] {
         var seen = Set<String>()
         var ordered: [String] = []
+        // Multi-assignee: expand each task's `assignees` so a task with
+        // "Joe; Mike" contributes BOTH names to the filter menu.
         for task in allTasks where selectedProjectIDs.contains(task.projectID) {
-            let name = task.assignedTo
-            if !seen.contains(name) {
-                seen.insert(name)
-                ordered.append(name)
+            let names = task.assignees
+            if names.isEmpty {
+                if !seen.contains("") {
+                    seen.insert("")
+                    ordered.append("")
+                }
+            } else {
+                for name in names where !seen.contains(name) {
+                    seen.insert(name)
+                    ordered.append(name)
+                }
             }
         }
         // Sort: unassigned ("") first, then alphabetical
@@ -98,7 +107,12 @@ struct GanttExportSheet: View {
     private var filteredTasks: [GanttTask] {
         let projectMatches = allTasks.filter { selectedProjectIDs.contains($0.projectID) }
         guard let assignees = selectedAssignees else { return projectMatches }
-        return projectMatches.filter { assignees.contains($0.assignedTo) }
+        return projectMatches.filter { task in
+            let names = task.assignees
+            // Treat an empty assignees list as "" so the "Unassigned" filter entry works.
+            if names.isEmpty { return assignees.contains("") }
+            return names.contains(where: { assignees.contains($0) })
+        }
     }
 
     private var assigneeFilterLabel: String {

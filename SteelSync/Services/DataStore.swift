@@ -1819,12 +1819,14 @@ class DataStore: ObservableObject {
         let cal = Calendar.current
         let dayStart = cal.startOfDay(for: day)
         for task in ganttTasks {
-            let assignee = task.assignedTo.trimmingCharacters(in: .whitespaces)
-            guard !assignee.isEmpty else { continue }
             let taskStart = cal.startOfDay(for: task.startDate)
             // task.endDate is exclusive — the calendar day AFTER the last working day.
             guard dayStart >= taskStart, dayStart < task.endDate else { continue }
-            sets[task.projectID, default: []].insert(assignee.lowercased())
+            // Multi-assignee: insert each name in `task.assignees` so a task
+            // with "Joe; Mike" contributes BOTH to the project's per-day count.
+            for assignee in task.assignees {
+                sets[task.projectID, default: []].insert(assignee.lowercased())
+            }
         }
         return sets.mapValues { $0.count }
     }

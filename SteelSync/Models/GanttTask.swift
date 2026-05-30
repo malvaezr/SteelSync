@@ -79,6 +79,17 @@ struct GanttTask: Identifiable, Codable, Hashable {
     /// Milestones reduce to a single-day diamond regardless of durationDays.
     var isMilestone: Bool { status == .milestone }
 
+    /// Multi-assignee support: `assignedTo` is treated as a semicolon-separated
+    /// list of names (e.g. `"Joe Smith; Mike Johnson"`). This helper splits +
+    /// trims into the individual names; single-name legacy values come through
+    /// as a one-element array unchanged.
+    var assignees: [String] {
+        assignedTo
+            .split(separator: ";", omittingEmptySubsequences: true)
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
     var endDate: Date {
         // Exclusive end = the calendar day AFTER the task's last working day.
         // Advancing a full `durationDays` working days would skip a trailing

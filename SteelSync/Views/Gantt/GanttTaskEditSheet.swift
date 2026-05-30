@@ -220,49 +220,117 @@ struct GanttTaskEditSheet: View {
         }
     }
 
-    /// Grouped picker over the active employee roster (Foremen section first,
-    /// then Crew). If the task currently holds a legacy free-text name that
-    /// isn't on the roster, it stays selected and shows as "(legacy)" so we
-    /// don't quietly clobber it — the user can re-pick to update.
+    /// Multi-select Menu over the active employee roster. Tapping a row
+    /// toggles inclusion; the menu stays open (`.menuActionDismissBehavior(.disabled)`)
+    /// so you can add several assignees in one go. Stored back as a semicolon-
+    /// separated string in `assignedTo` (e.g. "Joe Smith; Mike Johnson") —
+    /// `GanttTask.assignees` is the canonical accessor. Legacy free-text names
+    /// not on the roster stay selected and show as "(legacy)" so old data is
+    /// never quietly clobbered.
     @ViewBuilder
     private var assignedToPicker: some View {
         let active = dataStore.activeEmployees
         let foremen = active.filter { $0.isForeman }
         let crew = active.filter { !$0.isForeman }
-        let allNames = Set(active.map { $0.fullName })
-        let isLegacy = !assignedTo.isEmpty && !allNames.contains(assignedTo)
+        let allNamesLower = Set(active.map { $0.fullName.lowercased() })
+        let current = assignedToList
+        let currentLower = Set(current.map { $0.lowercased() })
+        let legacy = current.filter { !allNamesLower.contains($0.lowercased()) }
 
-        Picker("", selection: $assignedTo) {
-            Text("Unassigned").tag("")
+        Menu {
+            Button {
+                assignedTo = ""
+            } label: {
+                if current.isEmpty {
+                    Label("Unassigned", systemImage: "checkmark")
+                } else {
+                    Text("Clear All")
+                }
+            }
             if !foremen.isEmpty {
                 Section("Foremen") {
                     ForEach(foremen) { emp in
-                        Text(emp.fullName).tag(emp.fullName)
+                        Button {
+                            toggleAssignee(emp.fullName)
+                        } label: {
+                            if currentLower.contains(emp.fullName.lowercased()) {
+                                Label(emp.fullName, systemImage: "checkmark")
+                            } else {
+                                Text(emp.fullName)
+                            }
+                        }
                     }
                 }
             }
             if !crew.isEmpty {
                 Section("Crew") {
                     ForEach(crew) { emp in
-                        Text(emp.fullName).tag(emp.fullName)
+                        Button {
+                            toggleAssignee(emp.fullName)
+                        } label: {
+                            if currentLower.contains(emp.fullName.lowercased()) {
+                                Label(emp.fullName, systemImage: "checkmark")
+                            } else {
+                                Text(emp.fullName)
+                            }
+                        }
                     }
                 }
             }
-            if isLegacy {
+            if !legacy.isEmpty {
                 Section("Other") {
-                    Text("\(assignedTo) (legacy)").tag(assignedTo)
+                    ForEach(legacy, id: \.self) { name in
+                        Button {
+                            toggleAssignee(name)
+                        } label: {
+                            Label("\(name) (legacy)", systemImage: "checkmark")
+                        }
+                    }
                 }
             }
             if active.isEmpty {
-                Section {
-                    Text("Add crew in Operations → Crew & Timesheets")
-                        .foregroundColor(.secondary)
-                }
+                Text("Add crew in Operations → Crew & Timesheets")
             }
+        } label: {
+            HStack(alignment: .center) {
+                Text(current.isEmpty ? "Unassigned" : current.joined(separator: ", "))
+                    .foregroundColor(current.isEmpty ? AppTheme.secondaryText : AppTheme.primaryText)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2)
+                    .foregroundColor(AppTheme.secondaryText)
+            }
+            .appControlSurface()
         }
-        .labelsHidden()
-        .pickerStyle(.menu)
-        .appControlSurface()
+        .buttonStyle(.plain)
+        // Keep the Menu open while toggling assignees, so the user can pick
+        // multiple in one go. On macOS the menu's standard behavior is to
+        // close after each tap (the `.disabled` case is iOS-only) — the user
+        // simply re-opens the menu to pick more.
+        #if os(iOS)
+        .menuActionDismissBehavior(.disabled)
+        #endif
+    }
+
+    /// Parsed list of assignee names from the semicolon-separated `assignedTo`.
+    private var assignedToList: [String] {
+        assignedTo
+            .split(separator: ";", omittingEmptySubsequences: true)
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
+    /// Toggle `name` in or out of the assignee list. Case-insensitive identity.
+    private func toggleAssignee(_ name: String) {
+        var current = assignedToList
+        if let idx = current.firstIndex(where: { $0.caseInsensitiveCompare(name) == .orderedSame }) {
+            current.remove(at: idx)
+        } else {
+            current.append(name)
+        }
+        assignedTo = current.joined(separator: "; ")
     }
 
     private func save() {
