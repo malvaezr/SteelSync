@@ -85,6 +85,26 @@ struct GanttTaskBarView: View {
         .onTapGesture { selectTapped() }
         .contextMenu {
             Button("Edit") { onEdit() }
+            // Quick complete/un-complete from the long-press menu.
+            if task.status == .completed {
+                Button {
+                    var updated = task
+                    updated.status = .notStarted
+                    updated.progress = 0
+                    onUpdate(updated)
+                } label: {
+                    Label("Mark as Not Started", systemImage: "circle")
+                }
+            } else {
+                Button {
+                    var updated = task
+                    updated.status = .completed
+                    updated.progress = 1.0
+                    onUpdate(updated)
+                } label: {
+                    Label("Mark as Complete", systemImage: "checkmark.circle.fill")
+                }
+            }
             Button(task.isPinned ? "Unpin" : "Pin") { onTogglePin() }
             Divider()
             Button("Delete", role: .destructive) { onDelete() }

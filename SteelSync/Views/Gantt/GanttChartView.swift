@@ -438,7 +438,7 @@ struct GanttChartView: View {
                         .font(.caption)
                 }
                 .toggleStyle(.button)
-                .controlSize(.small)
+                .macControlSizeSmall()
                 .help("Show only tasks on the critical path")
 
                 // Conflict count badge
@@ -478,7 +478,7 @@ struct GanttChartView: View {
                         vm.fitToWindow(tasks: filteredTasks, availableWidth: vm.availableWidth)
                     }
                     .buttonStyle(.appSecondary)
-                    .controlSize(.small)
+                    .macControlSizeSmall()
                     .disabled(vm.availableWidth <= 0)
                 }
 
@@ -486,7 +486,7 @@ struct GanttChartView: View {
                     Label("Sort by Date", systemImage: "arrow.up.arrow.down")
                 }
                 .buttonStyle(.appSecondary)
-                .controlSize(.small)
+                .macControlSizeSmall()
                 .disabled(allTasks.isEmpty)
                 .help("Reorder all tasks top-to-bottom by start date")
 
@@ -494,14 +494,14 @@ struct GanttChartView: View {
                     Label("Export PDF", systemImage: "square.and.arrow.up")
                 }
                 .buttonStyle(.appSecondary)
-                .controlSize(.small)
+                .macControlSizeSmall()
                 .disabled(allTasks.isEmpty)
 
                 Button(action: { showAddTask = true }) {
                     Label("Add", systemImage: "plus")
                 }
                 .buttonStyle(.appPrimary)
-                .controlSize(.small)
+                .macControlSizeSmall()
             }
 
             // Row 2: Category legend in a horizontal scroll
@@ -614,6 +614,25 @@ struct GanttChartView: View {
         .onTapGesture { vm.selectedTaskID = task.id }
         .contextMenu {
             Button("Edit") { editingTask = task }
+            if task.status == .completed {
+                Button {
+                    var updated = task
+                    updated.status = .notStarted
+                    updated.progress = 0
+                    dataStore.updateGanttTask(updated)
+                } label: {
+                    Label("Mark as Not Started", systemImage: "circle")
+                }
+            } else {
+                Button {
+                    var updated = task
+                    updated.status = .completed
+                    updated.progress = 1.0
+                    dataStore.updateGanttTask(updated)
+                } label: {
+                    Label("Mark as Complete", systemImage: "checkmark.circle.fill")
+                }
+            }
             Button(task.isPinned ? "Unpin" : "Pin") { togglePin(task) }
             Divider()
             Button("Move Up") { dataStore.moveGanttTaskUp(task, in: siblings) }
@@ -665,6 +684,11 @@ struct GanttChartView: View {
                 selectedProjectFilters = Set(dataStore.projects.map { $0.id.recordName })
             } label: {
                 Label("Show All Projects", systemImage: "checkmark.circle.fill")
+            }
+            Button {
+                selectedProjectFilters = Set(dataStore.activeProjects.map { $0.id.recordName })
+            } label: {
+                Label("Show Only Active", systemImage: "checkmark.diamond.fill")
             }
             Button {
                 selectedProjectFilters.removeAll()
