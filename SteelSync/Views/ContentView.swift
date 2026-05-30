@@ -3,8 +3,29 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var dataStore: DataStore
     @EnvironmentObject var navigationState: NavigationState
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+    #endif
 
     var body: some View {
+        #if os(iOS)
+        // iPad in compact horizontal width (portrait, Slide Over, narrow Stage
+        // Manager) drops the sidebar and surfaces destinations through a
+        // bottom tab bar — per Glass spec §6.1. Regular width keeps the
+        // existing NavigationSplitView. Routes/destinations are identical in
+        // both; only the chrome differs.
+        if UIDevice.current.userInterfaceIdiom == .pad && hSizeClass == .compact {
+            iPadCompactRoot()
+                .glassGroupBoxes()
+        } else {
+            splitViewBody
+        }
+        #else
+        splitViewBody
+        #endif
+    }
+
+    private var splitViewBody: some View {
         NavigationSplitView(columnVisibility: $navigationState.columnVisibility) {
             SidebarView()
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
@@ -24,10 +45,9 @@ struct ContentView: View {
                 .environmentObject(navigationState)
         }
         #if os(iOS)
-        // On iPad, picking a section auto-hides the sidebar so the inner
-        // list+detail (which is itself two panes) gets the full screen. The
-        // user complained that 3 panes (sidebar + list + detail) feels too
-        // dense; this brings it back to 2.
+        // On iPad regular width, picking a section auto-hides the sidebar so
+        // the inner list+detail (itself two panes) gets the full screen —
+        // 3 panes (sidebar + list + detail) was too dense.
         .onChange(of: navigationState.selectedSection) { _, newValue in
             guard newValue != nil,
                   UIDevice.current.userInterfaceIdiom == .pad else { return }

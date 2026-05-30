@@ -150,8 +150,10 @@
 		6109246298FFB2E56B6EB311 /* PencilCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E414F6FDD05FC4316E2ED3 /* PencilCanvasView.swift */; };
 		611A181D6683F5CD4B3A15A5 /* PhoneSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B49BCBC5A72AB40FDB54104 /* PhoneSyncStatusView.swift */; };
 		611E7B2573EF7000437FFFA2 /* OverheadExpense.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C2ADF3F7937DBF838CB48B /* OverheadExpense.swift */; };
+		6165F230DF3D06D17537340B /* iPadCompactRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880EA42553D852F0AEB90DCB /* iPadCompactRoot.swift */; };
 		6196D5CEF0521D5BCE5635E0 /* GanttTaskBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A24368A58D2D9D49A30308 /* GanttTaskBarView.swift */; };
 		61B2E0DBFF869FB7CB5379F5 /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D1E8322F91B9CB44B59AC7 /* SharedComponents.swift */; };
+		623156054A6A6FFFB9BD0A2D /* iPadCompactRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880EA42553D852F0AEB90DCB /* iPadCompactRoot.swift */; };
 		6298C02F3B6F62665EA34C0E /* PlanningPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23F45CE67DC5A5F39DB10635 /* PlanningPad.swift */; };
 		6466342E449031CAA980311B /* GanttTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DF9906F7D629C310853F8C1 /* GanttTask.swift */; };
 		64B56A414DC4F6989B39F154 /* CrewManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4FDB469A32E53EAB31384F /* CrewManagementView.swift */; };
@@ -314,6 +316,7 @@
 		DBFE0450772DB65FEF40FC52 /* BidFormViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A91D93A2FD30748D38C7512 /* BidFormViews.swift */; };
 		DC810E1FF5DA9D32DF1FBD45 /* CrewPresetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4033807B779BA39C7F61A1 /* CrewPresetsView.swift */; };
 		DCFEBB660E29510457E925F5 /* AssistantService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6802A78CD49EA90FA355F1A6 /* AssistantService.swift */; };
+		DF0B50EDD3B4D12436C6F708 /* iPadCompactRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880EA42553D852F0AEB90DCB /* iPadCompactRoot.swift */; };
 		E21CA5F133C0EB2E107215A1 /* SteelSyncApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21EE9F075420DFE63E74A2C1 /* SteelSyncApp.swift */; };
 		E422B6E9D28CD5EB3AC3BFCF /* RowReorderDropDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED56B7484A529A5F7C23A349 /* RowReorderDropDelegate.swift */; };
 		E53F6BD3B7E65FB0E91C0FE3 /* GanttTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DF9906F7D629C310853F8C1 /* GanttTask.swift */; };
@@ -525,6 +528,7 @@
 		812971A7EA828E9BF47A7BB6 /* PDFExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFExportService.swift; sourceTree = "<group>"; };
 		81F5EB7AB8F268B9A9112F38 /* SummaryWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryWidget.swift; sourceTree = "<group>"; };
 		84676B7C0A4D5D79E4F93B51 /* PayAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayAppView.swift; sourceTree = "<group>"; };
+		880EA42553D852F0AEB90DCB /* iPadCompactRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iPadCompactRoot.swift; sourceTree = "<group>"; };
 		8B4736E176810AB66924CAB0 /* AssistantMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantMessage.swift; sourceTree = "<group>"; };
 		8BFD8E6173E599D60E1E9C2C /* PhoneComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneComponents.swift; sourceTree = "<group>"; };
 		8E268B6D3996E866432356D2 /* QueryIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryIntent.swift; sourceTree = "<group>"; };
@@ -950,6 +954,14 @@
 			path = SteelSyncPhone;
 			sourceTree = "<group>";
 		};
+		ABB904CC68B80B47CB60AFA4 /* Navigation */ = {
+			isa = PBXGroup;
+			children = (
+				880EA42553D852F0AEB90DCB /* iPadCompactRoot.swift */,
+			);
+			path = Navigation;
+			sourceTree = "<group>";
+		};
 		AE765B61C1B3852168916BDD /* Dashboard */ = {
 			isa = PBXGroup;
 			children = (
@@ -1118,6 +1130,7 @@
 				053CF7B2FE002EB046E0BA77 /* Equipment */,
 				2D612E3473F7FCC45C96555C /* Gantt */,
 				1ABDA1477DF869879765D50A /* Invoices */,
+				ABB904CC68B80B47CB60AFA4 /* Navigation */,
 				2C51D7D4A3971A3095011775 /* Overhead */,
 				FC9EF7CD314C867F1DA3BB8B /* PlanningPad */,
 				B962DFD416C1EDBEC72210A5 /* Reports */,
@@ -1465,6 +1478,7 @@
 				2AE223EDAD5525283958237B /* WidgetBridge.swift in Sources */,
 				3D1F7C64AD1E357FFD2AC656 /* WidgetDataPublisher.swift in Sources */,
 				FD00D112711A47DE4CF7A5DC /* WorkOrderInvoicePDFView.swift in Sources */,
+				6165F230DF3D06D17537340B /* iPadCompactRoot.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1574,6 +1588,7 @@
 				67EE0A5B065CE15BF1703F5B /* WeeklyAssignment.swift in Sources */,
 				B72FF7AEA4FCF2D1A5B01B32 /* WidgetBridge.swift in Sources */,
 				FAA6747B5C027528268923FF /* WorkOrderInvoicePDFView.swift in Sources */,
+				623156054A6A6FFFB9BD0A2D /* iPadCompactRoot.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1713,6 +1728,7 @@
 				EC8201D0DE18E2CBFF047823 /* WeeklyAssignment.swift in Sources */,
 				7AA05B3C12B72E6E07B7533D /* WidgetBridge.swift in Sources */,
 				9A83C60E3EBC904D17164E61 /* WorkOrderInvoicePDFView.swift in Sources */,
+				DF0B50EDD3B4D12436C6F708 /* iPadCompactRoot.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
