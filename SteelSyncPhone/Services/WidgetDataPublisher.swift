@@ -120,6 +120,23 @@ struct WidgetDataPublisher {
         defaults.set(topRentals.map(\.projectName), forKey: "rentalProjectNames")
         defaults.set(rentalEntries.count, forKey: "activeRentalsCount")
 
+        // Next milestone — drives NextMilestoneWidget.
+        let nowDate = Date()
+        let futureMilestones: [GanttTask] = store.ganttTasks.filter { task in
+            task.status == .milestone && task.startDate > nowDate
+        }
+        let sortedMilestones = futureMilestones.sorted { $0.startDate < $1.startDate }
+        if let milestone = sortedMilestones.first {
+            let projectName = store.projects.first(where: { $0.id.recordName == milestone.projectID })?.title ?? ""
+            defaults.set(milestone.name, forKey: "nextMilestoneTitle")
+            defaults.set(milestone.startDate.timeIntervalSince1970, forKey: "nextMilestoneDate")
+            defaults.set(projectName, forKey: "nextMilestoneProject")
+        } else {
+            defaults.set("", forKey: "nextMilestoneTitle")
+            defaults.set(0.0, forKey: "nextMilestoneDate")
+            defaults.set("", forKey: "nextMilestoneProject")
+        }
+
         // Timestamp marker so WidgetDataStore knows real data has been written
         defaults.set(Date().timeIntervalSince1970, forKey: "updatedAt")
 

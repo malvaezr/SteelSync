@@ -12,6 +12,7 @@ struct SteelSyncWidgetBundle: WidgetBundle {
         ForemanBonusWidget()
         TodayAttentionWidget()
         EquipmentRentalWidget()
+        NextMilestoneWidget()
         #if os(iOS)
         RentalLiveActivityWidget()
         #endif

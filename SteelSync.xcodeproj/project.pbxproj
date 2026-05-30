@@ -138,6 +138,7 @@
 		4E5AA43963F0AFBFF77112F6 /* GanttPreviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C29620A98DF4DA632CB4332 /* GanttPreviewWidget.swift */; };
 		4FE8EC2C37E83384B48A3231 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28562AE650F8CE57BFC51B94 /* NotificationService.swift */; };
 		50583057206C83782AD5AB71 /* TodayAttentionWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1443001C17D704E9F02AEE1A /* TodayAttentionWidget.swift */; };
+		514F421D684B0399435C8EE5 /* NextMilestoneWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D81981B9419B8F6DC1412B51 /* NextMilestoneWidget.swift */; };
 		51DBE6F157519A413DD8263A /* GlobalSearchSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE2EBEB487618192E7B94A1C /* GlobalSearchSheet.swift */; };
 		52C5C9372DB1991890DEBDD2 /* DailyLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 121ABD89FB44D7A760DB8A90 /* DailyLog.swift */; };
 		533EEAE25497EE869A3A8F2A /* ProjectDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E400BF6C446F19B0101B2A3 /* ProjectDetailView.swift */; };
@@ -174,6 +175,7 @@
 		67EE0A5B065CE15BF1703F5B /* WeeklyAssignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9295F43337F5AB4398EC520E /* WeeklyAssignment.swift */; };
 		687C77138525833388FED55D /* RFILogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2FF42E0379902EEE230296 /* RFILogView.swift */; };
 		68D56035B1443F33C345C2F7 /* DocumentScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB94E0EAAEE86163BB4EB9D3 /* DocumentScannerView.swift */; };
+		697DC2E221AFAF1B345AF9CD /* NextMilestoneWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D81981B9419B8F6DC1412B51 /* NextMilestoneWidget.swift */; };
 		69A98901ACF23C7FC918D169 /* PayAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84676B7C0A4D5D79E4F93B51 /* PayAppView.swift */; };
 		69C15DD2CA248EF58DD60377 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB8D10C49A60882B9F6EBA0 /* Project.swift */; };
 		6B4A516DDC54B84B5C5D827C /* BiddingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1011451B642A320E127016B5 /* BiddingView.swift */; };
@@ -306,6 +308,7 @@
 		C25A6C4C4EFF43E8BEA36844 /* PencilMarkupSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2FE6DD3BDE7F8F93BE73296 /* PencilMarkupSheet.swift */; };
 		C2A4B1C4986D7313497897B5 /* EquipmentOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 630778E6199E0CE162622606 /* EquipmentOverviewView.swift */; };
 		C2B447F331B4D22D9A59F1A3 /* RentalLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CECF2AD25ABAEE261DB9A1F9 /* RentalLiveActivityAttributes.swift */; };
+		C2CAFBF1AE6974A12E2DB8E1 /* NextMilestoneWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D81981B9419B8F6DC1412B51 /* NextMilestoneWidget.swift */; };
 		C36CFCAAFA52987745A65BBF /* ConfirmationPinSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF30F3359D69BBCAA9858C00 /* ConfirmationPinSheet.swift */; };
 		C381DA5B3D41DA78041EBE0E /* RentalLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CECF2AD25ABAEE261DB9A1F9 /* RentalLiveActivityAttributes.swift */; };
 		C4E37EB9E08366B2638D5110 /* WidgetDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08744754F83C0EF0B550A65 /* WidgetDataProvider.swift */; };
@@ -601,6 +604,7 @@
 		CF30F3359D69BBCAA9858C00 /* ConfirmationPinSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmationPinSheet.swift; sourceTree = "<group>"; };
 		D07BA1BD89EC94E153CBC023 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		D247FD4AD3E327061C8B7D33 /* PhoneOverheadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneOverheadView.swift; sourceTree = "<group>"; };
+		D81981B9419B8F6DC1412B51 /* NextMilestoneWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextMilestoneWidget.swift; sourceTree = "<group>"; };
 		D94423C9C5229CC31078E9B3 /* Client.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Client.swift; sourceTree = "<group>"; };
 		DA34885EDE9A7BE1C05F3A42 /* EquipmentRental.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentRental.swift; sourceTree = "<group>"; };
 		DA8123C4AA8DDD28AF866B85 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
@@ -1121,6 +1125,7 @@
 				5C29620A98DF4DA632CB4332 /* GanttPreviewWidget.swift */,
 				A22D7545054C909577915F25 /* Info.plist */,
 				FA963E7D349BE555D63F7EC9 /* InvoiceAgingWidget.swift */,
+				D81981B9419B8F6DC1412B51 /* NextMilestoneWidget.swift */,
 				DDBFD97496336096778CAF6D /* RentalLiveActivityWidget.swift */,
 				F02A8419E7F23A58A8DA9A92 /* SteelSyncWidgetBundle.swift */,
 				58039B0D622458137F62B4D4 /* SteelSyncWidgets-Mac.entitlements */,
@@ -1663,6 +1668,7 @@
 				EFF4345F54D4CCEB90235A90 /* ForemanBonusWidget.swift in Sources */,
 				4E5AA43963F0AFBFF77112F6 /* GanttPreviewWidget.swift in Sources */,
 				B5C47F59DF21EF53C304AE83 /* InvoiceAgingWidget.swift in Sources */,
+				514F421D684B0399435C8EE5 /* NextMilestoneWidget.swift in Sources */,
 				C381DA5B3D41DA78041EBE0E /* RentalLiveActivityAttributes.swift in Sources */,
 				02FFA0544EBFC84D0049F79B /* RentalLiveActivityWidget.swift in Sources */,
 				17887569BD230D1305C2CEB3 /* SteelSyncWidgetBundle.swift in Sources */,
@@ -1683,6 +1689,7 @@
 				C73FD42932BF3E818CEDADE8 /* ForemanBonusWidget.swift in Sources */,
 				F8A42C52AA5F7DE4F9598464 /* GanttPreviewWidget.swift in Sources */,
 				9C001B6912D023018CE7A507 /* InvoiceAgingWidget.swift in Sources */,
+				697DC2E221AFAF1B345AF9CD /* NextMilestoneWidget.swift in Sources */,
 				EBE0E04C281C64A562DFC84A /* RentalLiveActivityAttributes.swift in Sources */,
 				A9A2F3D8113A7FFB9B4F50C9 /* RentalLiveActivityWidget.swift in Sources */,
 				7722908EB7777EE7187F8640 /* SteelSyncWidgetBundle.swift in Sources */,
@@ -1817,6 +1824,7 @@
 				71B6036AA64863D1D56066C5 /* ForemanBonusWidget.swift in Sources */,
 				FB74651821D3D790652E95B4 /* GanttPreviewWidget.swift in Sources */,
 				3D6864EEA125240B6F086F6E /* InvoiceAgingWidget.swift in Sources */,
+				C2CAFBF1AE6974A12E2DB8E1 /* NextMilestoneWidget.swift in Sources */,
 				D8F511B8F66ADD51AC260AF8 /* RentalLiveActivityWidget.swift in Sources */,
 				9AFBFB4EAC47EFC479E934B8 /* SteelSyncWidgetBundle.swift in Sources */,
 				D98F0C23FF04114BC7833EE7 /* SummaryWidget.swift in Sources */,
