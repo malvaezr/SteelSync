@@ -24,6 +24,10 @@ class DataStore: ObservableObject {
     @Published var payApplications: [CKRecord.ID: [PayApplication]] = [:]
     @Published var invoices: [CKRecord.ID: [Invoice]] = [:]
     @Published var timesheetEntries: [TimesheetEntry] = []
+    /// In-progress foreman-clocks-crew session. `nil` when no one is on the
+    /// clock from this device. Persisted to UserDefaults so the session
+    /// survives an app relaunch — see `loadActiveClockInSession()`.
+    @Published var activeClockInSession: ClockInSession? = nil
     @Published var crewPresets: [CrewPreset] = []
     @Published var rfis: [CKRecord.ID: [RFI]] = [:]
     @Published var dailyLogs: [CKRecord.ID: [DailyLog]] = [:]
@@ -55,6 +59,13 @@ class DataStore: ObservableObject {
     let cloudKit = CloudKitService()
 
     init() {
+        // Restore any in-progress crew clock-in session BEFORE views read
+        // `activeClockInSession`. Cheap UserDefaults read; no network.
+        if let data = UserDefaults.standard.data(forKey: Self.activeClockInSessionKey),
+           let session = try? JSONDecoder().decode(ClockInSession.self, from: data) {
+            self.activeClockInSession = session
+        }
+
         // Load persisted data from disk
         let loaded = PersistenceService.loadAll(into: self)
 
@@ -1671,6 +1682,173 @@ class DataStore: ObservableObject {
         recalculateTimesheetProject(entry)
         persistData()
     }
+
+    // MARK: - Crew clock-in session
+    //
+    // One active session per device — foreman clocks N crew members in,
+    // works the shift, clocks out. On clock-out we materialize one
+    // TimesheetEntry per crew member with the elapsed hours dropped onto
+    // the right day-of-week column. Session is persisted to UserDefaults
+    // (single JSON blob) so an app relaunch picks up where the foreman
+    // left off. iOS-only Live Activity rides alongside (see
+    // `startCrewClockInLiveActivity` / `endCrewClockInLiveActivity`).
+
+    private static let activeClockInSessionKey = "SteelSync.activeClockInSession"
+
+    /// Read the persisted session (if any) and publish it. Call once on
+    /// app launch so PhoneTimeClockView shows the in-progress shift.
+    func loadActiveClockInSession() {
+        guard let data = UserDefaults.standard.data(forKey: Self.activeClockInSessionKey),
+              let session = try? JSONDecoder().decode(ClockInSession.self, from: data) else {
+            activeClockInSession = nil
+            return
+        }
+        activeClockInSession = session
+    }
+
+    private func persistActiveClockInSession() {
+        if let session = activeClockInSession,
+           let data = try? JSONEncoder().encode(session) {
+            UserDefaults.standard.set(data, forKey: Self.activeClockInSessionKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: Self.activeClockInSessionKey)
+        }
+    }
+
+    /// Begin a crew shift. Replaces any existing session (one per device).
+    /// Returns the created session so the caller can immediately start a
+    /// Live Activity bound to it.
+    @discardableResult
+    func startCrewClockIn(foreman: Employee, project: Project, crew: [Employee]) -> ClockInSession {
+        let session = ClockInSession(
+            foremanID: foreman.id.uuidString,
+            projectID: project.id.recordName,
+            crewMemberIDs: crew.map { $0.id.uuidString },
+            clockInTime: Date(),
+            projectName: project.title,
+            foremanName: foreman.fullName
+        )
+        activeClockInSession = session
+        persistActiveClockInSession()
+        logAudit(.created, type: "ClockIn",
+                 name: "\(foreman.fullName) clocked in \(crew.count) crew",
+                 details: project.title)
+        #if os(iOS)
+        if #available(iOS 16.2, *) {
+            Task { await startCrewClockInLiveActivity(session) }
+        }
+        #endif
+        return session
+    }
+
+    /// Update the crew roster mid-shift (rare but supported). Pushes the
+    /// new count to the Live Activity.
+    func updateCrewClockIn(crew: [Employee]) {
+        guard var session = activeClockInSession else { return }
+        session.crewMemberIDs = crew.map { $0.id.uuidString }
+        activeClockInSession = session
+        persistActiveClockInSession()
+        #if os(iOS)
+        if #available(iOS 16.2, *) {
+            Task { await updateCrewClockInLiveActivity(crewCount: crew.count) }
+        }
+        #endif
+    }
+
+    /// End the shift. Materializes one TimesheetEntry per crew member with
+    /// the elapsed-hours decimal dropped onto the right day-of-week column.
+    /// Ends the Live Activity if one was running.
+    func endCrewClockIn() {
+        guard let session = activeClockInSession else { return }
+        let cal = Calendar.current
+        let now = Date()
+        let elapsed = now.timeIntervalSince(session.clockInTime)
+        let hours = Decimal(elapsed / 3600.0)
+        let weekStart = TimesheetEntry.weekStart(for: session.clockInTime)
+        let dayOfWeek = cal.component(.weekday, from: session.clockInTime)
+
+        for crewID in session.crewMemberIDs {
+            guard let employee = employees.first(where: { $0.id.uuidString == crewID }) else { continue }
+            var entry = TimesheetEntry(
+                employeeName: employee.fullName,
+                employeeType: employee.employeeType.rawValue,
+                employeeRef: employee.id.uuidString,
+                projectName: session.projectName,
+                projectRef: session.projectID,
+                hourlyRate: employee.defaultHourlyRate,
+                weekStartDate: weekStart,
+                recordID: nil
+            )
+            switch dayOfWeek {
+            case 2: entry.mondayHours = hours
+            case 3: entry.tuesdayHours = hours
+            case 4: entry.wednesdayHours = hours
+            case 5: entry.thursdayHours = hours
+            case 6: entry.fridayHours = hours
+            case 7: entry.saturdayHours = hours
+            case 1: entry.sundayHours = hours
+            default: entry.mondayHours = hours
+            }
+            entry.notes = "Clocked \(session.clockInTime.formatted(date: .omitted, time: .shortened)) – \(now.formatted(date: .omitted, time: .shortened)) by \(session.foremanName)"
+            addTimesheetEntry(entry)
+        }
+
+        activeClockInSession = nil
+        persistActiveClockInSession()
+        logAudit(.updated, type: "ClockIn",
+                 name: "\(session.foremanName) clocked out \(session.crewMemberIDs.count) crew",
+                 details: session.projectName)
+
+        #if os(iOS)
+        if #available(iOS 16.2, *) {
+            Task { await endCrewClockInLiveActivity() }
+        }
+        #endif
+    }
+
+    #if os(iOS)
+    @available(iOS 16.2, *)
+    @MainActor
+    private func startCrewClockInLiveActivity(_ session: ClockInSession) async {
+        // End any pre-existing activity first so we don't pile up multiples.
+        for a in ActivityKit.Activity<CrewClockInActivityAttributes>.activities {
+            await a.end(using: a.contentState, dismissalPolicy: .immediate)
+        }
+        let attrs = CrewClockInActivityAttributes(
+            projectName: session.projectName,
+            foremanName: session.foremanName,
+            clockInTime: session.clockInTime
+        )
+        let state = CrewClockInActivityAttributes.ContentState(
+            crewCount: session.crewMemberIDs.count
+        )
+        do {
+            _ = try ActivityKit.Activity<CrewClockInActivityAttributes>.request(
+                attributes: attrs, contentState: state, pushType: nil
+            )
+        } catch {
+            print("[CrewClockInLiveActivity] start failed: \(error)")
+        }
+    }
+
+    @available(iOS 16.2, *)
+    @MainActor
+    private func updateCrewClockInLiveActivity(crewCount: Int) async {
+        for a in ActivityKit.Activity<CrewClockInActivityAttributes>.activities {
+            var newState = a.contentState
+            newState.crewCount = crewCount
+            await a.update(using: newState)
+        }
+    }
+
+    @available(iOS 16.2, *)
+    @MainActor
+    private func endCrewClockInLiveActivity() async {
+        for a in ActivityKit.Activity<CrewClockInActivityAttributes>.activities {
+            await a.end(using: a.contentState, dismissalPolicy: .immediate)
+        }
+    }
+    #endif
 
     private func recalculateTimesheetProject(_ entry: TimesheetEntry) {
         if let project = projects.first(where: { $0.id.recordName == entry.projectRef }) {

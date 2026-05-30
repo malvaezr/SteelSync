@@ -15,6 +15,7 @@ struct SteelSyncWidgetBundle: WidgetBundle {
         NextMilestoneWidget()
         #if os(iOS)
         RentalLiveActivityWidget()
+        CrewClockInLiveActivityWidget()
         #endif
     }
 }

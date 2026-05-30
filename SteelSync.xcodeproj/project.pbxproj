@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		013551DB3B51EFA4B44CAEA8 /* TodayAttentionWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1443001C17D704E9F02AEE1A /* TodayAttentionWidget.swift */; };
+		016A20703D4B395586F9F602 /* CrewClockInActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5A0B1B29CAFCE86B3DC22D4 /* CrewClockInActivityAttributes.swift */; };
 		02E296A5699C24955B9A577E /* TimekeepingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F14DBFBCB15B4C618E554D /* TimekeepingView.swift */; };
 		02FFA0544EBFC84D0049F79B /* RentalLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDBFD97496336096778CAF6D /* RentalLiveActivityWidget.swift */; };
 		035F0339E5DF4CA533977826 /* PhoneBonusesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE3EC102BCFE5379813F9A0 /* PhoneBonusesView.swift */; };
@@ -32,6 +33,7 @@
 		0EF2705BEFF256BA6D85E722 /* DataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 382FFF1355B696458FB6E3D8 /* DataStore.swift */; };
 		0F9898B021BBF6470EB025AF /* AuditEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDBB35CC1116B739A37685FC /* AuditEntry.swift */; };
 		105EF638194B1693ED2A27FF /* GanttChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F93A2FDEE6423BA41E6064 /* GanttChartView.swift */; };
+		1096CE10C543BB426CA87C17 /* EditTimesheetEntrySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 619461FEB1495A302A8C826A /* EditTimesheetEntrySheet.swift */; };
 		109EAC9291E9D0B33880DDA4 /* PhoneProjectDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BDB71A2FF57BA549C7FDF68 /* PhoneProjectDetailView.swift */; };
 		123286CC686B602493B5F98A /* AppNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2380E2E3DB04FD3BFBBC87CB /* AppNavigation.swift */; };
 		12D7CF70ED8F8C0665BF936C /* MinimalXLSXWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F53834DFCDE3DE80B12BD2E /* MinimalXLSXWriter.swift */; };
@@ -63,10 +65,12 @@
 		202A95E092C61EEBAD32ADEA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A34FD2CA99294B4131EAC97 /* Assets.xcassets */; };
 		20DFD9E137050228356E56E1 /* ConfirmationPinSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF30F3359D69BBCAA9858C00 /* ConfirmationPinSheet.swift */; };
 		2138F4FFD74F1F006BD9C985 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9328DFEC95485FE83580A9FA /* DashboardView.swift */; };
+		227746B19B987039ADB8E2FC /* CrewClockInActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5A0B1B29CAFCE86B3DC22D4 /* CrewClockInActivityAttributes.swift */; };
 		236892F4F5205CD629403534 /* PDFExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 812971A7EA828E9BF47A7BB6 /* PDFExportService.swift */; };
 		2405A886CAD979A06CB39759 /* PhoneContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A51DBCAC0070BC1988CE5F3 /* PhoneContentView.swift */; };
 		24D3266C6DE1F255E9F37D75 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21737A4F1A7835C79DF0F894 /* AppTheme.swift */; };
 		2639B3E7BFC6238D4FCB99A4 /* WidgetDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08744754F83C0EF0B550A65 /* WidgetDataProvider.swift */; };
+		26ACCFCF73B2118B3FA1EC11 /* ClockInSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C36A6664126CB3EE410F0DB /* ClockInSession.swift */; };
 		2774A4E85CD00742C2BECCAC /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA8123C4AA8DDD28AF866B85 /* SidebarView.swift */; };
 		2879A1A86FB1A6D90A6399AF /* PinService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34DE6E6E2BB8C72C6687F79 /* PinService.swift */; };
 		28A37F9D7EB3CEC2B77817C0 /* PhoneOverheadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D247FD4AD3E327061C8B7D33 /* PhoneOverheadView.swift */; };
@@ -127,6 +131,7 @@
 		47A3BCC30DB143489492775C /* EquipmentRentalWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45D2272485898530C7D7A8A8 /* EquipmentRentalWidget.swift */; };
 		47E14B1CFD99F553CF6B44C9 /* TodoOverviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B11124CBC093401AD48942 /* TodoOverviewWidget.swift */; };
 		492E407DF77C73C59CF88D76 /* PersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8D56045443EE049CDCFAF6A /* PersistenceService.swift */; };
+		4953C7A4168E722F0B0D12BF /* ClockInSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C36A6664126CB3EE410F0DB /* ClockInSession.swift */; };
 		4A910D9550C9B1C5C76E5AE3 /* OverheadFormSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4570F329FB46D0640F9943B8 /* OverheadFormSheets.swift */; };
 		4B64B4CAB182C442FEB3D167 /* PencilCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E414F6FDD05FC4316E2ED3 /* PencilCanvasView.swift */; };
 		4BE21E0936CA8D3C35C3EFCC /* RFI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530A1552340FF002D1AB9A8C /* RFI.swift */; };
@@ -155,6 +160,7 @@
 		5A30726703D7F239BEF09F1E /* DailyLogSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3A97A58F909F9E21625E60 /* DailyLogSheets.swift */; };
 		5A413BD329187EC755B54335 /* PencilMarkupSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2FE6DD3BDE7F8F93BE73296 /* PencilMarkupSheet.swift */; };
 		5BDD8CEAF4F44B0819790444 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07BA1BD89EC94E153CBC023 /* SampleData.swift */; };
+		5BED8071C1566B47FFEE3370 /* CrewClockInActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5A0B1B29CAFCE86B3DC22D4 /* CrewClockInActivityAttributes.swift */; };
 		6045BC46947CC793AE3C044D /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA8123C4AA8DDD28AF866B85 /* SidebarView.swift */; };
 		6109246298FFB2E56B6EB311 /* PencilCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E414F6FDD05FC4316E2ED3 /* PencilCanvasView.swift */; };
 		611A181D6683F5CD4B3A15A5 /* PhoneSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B49BCBC5A72AB40FDB54104 /* PhoneSyncStatusView.swift */; };
@@ -249,6 +255,7 @@
 		96D8704023C88EC977D45F18 /* CapturePhotoScanSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31085ECE23D6795B1346FCD1 /* CapturePhotoScanSheet.swift */; };
 		981C47AD2CD4F2B71D37A335 /* PhoneTodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 186F26B3FD55ECAAB01BF101 /* PhoneTodayView.swift */; };
 		98A186F68E9A68C04478827D /* TodoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE55FFFA9E85076D77C95BC8 /* TodoView.swift */; };
+		99825B6FEFBE56CE1ADEE261 /* CrewClockInActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5A0B1B29CAFCE86B3DC22D4 /* CrewClockInActivityAttributes.swift */; };
 		99B7A7A46BAC3EA4D24F8CAA /* llama.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9CBD37DF59091C54FB3DBA26 /* llama.xcframework */; };
 		99EA45454D37F7E91491ECD7 /* ShareAcceptanceDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEDCAD4902D180D053827CE /* ShareAcceptanceDelegate.swift */; };
 		9A2D48004AE4C99B506AD2C3 /* CrewPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBBCA5C8F455442C8C271728 /* CrewPreset.swift */; };
@@ -261,6 +268,7 @@
 		9FC623C31AF5EB84DC3A36B6 /* CloudKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CB1A29BC6181124FA4E4DDD /* CloudKitService.swift */; };
 		A110FA1C799675BE02C52185 /* DocumentScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB94E0EAAEE86163BB4EB9D3 /* DocumentScannerView.swift */; };
 		A23A5C69960861053BDC79E9 /* SpellCheckedTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EA67BC51125ADDAB1D424F /* SpellCheckedTextEditor.swift */; };
+		A299BC357420702C1A1DA53E /* CrewClockInLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 448E4F9267CFA0DF2612E541 /* CrewClockInLiveActivityWidget.swift */; };
 		A2D9055F8A3C8C6E0A01011B /* EquipmentRental.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA34885EDE9A7BE1C05F3A42 /* EquipmentRental.swift */; };
 		A499B40C156A3EE3E06CA71B /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28562AE650F8CE57BFC51B94 /* NotificationService.swift */; };
 		A4EE959C674B3420C1DE0429 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4653DF72B79DC7583A950CC8 /* TodayView.swift */; };
@@ -298,6 +306,7 @@
 		BBC560603D85308B78870C21 /* ActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7656A40ACE598E7DD865ED /* ActivityView.swift */; };
 		BBEF86FE257923169587B133 /* ProjectFormSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C688ECAD2EB3B55FE5B19133 /* ProjectFormSheets.swift */; };
 		BC1D30B270CD7D8FD3651C5D /* ResourceType.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4FFFCC03C9E0ECCD289C86B /* ResourceType.swift */; };
+		BC23BDB425FF4A10393EF305 /* CrewClockInActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5A0B1B29CAFCE86B3DC22D4 /* CrewClockInActivityAttributes.swift */; };
 		BC648814F35C75B210990075 /* BiddingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1011451B642A320E127016B5 /* BiddingView.swift */; };
 		BD07F7C8E8FC2EA32AAFA27D /* PayAppPDFRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552E763F0EDDEF16D47F1055 /* PayAppPDFRenderer.swift */; };
 		BE43AF9B67165AA48890E2A2 /* PhoneDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1638E5C040E5C4866B2D63CB /* PhoneDashboardView.swift */; };
@@ -316,6 +325,7 @@
 		C69A0E6BA7DE1E9391AF8B47 /* GanttTaskEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7942C645F9E3BF0378EFFFBF /* GanttTaskEditSheet.swift */; };
 		C7308CB5FD55DF7B877EA075 /* ShareAcceptanceDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEDCAD4902D180D053827CE /* ShareAcceptanceDelegate.swift */; };
 		C73FD42932BF3E818CEDADE8 /* ForemanBonusWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88023D740383E25C188E6DEF /* ForemanBonusWidget.swift */; };
+		C8B98BBD7BDD23C27BA0E7F7 /* CrewClockInLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 448E4F9267CFA0DF2612E541 /* CrewClockInLiveActivityWidget.swift */; };
 		C8CDA35C866FBBB5EEB3639A /* PayAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84676B7C0A4D5D79E4F93B51 /* PayAppView.swift */; };
 		C9D68512441FF880E231EE23 /* ResponseFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45C110DB5B14052C675D8B39 /* ResponseFormatter.swift */; };
 		CA2A7947457FF4671EDB98DC /* SubcontractorAIAPDFViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E7F411A108A2A42E227A28 /* SubcontractorAIAPDFViews.swift */; };
@@ -359,6 +369,7 @@
 		EBE0E04C281C64A562DFC84A /* RentalLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CECF2AD25ABAEE261DB9A1F9 /* RentalLiveActivityAttributes.swift */; };
 		EC754C8F0FF998D3137DB3BC /* RFI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530A1552340FF002D1AB9A8C /* RFI.swift */; };
 		EC8201D0DE18E2CBFF047823 /* WeeklyAssignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9295F43337F5AB4398EC520E /* WeeklyAssignment.swift */; };
+		ECD558D247ABC045B769A192 /* ClockInSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C36A6664126CB3EE410F0DB /* ClockInSession.swift */; };
 		ED104C62D201762EF33D37A0 /* GanttViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8968AE25CF9FEFEBC09B15 /* GanttViewModel.swift */; };
 		EE2FD36BC39A5B5B28F76472 /* GanttTimelineGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7C2C4520D17CE6438BF0BF4 /* GanttTimelineGridView.swift */; };
 		EE7CEED940F142256293F284 /* ProjectDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E400BF6C446F19B0101B2A3 /* ProjectDetailView.swift */; };
@@ -390,6 +401,7 @@
 		FCDD897278C690FA5EA64EFA /* TodoOverviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B11124CBC093401AD48942 /* TodoOverviewWidget.swift */; };
 		FD00D112711A47DE4CF7A5DC /* WorkOrderInvoicePDFView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF20B46D8C773A462C02FB9E /* WorkOrderInvoicePDFView.swift */; };
 		FED8705EAA52BEC33CDB4741 /* EntryForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 036C6DBBFDF9C6CB0FDDF114 /* EntryForm.swift */; };
+		FF0F6D376230165F255C2A2F /* CrewClockInLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 448E4F9267CFA0DF2612E541 /* CrewClockInLiveActivityWidget.swift */; };
 		FF167F1E5AD52014B45D080A /* CrewManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4FDB469A32E53EAB31384F /* CrewManagementView.swift */; };
 		FF7C3AE14704BF47635D7F7F /* HandwritingRecognitionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2953DF713912AE6F41BA1451 /* HandwritingRecognitionService.swift */; };
 		FF89C0322E7810E0CF89AD66 /* OverheadExpense.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C2ADF3F7937DBF838CB48B /* OverheadExpense.swift */; };
@@ -519,12 +531,14 @@
 		3A800CC308927F8E692D3235 /* SteelSyncShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelSyncShortcuts.swift; sourceTree = "<group>"; };
 		3CD77C25FBFE22464C5E0183 /* CalendarMainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarMainView.swift; sourceTree = "<group>"; };
 		3E42E79F8F54FFD90C87D9CB /* ClientsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientsView.swift; sourceTree = "<group>"; };
+		448E4F9267CFA0DF2612E541 /* CrewClockInLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewClockInLiveActivityWidget.swift; sourceTree = "<group>"; };
 		4570F329FB46D0640F9943B8 /* OverheadFormSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverheadFormSheets.swift; sourceTree = "<group>"; };
 		45C110DB5B14052C675D8B39 /* ResponseFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseFormatter.swift; sourceTree = "<group>"; };
 		45D2272485898530C7D7A8A8 /* EquipmentRentalWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentRentalWidget.swift; sourceTree = "<group>"; };
 		4653DF72B79DC7583A950CC8 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		474B8F17059E432765BE0F9B /* BidPipelineWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BidPipelineWidget.swift; sourceTree = "<group>"; };
 		4A91D93A2FD30748D38C7512 /* BidFormViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BidFormViews.swift; sourceTree = "<group>"; };
+		4C36A6664126CB3EE410F0DB /* ClockInSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClockInSession.swift; sourceTree = "<group>"; };
 		4DC3FA0FE157ACF0A04F1B49 /* PhoneEmployeeDirectoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneEmployeeDirectoryView.swift; sourceTree = "<group>"; };
 		4E0BB6DE275F74BF3B42CF8B /* PhoneTimeClockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneTimeClockView.swift; sourceTree = "<group>"; };
 		4E45F2790914CAB1DF0A535B /* SteelSyncPhoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelSyncPhoneApp.swift; sourceTree = "<group>"; };
@@ -541,6 +555,7 @@
 		5EB8D10C49A60882B9F6EBA0 /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
 		5F937DB7367744CB2FD75497 /* FileDropModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileDropModifier.swift; sourceTree = "<group>"; };
 		60A24368A58D2D9D49A30308 /* GanttTaskBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GanttTaskBarView.swift; sourceTree = "<group>"; };
+		619461FEB1495A302A8C826A /* EditTimesheetEntrySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditTimesheetEntrySheet.swift; sourceTree = "<group>"; };
 		6300CD8818402187D0ABD23A /* PlatformHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformHelpers.swift; sourceTree = "<group>"; };
 		630778E6199E0CE162622606 /* EquipmentOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentOverviewView.swift; sourceTree = "<group>"; };
 		65E9683DA4F3B1ABA7AE3A72 /* CloudKitConvertible.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitConvertible.swift; sourceTree = "<group>"; };
@@ -614,6 +629,7 @@
 		DF7CCD36013F2C98AAB86D4E /* ChatBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBubbleView.swift; sourceTree = "<group>"; };
 		E1F14DBFBCB15B4C618E554D /* TimekeepingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimekeepingView.swift; sourceTree = "<group>"; };
 		E3865B99A3A15FCCF9872CD6 /* SteelSync-iPad.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "SteelSync-iPad.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E5A0B1B29CAFCE86B3DC22D4 /* CrewClockInActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewClockInActivityAttributes.swift; sourceTree = "<group>"; };
 		E7C2C4520D17CE6438BF0BF4 /* GanttTimelineGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GanttTimelineGridView.swift; sourceTree = "<group>"; };
 		E8BD59F1AD2C45F5E18F52CE /* PayApplication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayApplication.swift; sourceTree = "<group>"; };
 		EA7656A40ACE598E7DD865ED /* ActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityView.swift; sourceTree = "<group>"; };
@@ -712,6 +728,7 @@
 		216B8E7C33296F76907D329E /* TimeClock */ = {
 			isa = PBXGroup;
 			children = (
+				619461FEB1495A302A8C826A /* EditTimesheetEntrySheet.swift */,
 				4E0BB6DE275F74BF3B42CF8B /* PhoneTimeClockView.swift */,
 			);
 			path = TimeClock;
@@ -830,6 +847,8 @@
 				C6B1F30E7135A898D7C439BB /* BidProject.swift */,
 				76ADDAF194FFEAE179F13A66 /* CalendarEvent.swift */,
 				D94423C9C5229CC31078E9B3 /* Client.swift */,
+				4C36A6664126CB3EE410F0DB /* ClockInSession.swift */,
+				E5A0B1B29CAFCE86B3DC22D4 /* CrewClockInActivityAttributes.swift */,
 				DBBCA5C8F455442C8C271728 /* CrewPreset.swift */,
 				121ABD89FB44D7A760DB8A90 /* DailyLog.swift */,
 				92C10C75857F4F50E8DB20F0 /* Employee.swift */,
@@ -1120,6 +1139,7 @@
 			isa = PBXGroup;
 			children = (
 				474B8F17059E432765BE0F9B /* BidPipelineWidget.swift */,
+				448E4F9267CFA0DF2612E541 /* CrewClockInLiveActivityWidget.swift */,
 				45D2272485898530C7D7A8A8 /* EquipmentRentalWidget.swift */,
 				88023D740383E25C188E6DEF /* ForemanBonusWidget.swift */,
 				5C29620A98DF4DA632CB4332 /* GanttPreviewWidget.swift */,
@@ -1441,10 +1461,12 @@
 				96D8704023C88EC977D45F18 /* CapturePhotoScanSheet.swift in Sources */,
 				C20F0E325E68739D5A4AACC2 /* Client.swift in Sources */,
 				59282EE7A28041BC3C039D02 /* ClientsView.swift in Sources */,
+				4953C7A4168E722F0B0D12BF /* ClockInSession.swift in Sources */,
 				D77CC958FF236DEACCF940D5 /* CloudKitConvertible.swift in Sources */,
 				BEE82A3C92B052516500FED1 /* CloudKitService.swift in Sources */,
 				E97A9E2E1BC4EB1D1895ACB7 /* CloudShareSheet.swift in Sources */,
 				20DFD9E137050228356E56E1 /* ConfirmationPinSheet.swift in Sources */,
+				BC23BDB425FF4A10393EF305 /* CrewClockInActivityAttributes.swift in Sources */,
 				2B70B45FD05AE85348720C00 /* CrewManagementView.swift in Sources */,
 				E8EE64664FB5290F8A528017 /* CrewPreset.swift in Sources */,
 				0B5C9F6451A40A91BCB2B8BB /* CrewPresetsView.swift in Sources */,
@@ -1453,6 +1475,7 @@
 				AC8A65D4FFF3769673A80C37 /* DashboardView.swift in Sources */,
 				0EF2705BEFF256BA6D85E722 /* DataStore.swift in Sources */,
 				A110FA1C799675BE02C52185 /* DocumentScannerView.swift in Sources */,
+				1096CE10C543BB426CA87C17 /* EditTimesheetEntrySheet.swift in Sources */,
 				162C0ED47A5BCC38EFF887DF /* Employee.swift in Sources */,
 				3E944CEE31E9BEEDBBE31AA4 /* EntryForm.swift in Sources */,
 				C2A4B1C4986D7313497897B5 /* EquipmentOverviewView.swift in Sources */,
@@ -1568,11 +1591,13 @@
 				153D7735DA36C7181B4B358E /* ChatBubbleView.swift in Sources */,
 				792D0D68A1F891F87E615614 /* Client.swift in Sources */,
 				342C95135BDA5FBCE2DDA7C3 /* ClientsView.swift in Sources */,
+				26ACCFCF73B2118B3FA1EC11 /* ClockInSession.swift in Sources */,
 				8113BFBBE57099641331865F /* CloudKitConvertible.swift in Sources */,
 				9FC623C31AF5EB84DC3A36B6 /* CloudKitService.swift in Sources */,
 				1CC2524CB343C4032D5E138E /* CloudShareSheet.swift in Sources */,
 				C36CFCAAFA52987745A65BBF /* ConfirmationPinSheet.swift in Sources */,
 				1CCD076936941CD2C9C77ACE /* ContentView.swift in Sources */,
+				227746B19B987039ADB8E2FC /* CrewClockInActivityAttributes.swift in Sources */,
 				64B56A414DC4F6989B39F154 /* CrewManagementView.swift in Sources */,
 				9A2D48004AE4C99B506AD2C3 /* CrewPreset.swift in Sources */,
 				DC810E1FF5DA9D32DF1FBD45 /* CrewPresetsView.swift in Sources */,
@@ -1664,6 +1689,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				4728108E4DAD3A8D3746931A /* BidPipelineWidget.swift in Sources */,
+				5BED8071C1566B47FFEE3370 /* CrewClockInActivityAttributes.swift in Sources */,
+				FF0F6D376230165F255C2A2F /* CrewClockInLiveActivityWidget.swift in Sources */,
 				DA28B4839261F3D8C9CBA0AF /* EquipmentRentalWidget.swift in Sources */,
 				EFF4345F54D4CCEB90235A90 /* ForemanBonusWidget.swift in Sources */,
 				4E5AA43963F0AFBFF77112F6 /* GanttPreviewWidget.swift in Sources */,
@@ -1685,6 +1712,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				46D33D4276F9904235511044 /* BidPipelineWidget.swift in Sources */,
+				016A20703D4B395586F9F602 /* CrewClockInActivityAttributes.swift in Sources */,
+				C8B98BBD7BDD23C27BA0E7F7 /* CrewClockInLiveActivityWidget.swift in Sources */,
 				47A3BCC30DB143489492775C /* EquipmentRentalWidget.swift in Sources */,
 				C73FD42932BF3E818CEDADE8 /* ForemanBonusWidget.swift in Sources */,
 				F8A42C52AA5F7DE4F9598464 /* GanttPreviewWidget.swift in Sources */,
@@ -1724,11 +1753,13 @@
 				2A6F5BFF70A8EC7CFB265060 /* ChatBubbleView.swift in Sources */,
 				0E19588BE0507477FC892030 /* Client.swift in Sources */,
 				D4ED81BE69288DFD06F93449 /* ClientsView.swift in Sources */,
+				ECD558D247ABC045B769A192 /* ClockInSession.swift in Sources */,
 				F96CF958111ACFDB7E2ABF7E /* CloudKitConvertible.swift in Sources */,
 				C5B9F442E5F553DA1CC0F6C7 /* CloudKitService.swift in Sources */,
 				428062384025A7D71C1B5DD3 /* CloudShareSheet.swift in Sources */,
 				0CD4DB3894DCD7519DA4FAD0 /* ConfirmationPinSheet.swift in Sources */,
 				74BF9E501E6BF3ED56E6368A /* ContentView.swift in Sources */,
+				99825B6FEFBE56CE1ADEE261 /* CrewClockInActivityAttributes.swift in Sources */,
 				FF167F1E5AD52014B45D080A /* CrewManagementView.swift in Sources */,
 				38639948FE776D64897DF5DA /* CrewPreset.swift in Sources */,
 				6B66495F7C2A122C3C360BFC /* CrewPresetsView.swift in Sources */,
@@ -1820,6 +1851,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8D9C9FFD5559FE77642C5305 /* BidPipelineWidget.swift in Sources */,
+				A299BC357420702C1A1DA53E /* CrewClockInLiveActivityWidget.swift in Sources */,
 				17315AEE7436E93D20D99432 /* EquipmentRentalWidget.swift in Sources */,
 				71B6036AA64863D1D56066C5 /* ForemanBonusWidget.swift in Sources */,
 				FB74651821D3D790652E95B4 /* GanttPreviewWidget.swift in Sources */,

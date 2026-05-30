@@ -133,6 +133,7 @@ targets:
         excludes:
           - "SteelSyncWidgets-Mac.entitlements"
       - path: SteelSync/Models/RentalLiveActivityAttributes.swift
+      - path: SteelSync/Models/CrewClockInActivityAttributes.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jrfv.SteelSync.SteelSyncWidgets
@@ -241,6 +242,7 @@ targets:
       - path: SteelSyncWidgets
         type: group
       - path: SteelSync/Models/RentalLiveActivityAttributes.swift
+      - path: SteelSync/Models/CrewClockInActivityAttributes.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jrfv.SteelSync.Phone.SteelSyncWidgets
