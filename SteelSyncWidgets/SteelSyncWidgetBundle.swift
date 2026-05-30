@@ -10,5 +10,7 @@ struct SteelSyncWidgetBundle: WidgetBundle {
         GanttPreviewWidget()
         InvoiceAgingWidget()
         ForemanBonusWidget()
+        TodayAttentionWidget()
+        EquipmentRentalWidget()
     }
 }

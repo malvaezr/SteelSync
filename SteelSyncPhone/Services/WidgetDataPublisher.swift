@@ -102,6 +102,24 @@ struct WidgetDataPublisher {
         defaults.set(bonusPool, forKey: "bonusPoolYTD")
         defaults.set(store.employees.filter { $0.isForeman }.count, forKey: "foremenCount")
 
+        // Top 3 active equipment rentals (longest-on-rent first) — drives
+        // the EquipmentRentalWidget. Active = `endDate == nil`.
+        let cal = Calendar.current
+        var rentalEntries: [(name: String, days: Int, projectName: String)] = []
+        for (projectID, rentals) in store.equipmentRentals {
+            let projectName = store.projects.first(where: { $0.id == projectID })?.title ?? "Unknown"
+            for r in rentals where r.endDate == nil {
+                let days = cal.dateComponents([.day], from: r.startDate, to: Date()).day ?? 0
+                rentalEntries.append((r.equipmentName, days, projectName))
+            }
+        }
+        rentalEntries.sort { $0.days > $1.days }
+        let topRentals = Array(rentalEntries.prefix(3))
+        defaults.set(topRentals.map(\.name), forKey: "rentalNames")
+        defaults.set(topRentals.map(\.days), forKey: "rentalDays")
+        defaults.set(topRentals.map(\.projectName), forKey: "rentalProjectNames")
+        defaults.set(rentalEntries.count, forKey: "activeRentalsCount")
+
         // Timestamp marker so WidgetDataStore knows real data has been written
         defaults.set(Date().timeIntervalSince1970, forKey: "updatedAt")
 
