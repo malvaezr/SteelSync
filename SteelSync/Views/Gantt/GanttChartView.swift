@@ -19,6 +19,8 @@ struct GanttChartView: View {
     @State private var isVisible = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
+    /// Set on context-menu "Assign All Tasks…" — presents the bulk-assign sheet.
+    @State private var bulkAssignProject: Project?
     // Marquee (rubber-band) selection — content-space points while dragging.
     @State private var marqueeStart: CGPoint?
     @State private var marqueeCurrent: CGPoint?
@@ -188,6 +190,10 @@ struct GanttChartView: View {
                 dataStore.deleteGanttTask(task)
             }
             .environmentObject(dataStore)
+        }
+        .sheet(item: $bulkAssignProject) { project in
+            ProjectBulkAssignSheet(project: project)
+                .environmentObject(dataStore)
         }
         .navigationTitle("Schedule")
         .onAppear {
@@ -580,6 +586,14 @@ struct GanttChartView: View {
                             .padding(.horizontal, 8)
                             .frame(height: vm.projectHeaderHeight)
                             .background(themeManager.glassEnabled ? AppTheme.tertiaryBackground : Color.gray.opacity(0.08))
+                            .contentShape(Rectangle())
+                            .contextMenu {
+                                Button {
+                                    bulkAssignProject = project
+                                } label: {
+                                    Label("Assign All Tasks…", systemImage: "person.2.fill")
+                                }
+                            }
 
                         case .task(let task):
                             taskListRow(task)
@@ -923,6 +937,111 @@ struct GanttDependencyOverlay: View {
                     context.fill(arrow, with: .color(lineColor))
                 }
             }
+        }
+    }
+}
+
+// MARK: - Bulk Assign Sheet
+//
+// Triggered from the long-press / right-click "Assign All Tasks…" context
+// menu on a project group header. Multi-select over the active employee
+// roster (Foremen + Crew sections). Tapping Apply REPLACES every task's
+// assignedTo in the project with the picked set (joined by "; ").
+struct ProjectBulkAssignSheet: View {
+    @EnvironmentObject var dataStore: DataStore
+    @Environment(\.dismiss) private var dismiss
+    let project: Project
+
+    @State private var pickedNames: Set<String> = []
+
+    private var projectTasks: [GanttTask] {
+        dataStore.ganttTasks.filter { $0.projectID == project.id.recordName }
+    }
+
+    var body: some View {
+        let active = dataStore.activeEmployees
+        let foremen = active.filter { $0.isForeman }
+        let crew = active.filter { !$0.isForeman }
+        let taskCount = projectTasks.count
+
+        NavigationStack {
+            Form {
+                Section {
+                    Text(taskCount == 0
+                         ? "This project has no Gantt tasks yet."
+                         : "Replace assignees on all \(taskCount) task\(taskCount == 1 ? "" : "s") in \(project.title).")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                }
+
+                if !foremen.isEmpty {
+                    Section("Foremen") {
+                        ForEach(foremen) { emp in row(emp) }
+                    }
+                }
+                if !crew.isEmpty {
+                    Section("Crew") {
+                        ForEach(crew) { emp in row(emp) }
+                    }
+                }
+                if active.isEmpty {
+                    Section {
+                        Text("Add crew in Operations → Crew & Timesheets first.")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Bulk Assign")
+            #if !os(macOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(pickedNames.isEmpty ? "Clear All" : "Apply") {
+                        applyAssignment()
+                        dismiss()
+                    }
+                    .disabled(taskCount == 0)
+                }
+            }
+            #if os(macOS)
+            .frame(minWidth: 420, minHeight: 460)
+            #endif
+        }
+    }
+
+    @ViewBuilder
+    private func row(_ emp: Employee) -> some View {
+        Button {
+            if pickedNames.contains(emp.fullName) {
+                pickedNames.remove(emp.fullName)
+            } else {
+                pickedNames.insert(emp.fullName)
+            }
+        } label: {
+            HStack {
+                Image(systemName: pickedNames.contains(emp.fullName) ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(pickedNames.contains(emp.fullName) ? AppTheme.primaryOrange : .secondary)
+                Text(emp.fullName)
+                    .foregroundColor(AppTheme.primaryText)
+                Spacer()
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Joins the picked names into the semicolon-separated string that
+    /// `GanttTask.assignedTo` expects and writes it onto every task in the
+    /// project. Stable sort by name so the stored string is deterministic.
+    private func applyAssignment() {
+        let joined = pickedNames.sorted().joined(separator: "; ")
+        for task in projectTasks {
+            var updated = task
+            updated.assignedTo = joined
+            dataStore.updateGanttTask(updated)
         }
     }
 }
