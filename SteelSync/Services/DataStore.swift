@@ -1753,6 +1753,92 @@ class DataStore: ObservableObject {
         return (total, perProject)
     }
 
+    // MARK: - Foreman bonuses
+    //
+    // Single source of truth for the bonus math used by both the Mac/iPad
+    // Reports → Bonuses tab and the iPhone `PhoneBonusesView` / the Foreman
+    // Bonus widget. See `M_Memory/.../project_foreman_bonuses.md` for the
+    // locked formula and the multi-foreman split rule.
+
+    /// Years derived from Gantt task `endDate`s, always including the current
+    /// calendar year so a fresh install isn't stuck on a past year.
+    var availableBonusYears: [Int] {
+        let cal = Calendar.current
+        let years = Set(ganttTasks.map { cal.component(.year, from: $0.endDate) })
+        let thisYear = cal.component(.year, from: Date())
+        return Array(years.union([thisYear])).sorted(by: >)
+    }
+
+    /// Per-foreman bonus breakdowns for the given year + basis + multiplier %.
+    /// pct = Σ (durationDays of foreman's tasks that are status=Completed AND
+    /// ended in year on a project) ÷ Σ (durationDays of ALL tasks on that
+    /// project). Multi-foreman tasks split duration EVENLY among the foremen
+    /// listed in `task.assignees` (non-foreman crew don't dilute). Profit
+    /// basis is clamped at zero so losing jobs don't pay negative bonuses.
+    func computeBonuses(year: Int, basis: BonusBasis, multiplierPct: Double) -> [BonusBreakdown] {
+        let cal = Calendar.current
+        guard let yearStart = cal.date(from: DateComponents(year: year, month: 1, day: 1)),
+              let yearEnd = cal.date(from: DateComponents(year: year + 1, month: 1, day: 1)) else {
+            return []
+        }
+        let foremen = employees.filter { $0.isForeman }
+        let foremanNamesLower = Set(foremen.map { $0.fullName.lowercased() })
+        let multiplierFactor = Decimal(multiplierPct / 100.0)
+
+        var projectTotals: [String: Int] = [:]
+        for task in ganttTasks {
+            projectTotals[task.projectID, default: 0] += task.durationDays
+        }
+
+        var result: [BonusBreakdown] = []
+        for foreman in foremen {
+            let nameLower = foreman.fullName.lowercased()
+            let matching = ganttTasks.filter { t in
+                t.status == .completed
+                    && t.endDate >= yearStart && t.endDate < yearEnd
+                    && t.assignees.contains(where: { $0.lowercased() == nameLower })
+            }
+            var byProject: [String: Decimal] = [:]
+            for t in matching {
+                let foremenOnTask = t.assignees.filter { foremanNamesLower.contains($0.lowercased()) }
+                let denominator = max(1, foremenOnTask.count)
+                let share = Decimal(t.durationDays) / Decimal(denominator)
+                byProject[t.projectID, default: Decimal.zero] += share
+            }
+            var items: [BonusBreakdownItem] = []
+            for (projectID, foremanDays) in byProject {
+                guard let project = projects.first(where: { $0.id.recordName == projectID }) else { continue }
+                let projectDays = projectTotals[projectID, default: 0]
+                guard projectDays > 0 else { continue }
+                let basisValue: Decimal
+                switch basis {
+                case .revenue: basisValue = project.totalRevenue
+                case .profit:  basisValue = max(0, project.profit)
+                }
+                let pct = foremanDays / Decimal(projectDays)
+                let contribution = basisValue * pct * multiplierFactor
+                items.append(BonusBreakdownItem(
+                    project: project,
+                    projectTotalDays: projectDays,
+                    foremanDays: foremanDays,
+                    basis: basisValue,
+                    contribution: contribution
+                ))
+            }
+            items.sort { $0.contribution > $1.contribution }
+            result.append(BonusBreakdown(foreman: foreman, perProject: items))
+        }
+        return result.sorted { $0.total > $1.total }
+    }
+
+    /// Convenience used by widgets and Phone Reports — current-year revenue-
+    /// basis bonus pool at the given multiplier %. Sums every foreman's total.
+    func bonusPoolYTD(multiplierPct: Double = 2.0) -> Decimal {
+        let yr = Calendar.current.component(.year, from: Date())
+        return computeBonuses(year: yr, basis: .revenue, multiplierPct: multiplierPct)
+            .reduce(Decimal.zero) { $0 + $1.total }
+    }
+
     /// Per-project shares for a single `.scheduleDaily` expense, across its
     /// coverage period. Amortizes the entry to a daily rate, then for each day
     /// splits that rate across projects with crew on the Gantt schedule —

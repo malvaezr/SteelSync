@@ -1028,7 +1028,7 @@ struct ReportsView: View {
     /// Profit basis is clamped at zero so a losing job doesn't pay a
     /// negative bonus.
     private var bonusesReport: some View {
-        let breakdowns = computeBonuses(year: bonusYear, basis: bonusBasis, multiplierPct: bonusMultiplier)
+        let breakdowns = dataStore.computeBonuses(year: bonusYear, basis: bonusBasis, multiplierPct: bonusMultiplier)
         let totalPool = breakdowns.reduce(Decimal.zero) { $0 + $1.total }
         let touchedProjects = Set(breakdowns.flatMap { $0.perProject.map(\.project.id.recordName) }).count
 
@@ -1048,7 +1048,7 @@ struct ReportsView: View {
                             .foregroundColor(.secondary)
                             .frame(width: 90, alignment: .leading)
                         Picker("Year", selection: $bonusYear) {
-                            ForEach(availableBonusYears, id: \.self) { yr in
+                            ForEach(dataStore.availableBonusYears, id: \.self) { yr in
                                 Text(verbatim: "\(yr)").tag(yr)
                             }
                         }
@@ -1173,85 +1173,9 @@ struct ReportsView: View {
         }
     }
 
-    /// Years derived from Gantt task endDates so the year picker only offers
-    /// years with actual data. The current calendar year is always included
-    /// so a fresh install isn't stuck on a past year.
-    private var availableBonusYears: [Int] {
-        let cal = Calendar.current
-        let years = Set(dataStore.ganttTasks.map { cal.component(.year, from: $0.endDate) })
-        let thisYear = cal.component(.year, from: Date())
-        return Array(years.union([thisYear])).sorted(by: >)
-    }
-
-    /// Compute per-foreman bonus breakdowns for the given year + basis +
-    /// multiplier. Counts a foreman's completed Gantt tasks whose endDate
-    /// falls in the year, weighted by `durationDays`, and divides by the
-    /// project's total task-day scope.
-    private func computeBonuses(year: Int, basis: BonusBasis, multiplierPct: Double) -> [BonusBreakdown] {
-        let cal = Calendar.current
-        guard let yearStart = cal.date(from: DateComponents(year: year, month: 1, day: 1)),
-              let yearEnd = cal.date(from: DateComponents(year: year + 1, month: 1, day: 1)) else {
-            return []
-        }
-        let foremen = dataStore.employees.filter { $0.isForeman }
-        let foremanNamesLower = Set(foremen.map { $0.fullName.lowercased() })
-        let multiplierFactor = Decimal(multiplierPct / 100.0)
-
-        // Precompute project total task-days once.
-        var projectTotals: [String: Int] = [:]
-        for task in dataStore.ganttTasks {
-            projectTotals[task.projectID, default: 0] += task.durationDays
-        }
-
-        var result: [BonusBreakdown] = []
-        for foreman in foremen {
-            let nameLower = foreman.fullName.lowercased()
-            // Multi-assignee: include any task that LISTS this foreman among
-            // its assignees (case-insensitive). A task assigned to "Joe; Mike"
-            // qualifies for both Joe's and Mike's bonus runs.
-            let matching = dataStore.ganttTasks.filter { t in
-                t.status == .completed
-                    && t.endDate >= yearStart && t.endDate < yearEnd
-                    && t.assignees.contains(where: { $0.lowercased() == nameLower })
-            }
-
-            // For each qualifying task, count how many FOREMEN appear on it,
-            // and credit each foreman with `durationDays / foremenOnTask` of
-            // the task. Non-foreman assignees don't dilute the share (the
-            // user only wants the duration split among foremen).
-            var byProject: [String: Decimal] = [:]
-            for t in matching {
-                let foremenOnTask = t.assignees.filter { foremanNamesLower.contains($0.lowercased()) }
-                let denominator = max(1, foremenOnTask.count)
-                let share = Decimal(t.durationDays) / Decimal(denominator)
-                byProject[t.projectID, default: Decimal.zero] += share
-            }
-
-            var items: [BonusBreakdownItem] = []
-            for (projectID, foremanDays) in byProject {
-                guard let project = dataStore.projects.first(where: { $0.id.recordName == projectID }) else { continue }
-                let projectDays = projectTotals[projectID, default: 0]
-                guard projectDays > 0 else { continue }
-                let basisValue: Decimal
-                switch basis {
-                case .revenue: basisValue = project.totalRevenue
-                case .profit:  basisValue = max(0, project.profit)
-                }
-                let pct = foremanDays / Decimal(projectDays)
-                let contribution = basisValue * pct * multiplierFactor
-                items.append(BonusBreakdownItem(
-                    project: project,
-                    projectTotalDays: projectDays,
-                    foremanDays: foremanDays,
-                    basis: basisValue,
-                    contribution: contribution
-                ))
-            }
-            items.sort { $0.contribution > $1.contribution }
-            result.append(BonusBreakdown(foreman: foreman, perProject: items))
-        }
-        return result.sorted { $0.total > $1.total }
-    }
+    // `availableBonusYears` and `computeBonuses(...)` were hoisted onto
+    // `DataStore` so the iPhone `PhoneBonusesView` and the Foreman Bonus
+    // widget share the same source-of-truth math. See `DataStore.swift`.
 
 }
 
