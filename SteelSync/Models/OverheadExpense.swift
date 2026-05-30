@@ -142,11 +142,21 @@ enum OverheadDistributionMode: String, CaseIterable, Codable, Hashable {
     /// Never distributed to projects — appears only in company-level totals.
     case companyOnly = "Company Only"
 
+    /// Amortized to a daily rate over the expense's coverage period (one
+    /// interval of the source recurrence — e.g. Weekly $2000 → $285.71/day for
+    /// 7 days; one-time = a single day). For each day, the day's portion is
+    /// split across projects with at least one Gantt task scheduled that day
+    /// whose `Assigned to` is filled in — weighted by the number of distinct
+    /// assignees on each project that day. Computed read-time so retroactive
+    /// Gantt edits flow through automatically.
+    case scheduleDaily = "Schedule (Daily)"
+
     var shortLabel: String {
         switch self {
         case .allActive: return "All Active"
         case .specificProjects: return "Custom"
         case .companyOnly: return "Company"
+        case .scheduleDaily: return "Schedule"
         }
     }
 }

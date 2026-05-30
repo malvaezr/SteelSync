@@ -305,6 +305,8 @@ private struct OverheadFormBody: View {
             return "Pick which projects share this cost. Pro-rata by their contract amounts."
         case .companyOnly:
             return "Never charged to projects — only appears in company-level totals."
+        case .scheduleDaily:
+            return "Amortized to a daily rate over this expense's period (e.g. Weekly $2000 → ~$285.71/day). Each day's share splits across projects with crew on the Gantt schedule, weighted by how many people are assigned that day. Updates automatically as the Gantt changes."
         }
     }
 }

@@ -1722,26 +1722,111 @@ class DataStore: ObservableObject {
         for expense in overheadEntries(in: range) {
             total += expense.amount
 
-            let targets: [Project]
             switch expense.distributionMode {
             case .companyOnly:
                 continue
-            case .allActive:
-                targets = projects.filter { $0.wasActive(on: expense.date) }
-            case .specificProjects:
-                let ids = Set(expense.distributionProjectIDs)
-                targets = projects.filter { ids.contains($0.id.recordName) }
-            }
 
-            let totalContract = targets.reduce(Decimal.zero) { $0 + $1.contractAmount }
-            guard totalContract > 0, !targets.isEmpty else { continue }
+            case .scheduleDaily:
+                // Single source of truth for the per-expense math — keeps the
+                // aggregate `allocateOverhead` and the per-expense detail view
+                // in lock-step.
+                for (projectID, share) in scheduleDailyShares(for: expense) {
+                    perProject[projectID, default: 0] += share
+                }
 
-            for project in targets {
-                let share = expense.amount * (project.contractAmount / totalContract)
-                perProject[project.id.recordName, default: 0] += share
+            case .allActive, .specificProjects:
+                let targets: [Project]
+                if expense.distributionMode == .allActive {
+                    targets = projects.filter { $0.wasActive(on: expense.date) }
+                } else {
+                    let ids = Set(expense.distributionProjectIDs)
+                    targets = projects.filter { ids.contains($0.id.recordName) }
+                }
+                let totalContract = targets.reduce(Decimal.zero) { $0 + $1.contractAmount }
+                guard totalContract > 0, !targets.isEmpty else { continue }
+                for project in targets {
+                    let share = expense.amount * (project.contractAmount / totalContract)
+                    perProject[project.id.recordName, default: 0] += share
+                }
             }
         }
         return (total, perProject)
+    }
+
+    /// Per-project shares for a single `.scheduleDaily` expense, across its
+    /// coverage period. Amortizes the entry to a daily rate, then for each day
+    /// splits that rate across projects with crew on the Gantt schedule —
+    /// weighted by distinct assignee count. Read-time, so retroactive Gantt
+    /// edits flow through automatically. Returns `recordName → share` (only
+    /// projects that receive a share appear).
+    func scheduleDailyShares(for expense: OverheadExpense) -> [String: Decimal] {
+        var perProject: [String: Decimal] = [:]
+        let days = overheadCoveragePeriod(for: expense)
+        guard !days.isEmpty else { return perProject }
+        let perDay = expense.amount / Decimal(days.count)
+        for day in days {
+            let counts = ganttAssigneeCountsByProject(forDay: day)
+            let totalCount = counts.values.reduce(0, +)
+            guard totalCount > 0 else { continue }
+            for (projectID, count) in counts {
+                let share = perDay * Decimal(count) / Decimal(totalCount)
+                perProject[projectID, default: 0] += share
+            }
+        }
+        return perProject
+    }
+
+    /// Days covered by a single overhead entry, used by `.scheduleDaily` to
+    /// amortize the amount. A recurring template covers one full interval of
+    /// its own recurrence; a generated child covers one interval of its parent
+    /// template's recurrence; a true one-time entry covers a single day.
+    private func overheadCoveragePeriod(for expense: OverheadExpense, calendar: Calendar = .current) -> [Date] {
+        let interval: RecurrenceInterval
+        if expense.recurrence != .none {
+            interval = expense.recurrence
+        } else if let parentID = expense.parentRecurringID,
+                  let parent = overheadExpenses.first(where: { $0.recordID.recordName == parentID }) {
+            interval = parent.recurrence
+        } else {
+            interval = .none
+        }
+
+        let startDay = calendar.startOfDay(for: expense.date)
+        let endExclusive: Date
+        switch interval {
+        case .none:     endExclusive = calendar.date(byAdding: .day, value: 1, to: startDay) ?? startDay
+        case .weekly:   endExclusive = calendar.date(byAdding: .weekOfYear, value: 1, to: startDay) ?? startDay
+        case .monthly:  endExclusive = calendar.date(byAdding: .month, value: 1, to: startDay) ?? startDay
+        case .quarterly:endExclusive = calendar.date(byAdding: .month, value: 3, to: startDay) ?? startDay
+        case .yearly:   endExclusive = calendar.date(byAdding: .year, value: 1, to: startDay) ?? startDay
+        }
+
+        var result: [Date] = []
+        var d = startDay
+        while d < endExclusive {
+            result.append(d)
+            d = calendar.date(byAdding: .day, value: 1, to: d) ?? d
+        }
+        return result
+    }
+
+    /// For each project, the count of DISTINCT (case-insensitive) `assignedTo`
+    /// names across all Gantt tasks that are active on `day` and have an
+    /// `Assigned to` filled in. Drives the `.scheduleDaily` weighting:
+    /// more crew on a project that day → bigger share of that day's overhead.
+    private func ganttAssigneeCountsByProject(forDay day: Date) -> [String: Int] {
+        var sets: [String: Set<String>] = [:]
+        let cal = Calendar.current
+        let dayStart = cal.startOfDay(for: day)
+        for task in ganttTasks {
+            let assignee = task.assignedTo.trimmingCharacters(in: .whitespaces)
+            guard !assignee.isEmpty else { continue }
+            let taskStart = cal.startOfDay(for: task.startDate)
+            // task.endDate is exclusive — the calendar day AFTER the last working day.
+            guard dayStart >= taskStart, dayStart < task.endDate else { continue }
+            sets[task.projectID, default: []].insert(assignee.lowercased())
+        }
+        return sets.mapValues { $0.count }
     }
 
     func addOverhead(_ expense: OverheadExpense) {

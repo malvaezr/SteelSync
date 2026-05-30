@@ -599,19 +599,35 @@ struct OverheadDetailView: View {
     }
 
     private func allocationShares() -> [(project: Project, amount: Decimal)] {
-        let targets: [Project]
         switch expense.distributionMode {
-        case .companyOnly: return []
-        case .allActive:
-            targets = dataStore.projects.filter { $0.wasActive(on: expense.date) }
-        case .specificProjects:
-            let ids = Set(expense.distributionProjectIDs)
-            targets = dataStore.projects.filter { ids.contains($0.id.recordName) }
-        }
-        let totalContract = targets.reduce(Decimal.zero) { $0 + $1.contractAmount }
-        guard totalContract > 0 else { return [] }
-        return targets.map { project in
-            (project, expense.amount * (project.contractAmount / totalContract))
+        case .companyOnly:
+            return []
+
+        case .scheduleDaily:
+            // Defer to DataStore so the per-expense detail breakdown matches
+            // the aggregated `allocateOverhead` (single source of truth, and
+            // any retroactive Gantt edits land here automatically).
+            let shares = dataStore.scheduleDailyShares(for: expense)
+            return shares
+                .compactMap { (id, amount) -> (Project, Decimal)? in
+                    guard let proj = dataStore.projects.first(where: { $0.id.recordName == id }) else { return nil }
+                    return (proj, amount)
+                }
+                .sorted { $0.1 > $1.1 }
+
+        case .allActive, .specificProjects:
+            let targets: [Project]
+            if expense.distributionMode == .allActive {
+                targets = dataStore.projects.filter { $0.wasActive(on: expense.date) }
+            } else {
+                let ids = Set(expense.distributionProjectIDs)
+                targets = dataStore.projects.filter { ids.contains($0.id.recordName) }
+            }
+            let totalContract = targets.reduce(Decimal.zero) { $0 + $1.contractAmount }
+            guard totalContract > 0 else { return [] }
+            return targets.map { project in
+                (project, expense.amount * (project.contractAmount / totalContract))
+            }
         }
     }
 
