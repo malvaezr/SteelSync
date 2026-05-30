@@ -86,6 +86,8 @@ private struct CaptureSheet: View {
 
     @State private var pickingForQuickEntry = false
     @State private var quickEntryProject: Project?
+    @State private var showPhotoScan = false
+    @State private var showPencilMarkup = false
 
     var body: some View {
         NavigationStack {
@@ -112,15 +114,17 @@ private struct CaptureSheet: View {
                         }
                     }
                     tile("Photo / Scan",
-                         subtitle: "Coming with Pencil markup",
-                         icon: "camera.fill",
-                         color: AppTheme.tertiaryText,
-                         disabled: true) { }
+                         subtitle: "Multi-page scanner + photo picker",
+                         icon: "doc.viewfinder.fill",
+                         color: AppTheme.primaryOrange) {
+                        showPhotoScan = true
+                    }
                     tile("Pencil Markup",
-                         subtitle: "Coming in Phase 4",
+                         subtitle: "Free-form sketch / redlines",
                          icon: "pencil.tip",
-                         color: AppTheme.tertiaryText,
-                         disabled: true) { }
+                         color: Glass.danger) {
+                        showPencilMarkup = true
+                    }
                 }
                 .padding(20)
             }
@@ -141,6 +145,12 @@ private struct CaptureSheet: View {
             .sheet(item: $quickEntryProject) { project in
                 QuickEntrySheet(project: project)
                     .environmentObject(dataStore)
+            }
+            .sheet(isPresented: $showPhotoScan) {
+                CapturePhotoScanSheet()
+            }
+            .sheet(isPresented: $showPencilMarkup) {
+                PencilMarkupSheet()
             }
         }
     }

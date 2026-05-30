@@ -99,6 +99,8 @@ targets:
         UILaunchScreen: {}
         CKSharingSupported: true
         NSSupportsLiveActivities: true
+        NSCameraUsageDescription: "SteelSync uses the camera to scan delivery tickets, receipts, and field documentation."
+        NSPhotoLibraryUsageDescription: "SteelSync uses photo access to attach reference images to projects."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jrfv.SteelSync
@@ -224,6 +226,8 @@ targets:
         UILaunchScreen: {}
         CKSharingSupported: true
         NSSupportsLiveActivities: true
+        NSCameraUsageDescription: "SteelSync Field uses the camera to scan delivery tickets, receipts, and field documentation."
+        NSPhotoLibraryUsageDescription: "SteelSync Field uses photo access to attach reference images to projects."
     dependencies:
       - target: SteelSyncWidgets
         embed: true

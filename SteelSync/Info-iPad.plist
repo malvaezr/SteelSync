@@ -24,6 +24,10 @@
 	<true/>
 	<key>MinimumOSVersion</key>
 	<string>$(IPHONEOS_DEPLOYMENT_TARGET)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>SteelSync uses the camera to scan delivery tickets, receipts, and field documentation.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SteelSync uses photo access to attach reference images to projects.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UILaunchScreen</key>

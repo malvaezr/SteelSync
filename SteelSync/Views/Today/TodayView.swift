@@ -13,6 +13,10 @@ struct TodayView: View {
     @State private var showQuickEntryProjectPicker = false
     @State private var quickEntryProject: Project?
     @State private var now = Date()
+    #if os(iOS)
+    @State private var showPhotoScan = false
+    @State private var showPencilMarkup = false
+    #endif
 
     /// Refresh "now" once a minute so relative dates stay accurate.
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
@@ -47,6 +51,14 @@ struct TodayView: View {
         .sheet(item: $quickEntryProject) { project in
             QuickEntrySheet(project: project)
         }
+        #if os(iOS)
+        .sheet(isPresented: $showPhotoScan) {
+            CapturePhotoScanSheet()
+        }
+        .sheet(isPresented: $showPencilMarkup) {
+            PencilMarkupSheet()
+        }
+        #endif
     }
 
     // MARK: - Desk body (Mac, iPad landscape)
@@ -170,15 +182,21 @@ struct TodayView: View {
                             navigationState.selectedSection = .schedule
                         }
                         captureTile(title: "Photo / Scan",
-                                    subtitle: "Phase 4",
-                                    icon: "camera.fill",
-                                    color: AppTheme.tertiaryText,
-                                    disabled: true) { }
+                                    subtitle: "Scanner + photo picker",
+                                    icon: "doc.viewfinder.fill",
+                                    color: Glass.info) {
+                            #if os(iOS)
+                            showPhotoScan = true
+                            #endif
+                        }
                         captureTile(title: "Pencil Markup",
-                                    subtitle: "Phase 4",
+                                    subtitle: "Free-form redlines",
                                     icon: "pencil.tip",
-                                    color: AppTheme.tertiaryText,
-                                    disabled: true) { }
+                                    color: Glass.danger) {
+                            #if os(iOS)
+                            showPencilMarkup = true
+                            #endif
+                        }
                     }
                 }
 

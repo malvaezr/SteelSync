@@ -31,6 +31,10 @@
 	<string>1</string>
 	<key>CKSharingSupported</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>SteelSync Field uses the camera to scan delivery tickets, receipts, and field documentation.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SteelSync Field uses photo access to attach reference images to projects.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UILaunchScreen</key>

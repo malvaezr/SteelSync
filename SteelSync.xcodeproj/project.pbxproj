@@ -93,6 +93,7 @@
 		36823C9B65827EE767080B6A /* GanttTaskEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7942C645F9E3BF0378EFFFBF /* GanttTaskEditSheet.swift */; };
 		36FCD20FCD1D6F37B36CF87C /* HandwritingRecognitionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2953DF713912AE6F41BA1451 /* HandwritingRecognitionService.swift */; };
 		3746863015B5871F4B01E406 /* SteelSyncApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21EE9F075420DFE63E74A2C1 /* SteelSyncApp.swift */; };
+		37E16F604F1678B4A961DD3F /* DocumentScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB94E0EAAEE86163BB4EB9D3 /* DocumentScannerView.swift */; };
 		37F8566E634E4EDE4F9F99AD /* Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A225DB886949A33D3F111E9 /* Glass.swift */; };
 		383E68556FD14673D1241F39 /* BidDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F89C7F8FCAE982405AB863B9 /* BidDetailView.swift */; };
 		38639948FE776D64897DF5DA /* CrewPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBBCA5C8F455442C8C271728 /* CrewPreset.swift */; };
@@ -151,6 +152,7 @@
 		59282EE7A28041BC3C039D02 /* ClientsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E42E79F8F54FFD90C87D9CB /* ClientsView.swift */; };
 		59399563DCB84FFE597DFC01 /* BidDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F89C7F8FCAE982405AB863B9 /* BidDetailView.swift */; };
 		5A30726703D7F239BEF09F1E /* DailyLogSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3A97A58F909F9E21625E60 /* DailyLogSheets.swift */; };
+		5A413BD329187EC755B54335 /* PencilMarkupSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2FE6DD3BDE7F8F93BE73296 /* PencilMarkupSheet.swift */; };
 		5BDD8CEAF4F44B0819790444 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07BA1BD89EC94E153CBC023 /* SampleData.swift */; };
 		6045BC46947CC793AE3C044D /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA8123C4AA8DDD28AF866B85 /* SidebarView.swift */; };
 		6109246298FFB2E56B6EB311 /* PencilCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E414F6FDD05FC4316E2ED3 /* PencilCanvasView.swift */; };
@@ -171,6 +173,7 @@
 		679A71A34C7AD40A584AE640 /* SteelSyncWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F8F1EA2DBACE66865331D899 /* SteelSyncWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		67EE0A5B065CE15BF1703F5B /* WeeklyAssignment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9295F43337F5AB4398EC520E /* WeeklyAssignment.swift */; };
 		687C77138525833388FED55D /* RFILogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2FF42E0379902EEE230296 /* RFILogView.swift */; };
+		68D56035B1443F33C345C2F7 /* DocumentScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB94E0EAAEE86163BB4EB9D3 /* DocumentScannerView.swift */; };
 		69A98901ACF23C7FC918D169 /* PayAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84676B7C0A4D5D79E4F93B51 /* PayAppView.swift */; };
 		69C15DD2CA248EF58DD60377 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB8D10C49A60882B9F6EBA0 /* Project.swift */; };
 		6B4A516DDC54B84B5C5D827C /* BiddingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1011451B642A320E127016B5 /* BiddingView.swift */; };
@@ -205,6 +208,7 @@
 		7AA05B3C12B72E6E07B7533D /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2493EBC395F13A8EE6F94B4A /* WidgetBridge.swift */; };
 		7AF1AE7531D1084D5BA4BD76 /* PDFShareButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADCA49EBF740AF2392D2B80 /* PDFShareButton.swift */; };
 		7C05D84B058747137119A243 /* AddProjectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52278865AEFCBD823BDEC6C1 /* AddProjectView.swift */; };
+		7E238E37CC7D3319412C9905 /* CapturePhotoScanSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31085ECE23D6795B1346FCD1 /* CapturePhotoScanSheet.swift */; };
 		7F4E112517C650F3BB9DC264 /* CalendarMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD77C25FBFE22464C5E0183 /* CalendarMainView.swift */; };
 		7F4EDB713C0760F7A014AFDD /* SubcontractorAIAPDFViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E7F411A108A2A42E227A28 /* SubcontractorAIAPDFViews.swift */; };
 		7F59BE74AD28699773796B2D /* PayAppXLSXRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FA461C7034DAC74FC8B0FBB /* PayAppXLSXRenderer.swift */; };
@@ -240,6 +244,7 @@
 		946FF567392494818D20BB07 /* AppNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2380E2E3DB04FD3BFBBC87CB /* AppNavigation.swift */; };
 		9534D7F9A881D002FA90F860 /* DataContextBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD983F907DFBB240BC58830 /* DataContextBuilder.swift */; };
 		9548C8FE61944EB9838B2A1C /* FileStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1457AB1F27C9C7902279360C /* FileStorageService.swift */; };
+		96D8704023C88EC977D45F18 /* CapturePhotoScanSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31085ECE23D6795B1346FCD1 /* CapturePhotoScanSheet.swift */; };
 		981C47AD2CD4F2B71D37A335 /* PhoneTodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 186F26B3FD55ECAAB01BF101 /* PhoneTodayView.swift */; };
 		98A186F68E9A68C04478827D /* TodoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE55FFFA9E85076D77C95BC8 /* TodoView.swift */; };
 		99B7A7A46BAC3EA4D24F8CAA /* llama.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9CBD37DF59091C54FB3DBA26 /* llama.xcframework */; };
@@ -252,6 +257,7 @@
 		9EBE2C4C5A504CB8A2D08324 /* PayAppPDFRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552E763F0EDDEF16D47F1055 /* PayAppPDFRenderer.swift */; };
 		9F96BAEB7DDD001C0BAC2794 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21737A4F1A7835C79DF0F894 /* AppTheme.swift */; };
 		9FC623C31AF5EB84DC3A36B6 /* CloudKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CB1A29BC6181124FA4E4DDD /* CloudKitService.swift */; };
+		A110FA1C799675BE02C52185 /* DocumentScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB94E0EAAEE86163BB4EB9D3 /* DocumentScannerView.swift */; };
 		A23A5C69960861053BDC79E9 /* SpellCheckedTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EA67BC51125ADDAB1D424F /* SpellCheckedTextEditor.swift */; };
 		A2D9055F8A3C8C6E0A01011B /* EquipmentRental.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA34885EDE9A7BE1C05F3A42 /* EquipmentRental.swift */; };
 		A499B40C156A3EE3E06CA71B /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28562AE650F8CE57BFC51B94 /* NotificationService.swift */; };
@@ -278,8 +284,10 @@
 		B38E23A8F69BDB947030698C /* ModelConversions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58398A718E943CC2D34502F3 /* ModelConversions.swift */; };
 		B44DAFB47E7E58BB6C2FC811 /* AssistantMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B4736E176810AB66924CAB0 /* AssistantMessage.swift */; };
 		B4642A8116F634DF7C794A13 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB8D10C49A60882B9F6EBA0 /* Project.swift */; };
+		B4A29E8F03FBA92B5D5282FF /* CapturePhotoScanSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31085ECE23D6795B1346FCD1 /* CapturePhotoScanSheet.swift */; };
 		B5C47F59DF21EF53C304AE83 /* InvoiceAgingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA963E7D349BE555D63F7EC9 /* InvoiceAgingWidget.swift */; };
 		B5D8DAD0AC2EA5D84B856FAE /* EquipmentRequestSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06759E4AAC18A9D898DF7896 /* EquipmentRequestSheets.swift */; };
+		B6F451B10A66CE0C6A52F212 /* PencilMarkupSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2FE6DD3BDE7F8F93BE73296 /* PencilMarkupSheet.swift */; };
 		B72FF7AEA4FCF2D1A5B01B32 /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2493EBC395F13A8EE6F94B4A /* WidgetBridge.swift */; };
 		B84C0F87BF9079178F06363E /* DailyLogSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3A97A58F909F9E21625E60 /* DailyLogSheets.swift */; };
 		B8CEB4D53BDAB93835B520AD /* MinimalXLSXWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F53834DFCDE3DE80B12BD2E /* MinimalXLSXWriter.swift */; };
@@ -295,6 +303,7 @@
 		C071A9F009963BF69053850C /* llama.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 9CBD37DF59091C54FB3DBA26 /* llama.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C193CA1D6916E67725CDF77F /* BidFormViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A91D93A2FD30748D38C7512 /* BidFormViews.swift */; };
 		C20F0E325E68739D5A4AACC2 /* Client.swift in Sources */ = {isa = PBXBuildFile; fileRef = D94423C9C5229CC31078E9B3 /* Client.swift */; };
+		C25A6C4C4EFF43E8BEA36844 /* PencilMarkupSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2FE6DD3BDE7F8F93BE73296 /* PencilMarkupSheet.swift */; };
 		C2A4B1C4986D7313497897B5 /* EquipmentOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 630778E6199E0CE162622606 /* EquipmentOverviewView.swift */; };
 		C2B447F331B4D22D9A59F1A3 /* RentalLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CECF2AD25ABAEE261DB9A1F9 /* RentalLiveActivityAttributes.swift */; };
 		C36CFCAAFA52987745A65BBF /* ConfirmationPinSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF30F3359D69BBCAA9858C00 /* ConfirmationPinSheet.swift */; };
@@ -501,6 +510,7 @@
 		2DD983F907DFBB240BC58830 /* DataContextBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataContextBuilder.swift; sourceTree = "<group>"; };
 		2E219DA3083B346857FFA6CF /* SteelSyncWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SteelSyncWidgets.entitlements; sourceTree = "<group>"; };
 		2E4FDB469A32E53EAB31384F /* CrewManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewManagementView.swift; sourceTree = "<group>"; };
+		31085ECE23D6795B1346FCD1 /* CapturePhotoScanSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturePhotoScanSheet.swift; sourceTree = "<group>"; };
 		361179C1473E1CCE4104B4DE /* ExportBidsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportBidsSheet.swift; sourceTree = "<group>"; };
 		382FFF1355B696458FB6E3D8 /* DataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataStore.swift; sourceTree = "<group>"; };
 		3A800CC308927F8E692D3235 /* SteelSyncShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelSyncShortcuts.swift; sourceTree = "<group>"; };
@@ -611,12 +621,14 @@
 		EFF376341208D9A91DACDCAB /* AssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantView.swift; sourceTree = "<group>"; };
 		F02A8419E7F23A58A8DA9A92 /* SteelSyncWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SteelSyncWidgetBundle.swift; sourceTree = "<group>"; };
 		F0BCD8B72FC4432A61854ECF /* PhoneRFILogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneRFILogView.swift; sourceTree = "<group>"; };
+		F2FE6DD3BDE7F8F93BE73296 /* PencilMarkupSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilMarkupSheet.swift; sourceTree = "<group>"; };
 		F67E9D199056D732376E0C57 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		F7B11124CBC093401AD48942 /* TodoOverviewWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoOverviewWidget.swift; sourceTree = "<group>"; };
 		F89C7F8FCAE982405AB863B9 /* BidDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BidDetailView.swift; sourceTree = "<group>"; };
 		F8DD979CA3D82559B1DCA65E /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F8F1EA2DBACE66865331D899 /* SteelSyncWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SteelSyncWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		FA963E7D349BE555D63F7EC9 /* InvoiceAgingWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceAgingWidget.swift; sourceTree = "<group>"; };
+		FB94E0EAAEE86163BB4EB9D3 /* DocumentScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentScannerView.swift; sourceTree = "<group>"; };
 		FC689C2F7F35721FD95F4C24 /* CloudShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudShareSheet.swift; sourceTree = "<group>"; };
 		FCE3EC102BCFE5379813F9A0 /* PhoneBonusesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneBonusesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -1065,6 +1077,16 @@
 			path = LLM;
 			sourceTree = "<group>";
 		};
+		CBE87E9B46E567AE924348FF /* Capture */ = {
+			isa = PBXGroup;
+			children = (
+				31085ECE23D6795B1346FCD1 /* CapturePhotoScanSheet.swift */,
+				FB94E0EAAEE86163BB4EB9D3 /* DocumentScannerView.swift */,
+				F2FE6DD3BDE7F8F93BE73296 /* PencilMarkupSheet.swift */,
+			);
+			path = Capture;
+			sourceTree = "<group>";
+		};
 		CFBB0012F86790594C4F8350 /* Projects */ = {
 			isa = PBXGroup;
 			children = (
@@ -1154,6 +1176,7 @@
 				3B81AEADCE1F43E04CB6E76A /* Assistant */,
 				2BB5320599DD31980C8B34B9 /* Bidding */,
 				D18CFFECEADFF6BCBD734C49 /* Calendar */,
+				CBE87E9B46E567AE924348FF /* Capture */,
 				961D56A53C4CD91820F693D0 /* Clients */,
 				39E2D00085AC8E3442E379BD /* Components */,
 				AE765B61C1B3852168916BDD /* Dashboard */,
@@ -1410,6 +1433,7 @@
 				AA6537063617E0A37800B62C /* BidsListPDFRenderer.swift in Sources */,
 				0D54CE80806F915E754BA8BD /* CalendarEvent.swift in Sources */,
 				7163927A8ADB0114065794D2 /* CalendarMainView.swift in Sources */,
+				96D8704023C88EC977D45F18 /* CapturePhotoScanSheet.swift in Sources */,
 				C20F0E325E68739D5A4AACC2 /* Client.swift in Sources */,
 				59282EE7A28041BC3C039D02 /* ClientsView.swift in Sources */,
 				D77CC958FF236DEACCF940D5 /* CloudKitConvertible.swift in Sources */,
@@ -1423,6 +1447,7 @@
 				ABC3D989F305CD4530CA9F18 /* DailyLogSheets.swift in Sources */,
 				AC8A65D4FFF3769673A80C37 /* DashboardView.swift in Sources */,
 				0EF2705BEFF256BA6D85E722 /* DataStore.swift in Sources */,
+				A110FA1C799675BE02C52185 /* DocumentScannerView.swift in Sources */,
 				162C0ED47A5BCC38EFF887DF /* Employee.swift in Sources */,
 				3E944CEE31E9BEEDBBE31AA4 /* EntryForm.swift in Sources */,
 				C2A4B1C4986D7313497897B5 /* EquipmentOverviewView.swift in Sources */,
@@ -1459,6 +1484,7 @@
 				86ECE93D4755FAAB85F598F7 /* PayAppXLSXRenderer.swift in Sources */,
 				303C11EFFB1A61451058E2AB /* PayApplication.swift in Sources */,
 				4B64B4CAB182C442FEB3D167 /* PencilCanvasView.swift in Sources */,
+				5A413BD329187EC755B54335 /* PencilMarkupSheet.swift in Sources */,
 				2CDB78805AA1608E3ABEB762 /* PersistenceService.swift in Sources */,
 				035F0339E5DF4CA533977826 /* PhoneBonusesView.swift in Sources */,
 				86CF2A367C6FF058E5D17713 /* PhoneComponents.swift in Sources */,
@@ -1533,6 +1559,7 @@
 				E98CD91B96193C776E54DC65 /* BidsListPDFRenderer.swift in Sources */,
 				EFB6CC866B88AD243004BE14 /* CalendarEvent.swift in Sources */,
 				7F4E112517C650F3BB9DC264 /* CalendarMainView.swift in Sources */,
+				7E238E37CC7D3319412C9905 /* CapturePhotoScanSheet.swift in Sources */,
 				153D7735DA36C7181B4B358E /* ChatBubbleView.swift in Sources */,
 				792D0D68A1F891F87E615614 /* Client.swift in Sources */,
 				342C95135BDA5FBCE2DDA7C3 /* ClientsView.swift in Sources */,
@@ -1549,6 +1576,7 @@
 				0BC92D0D54EF7E5286CB9D0C /* DashboardView.swift in Sources */,
 				9534D7F9A881D002FA90F860 /* DataContextBuilder.swift in Sources */,
 				8525133AD9B01D31CE61A2C8 /* DataStore.swift in Sources */,
+				37E16F604F1678B4A961DD3F /* DocumentScannerView.swift in Sources */,
 				4216F36D9D5833AFC52AA576 /* Employee.swift in Sources */,
 				2F42139D4B810A59392FA39E /* EntryForm.swift in Sources */,
 				1E3C94F14EF867BEAB6CDC59 /* EquipmentOverviewView.swift in Sources */,
@@ -1586,6 +1614,7 @@
 				7F59BE74AD28699773796B2D /* PayAppXLSXRenderer.swift in Sources */,
 				CDECF2AE5E870DBF76F4459E /* PayApplication.swift in Sources */,
 				709C22B318CBD0190B9957DE /* PencilCanvasView.swift in Sources */,
+				C25A6C4C4EFF43E8BEA36844 /* PencilMarkupSheet.swift in Sources */,
 				B2BCEC9F28159D542DFF98C1 /* PersistenceService.swift in Sources */,
 				2879A1A86FB1A6D90A6399AF /* PinService.swift in Sources */,
 				1FB3F764F5A7A83E59D3CDFC /* PlanningPad.swift in Sources */,
@@ -1684,6 +1713,7 @@
 				B37D0A1E125F2BDF1C346D83 /* BidsListPDFRenderer.swift in Sources */,
 				32B5A58D1D24918211EA5296 /* CalendarEvent.swift in Sources */,
 				6C700BB0CFA6979B48E3D832 /* CalendarMainView.swift in Sources */,
+				B4A29E8F03FBA92B5D5282FF /* CapturePhotoScanSheet.swift in Sources */,
 				2A6F5BFF70A8EC7CFB265060 /* ChatBubbleView.swift in Sources */,
 				0E19588BE0507477FC892030 /* Client.swift in Sources */,
 				D4ED81BE69288DFD06F93449 /* ClientsView.swift in Sources */,
@@ -1700,6 +1730,7 @@
 				2138F4FFD74F1F006BD9C985 /* DashboardView.swift in Sources */,
 				14BC3885EA461CB13B060178 /* DataContextBuilder.swift in Sources */,
 				547E41F233616859FCF071BA /* DataStore.swift in Sources */,
+				68D56035B1443F33C345C2F7 /* DocumentScannerView.swift in Sources */,
 				93F541157CA6635691298474 /* Employee.swift in Sources */,
 				FED8705EAA52BEC33CDB4741 /* EntryForm.swift in Sources */,
 				421313FAAF4CAE1AC6488D07 /* EquipmentOverviewView.swift in Sources */,
@@ -1737,6 +1768,7 @@
 				5549992AC9C751A099A07A26 /* PayAppXLSXRenderer.swift in Sources */,
 				19A6062F4253DEDA54ACF5C1 /* PayApplication.swift in Sources */,
 				6109246298FFB2E56B6EB311 /* PencilCanvasView.swift in Sources */,
+				B6F451B10A66CE0C6A52F212 /* PencilMarkupSheet.swift in Sources */,
 				492E407DF77C73C59CF88D76 /* PersistenceService.swift in Sources */,
 				43167E26FD8AE739B9093AF8 /* PinService.swift in Sources */,
 				6298C02F3B6F62665EA34C0E /* PlanningPad.swift in Sources */,
