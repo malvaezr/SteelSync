@@ -89,6 +89,18 @@ private struct _SpellCheckedTextView: UIViewRepresentable {
         tv.smartQuotesType = .no
         tv.smartDashesType = .no
         tv.textColor = UIColor(AppTheme.primaryText)
+
+        // Apple Pencil Scribble — UIKit installs a system text interaction on
+        // every editable UITextView/UITextField on iPadOS 14+, which renders
+        // the Scribble overlay and converts handwriting → text automatically.
+        // We set the relevant properties explicitly here so nothing in the
+        // SwiftUI wrapping accidentally disables Pencil hit-testing. (Standard
+        // SwiftUI `TextField` already inherits this from its underlying
+        // UITextField — no app code needed there.)
+        tv.isEditable = true
+        tv.isSelectable = true
+        tv.isUserInteractionEnabled = true
+
         tv.text = text
         return tv
     }

@@ -1,5 +1,21 @@
 import SwiftUI
 
+extension View {
+    /// Apply `.controlSize(.small)` on macOS only, leaving iPad/iPhone at the
+    /// default (regular) size so touch targets stay at the 44pt minimum the
+    /// Glass spec §6.2 requires. Use this on Mac-density toolbars (e.g. the
+    /// Gantt toolbar) so they stay compact on the desk and finger-friendly
+    /// on iPad.
+    @ViewBuilder
+    func macControlSizeSmall() -> some View {
+        #if os(macOS)
+        controlSize(.small)
+        #else
+        self
+        #endif
+    }
+}
+
 /// Cross-platform split view: HSplitView on macOS, HStack on iPadOS
 struct PlatformSplitView<Content: View>: View {
     @ViewBuilder let content: () -> Content
