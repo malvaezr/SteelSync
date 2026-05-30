@@ -9,10 +9,15 @@ struct ReportsView: View {
     @EnvironmentObject var dataStore: DataStore
     @State private var selectedReport = "Overview"
 
-    private let reports = ["Overview", "Projects", "Bidding", "Clients", "Financial", "Job Costing", "Overhead", "1099 Summary"]
+    private let reports = ["Overview", "Projects", "Bidding", "Clients", "Financial", "Job Costing", "Bonuses", "Overhead", "1099 Summary"]
     @State private var selectedJobCostProject: Project?
     @State private var selected1099Year: Int = Calendar.current.component(.year, from: Date())
     @State private var overheadRangePreset: OverheadRangePreset = .thisYear
+
+    // Bonus-report state.
+    @State private var bonusYear: Int = Calendar.current.component(.year, from: Date())
+    @State private var bonusBasis: BonusBasis = .revenue
+    @State private var bonusMultiplier: Double = 2.0  // percent
 
     var body: some View {
         VStack(spacing: 0) {
@@ -59,6 +64,8 @@ struct ReportsView: View {
                         financialReport
                     case "Job Costing":
                         jobCostingReport
+                    case "Bonuses":
+                        bonusesReport
                     case "Overhead":
                         overheadReport
                     case "1099 Summary":
@@ -1012,4 +1019,255 @@ struct ReportsView: View {
         y += rowHeight
     }
 
+    // MARK: - Bonuses Report
+
+    /// Estimates each foreman's bonus from the Gantt tasks they completed
+    /// in the selected year. Pct = foreman's completed-and-ended-in-year
+    /// task-days for the project ÷ that project's total task-days
+    /// (all tasks, all-time). Bonus = basis × pct × (multiplier / 100).
+    /// Profit basis is clamped at zero so a losing job doesn't pay a
+    /// negative bonus.
+    private var bonusesReport: some View {
+        let breakdowns = computeBonuses(year: bonusYear, basis: bonusBasis, multiplierPct: bonusMultiplier)
+        let totalPool = breakdowns.reduce(Decimal.zero) { $0 + $1.total }
+        let touchedProjects = Set(breakdowns.flatMap { $0.perProject.map(\.project.id.recordName) }).count
+
+        return VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+            Text("Foreman Bonus Estimate")
+                .font(AppTheme.Typography.title2)
+
+            Text("Per-foreman bonus estimate from the Gantt schedule. Percentage = the foreman's completed task-days this year on a project ÷ that project's total task-days (all tasks, all-time). Bonus = basis × percentage × multiplier. Profit basis is clamped at zero so losing projects pay no bonus.")
+                .font(.caption)
+                .foregroundColor(AppTheme.secondaryText)
+
+            GroupBox("Parameters") {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                    HStack(spacing: AppTheme.Spacing.md) {
+                        Text("Year")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .frame(width: 90, alignment: .leading)
+                        Picker("Year", selection: $bonusYear) {
+                            ForEach(availableBonusYears, id: \.self) { yr in
+                                Text(verbatim: "\(yr)").tag(yr)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        Spacer()
+                    }
+                    HStack(spacing: AppTheme.Spacing.md) {
+                        Text("Basis")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .frame(width: 90, alignment: .leading)
+                        Picker("Basis", selection: $bonusBasis) {
+                            ForEach(BonusBasis.allCases, id: \.self) { b in
+                                Text(b.rawValue).tag(b)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                    }
+                    HStack(spacing: AppTheme.Spacing.md) {
+                        Text("Multiplier")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .frame(width: 90, alignment: .leading)
+                        HStack(spacing: 6) {
+                            TextField("0.0", value: $bonusMultiplier, format: .number)
+                                .textFieldStyle(.appField)
+                                .frame(maxWidth: 90)
+                                #if !os(macOS)
+                                .keyboardType(.decimalPad)
+                                #endif
+                            Text("% of \(bonusBasis.rawValue.lowercased())")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                }
+                .padding(.vertical, AppTheme.Spacing.sm)
+            }
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 200))], spacing: AppTheme.Spacing.md) {
+                MetricCard(title: "Estimated Bonus Pool",
+                           value: totalPool.currencyFormatted,
+                           icon: "dollarsign.circle.fill",
+                           color: AppTheme.primaryOrange)
+                MetricCard(title: "Foremen With Bonus",
+                           value: "\(breakdowns.filter { $0.total > 0 }.count)",
+                           icon: "person.fill.checkmark",
+                           color: .green)
+                MetricCard(title: "Projects Touched",
+                           value: "\(touchedProjects)",
+                           icon: "building.2.fill",
+                           color: .blue)
+            }
+
+            if breakdowns.isEmpty {
+                Text("No foremen on file. Add crew in Operations → Crew & Timesheets, then mark them as Foreman.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, AppTheme.Spacing.lg)
+            } else {
+                ForEach(breakdowns) { b in
+                    GroupBox {
+                        DisclosureGroup {
+                            if b.perProject.isEmpty {
+                                Text("No completed tasks ended in \(String(bonusYear)).")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .padding(.vertical, 6)
+                            } else {
+                                VStack(alignment: .leading, spacing: 0) {
+                                    ForEach(b.perProject) { item in
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            HStack {
+                                                Text(item.project.title)
+                                                    .font(.callout)
+                                                    .lineLimit(1)
+                                                Spacer()
+                                                Text(item.contribution.currencyFormatted)
+                                                    .font(.callout.monospacedDigit())
+                                                    .foregroundColor(AppTheme.primaryText)
+                                            }
+                                            HStack(spacing: 6) {
+                                                Text("\(Int(item.completionPct * 100))% completed")
+                                                Text("·")
+                                                Text("\(item.foremanDays) / \(item.projectTotalDays) d")
+                                                Text("·")
+                                                Text("\(bonusBasis.rawValue) \(item.basis.currencyFormatted)")
+                                            }
+                                            .font(.caption2.monospacedDigit())
+                                            .foregroundColor(.secondary)
+                                        }
+                                        .padding(.vertical, 6)
+                                        if item.id != b.perProject.last?.id {
+                                            Divider()
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(b.foreman.fullName)
+                                        .font(AppTheme.Typography.headline)
+                                    Text("\(b.perProject.count) project\(b.perProject.count == 1 ? "" : "s") · \(b.totalCompletionDays) day\(b.totalCompletionDays == 1 ? "" : "s")")
+                                        .font(.caption.monospacedDigit())
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Text(b.total.currencyFormatted)
+                                    .font(.title3.monospacedDigit())
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(AppTheme.primaryOrange)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Years derived from Gantt task endDates so the year picker only offers
+    /// years with actual data. The current calendar year is always included
+    /// so a fresh install isn't stuck on a past year.
+    private var availableBonusYears: [Int] {
+        let cal = Calendar.current
+        let years = Set(dataStore.ganttTasks.map { cal.component(.year, from: $0.endDate) })
+        let thisYear = cal.component(.year, from: Date())
+        return Array(years.union([thisYear])).sorted(by: >)
+    }
+
+    /// Compute per-foreman bonus breakdowns for the given year + basis +
+    /// multiplier. Counts a foreman's completed Gantt tasks whose endDate
+    /// falls in the year, weighted by `durationDays`, and divides by the
+    /// project's total task-day scope.
+    private func computeBonuses(year: Int, basis: BonusBasis, multiplierPct: Double) -> [BonusBreakdown] {
+        let cal = Calendar.current
+        guard let yearStart = cal.date(from: DateComponents(year: year, month: 1, day: 1)),
+              let yearEnd = cal.date(from: DateComponents(year: year + 1, month: 1, day: 1)) else {
+            return []
+        }
+        let foremen = dataStore.employees.filter { $0.isForeman }
+        let multiplierFactor = Decimal(multiplierPct / 100.0)
+
+        // Precompute project total task-days once.
+        var projectTotals: [String: Int] = [:]
+        for task in dataStore.ganttTasks {
+            projectTotals[task.projectID, default: 0] += task.durationDays
+        }
+
+        var result: [BonusBreakdown] = []
+        for foreman in foremen {
+            let name = foreman.fullName
+            let matching = dataStore.ganttTasks.filter { t in
+                t.status == .completed
+                    && t.endDate >= yearStart && t.endDate < yearEnd
+                    && t.assignedTo
+                        .trimmingCharacters(in: .whitespaces)
+                        .caseInsensitiveCompare(name) == .orderedSame
+            }
+            var byProject: [String: Int] = [:]
+            for t in matching {
+                byProject[t.projectID, default: 0] += t.durationDays
+            }
+
+            var items: [BonusBreakdownItem] = []
+            for (projectID, foremanDays) in byProject {
+                guard let project = dataStore.projects.first(where: { $0.id.recordName == projectID }) else { continue }
+                let projectDays = projectTotals[projectID, default: 0]
+                guard projectDays > 0 else { continue }
+                let basisValue: Decimal
+                switch basis {
+                case .revenue: basisValue = project.totalRevenue
+                case .profit:  basisValue = max(0, project.profit)
+                }
+                let pct = Decimal(foremanDays) / Decimal(projectDays)
+                let contribution = basisValue * pct * multiplierFactor
+                items.append(BonusBreakdownItem(
+                    project: project,
+                    projectTotalDays: projectDays,
+                    foremanDays: foremanDays,
+                    basis: basisValue,
+                    contribution: contribution
+                ))
+            }
+            items.sort { $0.contribution > $1.contribution }
+            result.append(BonusBreakdown(foreman: foreman, perProject: items))
+        }
+        return result.sorted { $0.total > $1.total }
+    }
+
+}
+
+// MARK: - Bonus report types
+
+enum BonusBasis: String, CaseIterable, Hashable {
+    case revenue = "Revenue"
+    case profit = "Profit"
+}
+
+struct BonusBreakdown: Identifiable {
+    let foreman: Employee
+    let perProject: [BonusBreakdownItem]
+    var total: Decimal { perProject.reduce(Decimal.zero) { $0 + $1.contribution } }
+    var totalCompletionDays: Int { perProject.reduce(0) { $0 + $1.foremanDays } }
+    var id: UUID { foreman.id }
+}
+
+struct BonusBreakdownItem: Identifiable {
+    let project: Project
+    let projectTotalDays: Int
+    let foremanDays: Int
+    let basis: Decimal
+    let contribution: Decimal
+    var completionPct: Double {
+        projectTotalDays > 0 ? Double(foremanDays) / Double(projectTotalDays) : 0
+    }
+    var id: String { project.id.recordName }
 }
