@@ -66,6 +66,21 @@ struct PhoneReportsSummaryView: View {
                     icon: "wallet.bifold.fill",
                     color: AppTheme.info
                 )
+
+                // Tap-through into the year's Foreman Bonus calculator.
+                // Two-column tile in the same grid so the layout stays even.
+                NavigationLink {
+                    PhoneBonusesView()
+                } label: {
+                    MetricCard(
+                        title: "Foreman Bonus YTD",
+                        value: dataStore.bonusPoolYTD().currencyFormatted,
+                        icon: "person.fill.checkmark",
+                        color: AppTheme.primaryOrange,
+                        subtitle: "Tap for breakdown"
+                    )
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, AppTheme.Spacing.md)
             .padding(.bottom, AppTheme.Spacing.lg)
