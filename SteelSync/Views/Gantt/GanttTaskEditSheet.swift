@@ -177,7 +177,7 @@ struct GanttTaskEditSheet: View {
 
             EntrySection("Additional", systemImage: "note.text") {
                 LabeledField(label: "Assigned To") {
-                    TextField("Assigned To", text: $assignedTo).textFieldStyle(.appField)
+                    assignedToPicker
                 }
                 LabeledField(label: "Notes") {
                     NotesField(text: $notes, minHeight: 70)
@@ -218,6 +218,51 @@ struct GanttTaskEditSheet: View {
                 projectID = first.id.recordName
             }
         }
+    }
+
+    /// Grouped picker over the active employee roster (Foremen section first,
+    /// then Crew). If the task currently holds a legacy free-text name that
+    /// isn't on the roster, it stays selected and shows as "(legacy)" so we
+    /// don't quietly clobber it — the user can re-pick to update.
+    @ViewBuilder
+    private var assignedToPicker: some View {
+        let active = dataStore.activeEmployees
+        let foremen = active.filter { $0.isForeman }
+        let crew = active.filter { !$0.isForeman }
+        let allNames = Set(active.map { $0.fullName })
+        let isLegacy = !assignedTo.isEmpty && !allNames.contains(assignedTo)
+
+        Picker("", selection: $assignedTo) {
+            Text("Unassigned").tag("")
+            if !foremen.isEmpty {
+                Section("Foremen") {
+                    ForEach(foremen) { emp in
+                        Text(emp.fullName).tag(emp.fullName)
+                    }
+                }
+            }
+            if !crew.isEmpty {
+                Section("Crew") {
+                    ForEach(crew) { emp in
+                        Text(emp.fullName).tag(emp.fullName)
+                    }
+                }
+            }
+            if isLegacy {
+                Section("Other") {
+                    Text("\(assignedTo) (legacy)").tag(assignedTo)
+                }
+            }
+            if active.isEmpty {
+                Section {
+                    Text("Add crew in Operations → Crew & Timesheets")
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .appControlSurface()
     }
 
     private func save() {
