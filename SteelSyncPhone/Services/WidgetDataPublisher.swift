@@ -96,6 +96,12 @@ struct WidgetDataPublisher {
             + store.ganttTasks.filter { $0.endDate < Date() && $0.status != .completed }.count
         defaults.set(attention, forKey: "todayAttentionCount")
 
+        // Foreman bonus pool snapshot (YTD, revenue basis, 2% multiplier) —
+        // drives the ForemanBonusWidget.
+        let bonusPool = NSDecimalNumber(decimal: store.bonusPoolYTD()).doubleValue
+        defaults.set(bonusPool, forKey: "bonusPoolYTD")
+        defaults.set(store.employees.filter { $0.isForeman }.count, forKey: "foremenCount")
+
         // Timestamp marker so WidgetDataStore knows real data has been written
         defaults.set(Date().timeIntervalSince1970, forKey: "updatedAt")
 

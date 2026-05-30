@@ -108,6 +108,14 @@ struct WidgetBridge {
         defaults.set(projectIDs, forKey: "ganttProjectIDs")
         defaults.set(projectIDs.map { projectIDToName[$0] ?? "Unknown" }, forKey: "ganttProjectNames")
 
+        // Foreman bonus pool snapshot (year-to-date, revenue basis, 2 %
+        // multiplier) — drives the ForemanBonusWidget. Multiplier tweaks live
+        // in Reports → Bonuses for what-if analysis; the widget shows the
+        // default snapshot.
+        let bonusPool = NSDecimalNumber(decimal: store.bonusPoolYTD()).doubleValue
+        defaults.set(bonusPool, forKey: "bonusPoolYTD")
+        defaults.set(store.employees.filter { $0.isForeman }.count, forKey: "foremenCount")
+
         #if canImport(WidgetKit)
         WidgetCenter.shared.reloadAllTimelines()
         #endif

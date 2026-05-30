@@ -9,5 +9,6 @@ struct SteelSyncWidgetBundle: WidgetBundle {
         BidPipelineWidget()
         GanttPreviewWidget()
         InvoiceAgingWidget()
+        ForemanBonusWidget()
     }
 }

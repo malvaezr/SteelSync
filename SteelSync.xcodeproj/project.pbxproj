@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		02E296A5699C24955B9A577E /* TimekeepingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F14DBFBCB15B4C618E554D /* TimekeepingView.swift */; };
+		035F0339E5DF4CA533977826 /* PhoneBonusesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE3EC102BCFE5379813F9A0 /* PhoneBonusesView.swift */; };
 		0448B5ABFD2A58F5D8FB1883 /* GanttChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F93A2FDEE6423BA41E6064 /* GanttChartView.swift */; };
 		05376EA5A8EAEAFF36113F1D /* AssistantMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B4736E176810AB66924CAB0 /* AssistantMessage.swift */; };
 		05B06EF1ABA1DB9037FBBE41 /* PayAppPDFRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552E763F0EDDEF16D47F1055 /* PayAppPDFRenderer.swift */; };
@@ -181,6 +182,7 @@
 		709C22B318CBD0190B9957DE /* PencilCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E414F6FDD05FC4316E2ED3 /* PencilCanvasView.swift */; };
 		70F2E8653915BD6C764AD83E /* RowReorderDropDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED56B7484A529A5F7C23A349 /* RowReorderDropDelegate.swift */; };
 		7163927A8ADB0114065794D2 /* CalendarMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD77C25FBFE22464C5E0183 /* CalendarMainView.swift */; };
+		71B6036AA64863D1D56066C5 /* ForemanBonusWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88023D740383E25C188E6DEF /* ForemanBonusWidget.swift */; };
 		71B940F460308C7A318A6C70 /* OverheadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A8E550E7DDAFD4619DE39D6 /* OverheadView.swift */; };
 		743B1BF2264ED558F7CB9B80 /* WidgetDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08744754F83C0EF0B550A65 /* WidgetDataProvider.swift */; };
 		74BF9E501E6BF3ED56E6368A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8DD979CA3D82559B1DCA65E /* ContentView.swift */; };
@@ -291,6 +293,7 @@
 		C5B9F442E5F553DA1CC0F6C7 /* CloudKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CB1A29BC6181124FA4E4DDD /* CloudKitService.swift */; };
 		C69A0E6BA7DE1E9391AF8B47 /* GanttTaskEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7942C645F9E3BF0378EFFFBF /* GanttTaskEditSheet.swift */; };
 		C7308CB5FD55DF7B877EA075 /* ShareAcceptanceDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBEDCAD4902D180D053827CE /* ShareAcceptanceDelegate.swift */; };
+		C73FD42932BF3E818CEDADE8 /* ForemanBonusWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88023D740383E25C188E6DEF /* ForemanBonusWidget.swift */; };
 		C8CDA35C866FBBB5EEB3639A /* PayAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84676B7C0A4D5D79E4F93B51 /* PayAppView.swift */; };
 		C9D68512441FF880E231EE23 /* ResponseFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45C110DB5B14052C675D8B39 /* ResponseFormatter.swift */; };
 		CA2A7947457FF4671EDB98DC /* SubcontractorAIAPDFViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E7F411A108A2A42E227A28 /* SubcontractorAIAPDFViews.swift */; };
@@ -334,6 +337,7 @@
 		EE2FD36BC39A5B5B28F76472 /* GanttTimelineGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7C2C4520D17CE6438BF0BF4 /* GanttTimelineGridView.swift */; };
 		EE7CEED940F142256293F284 /* ProjectDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E400BF6C446F19B0101B2A3 /* ProjectDetailView.swift */; };
 		EFB6CC866B88AD243004BE14 /* CalendarEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76ADDAF194FFEAE179F13A66 /* CalendarEvent.swift */; };
+		EFF4345F54D4CCEB90235A90 /* ForemanBonusWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88023D740383E25C188E6DEF /* ForemanBonusWidget.swift */; };
 		F038579942D400560EDB43F0 /* ExportBidsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 361179C1473E1CCE4104B4DE /* ExportBidsSheet.swift */; };
 		F10AB57AEC8354B6D0AAE6E3 /* PlanningPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23F45CE67DC5A5F39DB10635 /* PlanningPad.swift */; };
 		F1302595A8DDF1FDBC2E9400 /* ReportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFF1D8406912DF24AF71B5B7 /* ReportsView.swift */; };
@@ -528,6 +532,7 @@
 		812971A7EA828E9BF47A7BB6 /* PDFExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFExportService.swift; sourceTree = "<group>"; };
 		81F5EB7AB8F268B9A9112F38 /* SummaryWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryWidget.swift; sourceTree = "<group>"; };
 		84676B7C0A4D5D79E4F93B51 /* PayAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayAppView.swift; sourceTree = "<group>"; };
+		88023D740383E25C188E6DEF /* ForemanBonusWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForemanBonusWidget.swift; sourceTree = "<group>"; };
 		880EA42553D852F0AEB90DCB /* iPadCompactRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iPadCompactRoot.swift; sourceTree = "<group>"; };
 		8B4736E176810AB66924CAB0 /* AssistantMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantMessage.swift; sourceTree = "<group>"; };
 		8BFD8E6173E599D60E1E9C2C /* PhoneComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneComponents.swift; sourceTree = "<group>"; };
@@ -595,6 +600,7 @@
 		F8F1EA2DBACE66865331D899 /* SteelSyncWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SteelSyncWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		FA963E7D349BE555D63F7EC9 /* InvoiceAgingWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceAgingWidget.swift; sourceTree = "<group>"; };
 		FC689C2F7F35721FD95F4C24 /* CloudShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudShareSheet.swift; sourceTree = "<group>"; };
+		FCE3EC102BCFE5379813F9A0 /* PhoneBonusesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneBonusesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -847,6 +853,7 @@
 		7FB3030215B987966CC9827B /* More */ = {
 			isa = PBXGroup;
 			children = (
+				FCE3EC102BCFE5379813F9A0 /* PhoneBonusesView.swift */,
 				4DC3FA0FE157ACF0A04F1B49 /* PhoneEmployeeDirectoryView.swift */,
 				05696EA88AFDF328A1548B80 /* PhoneEquipmentView.swift */,
 				7220A96843A08F66CEE450BB /* PhoneMoreView.swift */,
@@ -1068,6 +1075,7 @@
 			isa = PBXGroup;
 			children = (
 				474B8F17059E432765BE0F9B /* BidPipelineWidget.swift */,
+				88023D740383E25C188E6DEF /* ForemanBonusWidget.swift */,
 				5C29620A98DF4DA632CB4332 /* GanttPreviewWidget.swift */,
 				A22D7545054C909577915F25 /* Info.plist */,
 				FA963E7D349BE555D63F7EC9 /* InvoiceAgingWidget.swift */,
@@ -1430,6 +1438,7 @@
 				303C11EFFB1A61451058E2AB /* PayApplication.swift in Sources */,
 				4B64B4CAB182C442FEB3D167 /* PencilCanvasView.swift in Sources */,
 				2CDB78805AA1608E3ABEB762 /* PersistenceService.swift in Sources */,
+				035F0339E5DF4CA533977826 /* PhoneBonusesView.swift in Sources */,
 				86CF2A367C6FF058E5D17713 /* PhoneComponents.swift in Sources */,
 				2405A886CAD979A06CB39759 /* PhoneContentView.swift in Sources */,
 				BE43AF9B67165AA48890E2A2 /* PhoneDashboardView.swift in Sources */,
@@ -1597,6 +1606,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4728108E4DAD3A8D3746931A /* BidPipelineWidget.swift in Sources */,
+				EFF4345F54D4CCEB90235A90 /* ForemanBonusWidget.swift in Sources */,
 				4E5AA43963F0AFBFF77112F6 /* GanttPreviewWidget.swift in Sources */,
 				B5C47F59DF21EF53C304AE83 /* InvoiceAgingWidget.swift in Sources */,
 				17887569BD230D1305C2CEB3 /* SteelSyncWidgetBundle.swift in Sources */,
@@ -1612,6 +1622,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				46D33D4276F9904235511044 /* BidPipelineWidget.swift in Sources */,
+				C73FD42932BF3E818CEDADE8 /* ForemanBonusWidget.swift in Sources */,
 				F8A42C52AA5F7DE4F9598464 /* GanttPreviewWidget.swift in Sources */,
 				9C001B6912D023018CE7A507 /* InvoiceAgingWidget.swift in Sources */,
 				7722908EB7777EE7187F8640 /* SteelSyncWidgetBundle.swift in Sources */,
@@ -1737,6 +1748,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8D9C9FFD5559FE77642C5305 /* BidPipelineWidget.swift in Sources */,
+				71B6036AA64863D1D56066C5 /* ForemanBonusWidget.swift in Sources */,
 				FB74651821D3D790652E95B4 /* GanttPreviewWidget.swift in Sources */,
 				3D6864EEA125240B6F086F6E /* InvoiceAgingWidget.swift in Sources */,
 				9AFBFB4EAC47EFC479E934B8 /* SteelSyncWidgetBundle.swift in Sources */,
