@@ -18,6 +18,40 @@ struct TodayView: View {
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     var body: some View {
+        // iPad in portrait → field cockpit (§6.7: capture-tile grid + glance
+        // strip + today's tasks). iPad landscape and Mac keep the desk-style
+        // briefing. GeometryReader compares width × height because iPad
+        // portrait full-screen is regular × regular, so size class alone
+        // can't distinguish.
+        Group {
+            #if os(iOS)
+            GeometryReader { proxy in
+                if UIDevice.current.userInterfaceIdiom == .pad,
+                   proxy.size.height > proxy.size.width {
+                    portraitBody
+                } else {
+                    deskBody
+                }
+            }
+            #else
+            deskBody
+            #endif
+        }
+        .onReceive(timer) { value in now = value }
+        .sheet(isPresented: $showQuickEntryProjectPicker) {
+            QuickEntryProjectPicker(onPick: { project in
+                quickEntryProject = project
+                showQuickEntryProjectPicker = false
+            })
+        }
+        .sheet(item: $quickEntryProject) { project in
+            QuickEntrySheet(project: project)
+        }
+    }
+
+    // MARK: - Desk body (Mac, iPad landscape)
+
+    private var deskBody: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
                 ScreenHeader(
@@ -56,23 +90,256 @@ struct TodayView: View {
             .opacity(appeared ? 1 : 0)
             .offset(y: appeared ? 0 : 8)
         }
-        // Overview screen → opt into the graphite gradient wallpaper (hybrid policy).
         .glassScreenBackground(true)
-        .onAppear {
-            // Page-load fade + rise (§5), skipped under Reduce Motion.
-            if reduceMotion { appeared = true }
-            else { withAnimation(.easeOut(duration: 0.3)) { appeared = true } }
+        .onAppear { triggerAppearAnimation() }
+    }
+
+    private func triggerAppearAnimation() {
+        if reduceMotion { appeared = true }
+        else { withAnimation(.easeOut(duration: 0.3)) { appeared = true } }
+    }
+
+    // MARK: - Portrait body (iPad portrait → §6.7 field cockpit)
+    //
+    // A focused field-use layout for portrait iPad: compact header, glance
+    // strip of the three numbers Ruben checks most often, big capture-tile
+    // grid (wraps existing actions; Photo / Pencil ride as Phase-4 placeholders),
+    // then today's actually-scheduled Gantt tasks as big rows. Existing
+    // briefing sections live on the desk body and reappear when the iPad
+    // rotates back to landscape.
+
+    private var portraitBody: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                // Header
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(greeting)
+                        .font(.system(size: 30, weight: .semibold))
+                        .foregroundColor(AppTheme.primaryText)
+                    Text(now.formatted("EEEE, MMMM d, yyyy"))
+                        .font(.system(size: 14, weight: .medium))
+                        .monospacedDigit()
+                        .foregroundColor(AppTheme.secondaryText)
+                }
+
+                // Glance strip
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    glanceCard(title: "Attention",
+                               value: "\(portraitAttentionCount)",
+                               icon: "exclamationmark.bubble.fill",
+                               color: portraitAttentionCount > 0 ? .red : .green)
+                    glanceCard(title: "Rentals",
+                               value: "\(dataStore.allActiveRentalCount)",
+                               icon: "shippingbox.fill",
+                               color: AppTheme.primaryOrange)
+                    glanceCard(title: "Bonus YTD",
+                               value: compactCurrency(dataStore.bonusPoolYTD()),
+                               icon: "person.fill.checkmark",
+                               color: .green)
+                }
+
+                // Capture tile grid
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Capture")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(AppTheme.tertiaryText)
+                        .tracking(0.4)
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+                        captureTile(title: "Quick Entry",
+                                    subtitle: "Payroll · costs · CO",
+                                    icon: "bolt.fill",
+                                    color: AppTheme.primaryOrange) {
+                            showQuickEntryProjectPicker = true
+                        }
+                        captureTile(title: "Find Anything",
+                                    subtitle: "Global search",
+                                    icon: "magnifyingglass",
+                                    color: Glass.sub) {
+                            navigationState.showGlobalSearch = true
+                        }
+                        captureTile(title: "Open Tasks",
+                                    subtitle: "Tap to triage",
+                                    icon: "checklist",
+                                    color: Glass.warning) {
+                            navigationState.selectedSection = .todo
+                        }
+                        captureTile(title: "Open Schedule",
+                                    subtitle: "Gantt + crew",
+                                    icon: "calendar.day.timeline.left",
+                                    color: Glass.info) {
+                            navigationState.selectedSection = .schedule
+                        }
+                        captureTile(title: "Photo / Scan",
+                                    subtitle: "Phase 4",
+                                    icon: "camera.fill",
+                                    color: AppTheme.tertiaryText,
+                                    disabled: true) { }
+                        captureTile(title: "Pencil Markup",
+                                    subtitle: "Phase 4",
+                                    icon: "pencil.tip",
+                                    color: AppTheme.tertiaryText,
+                                    disabled: true) { }
+                    }
+                }
+
+                // Today's actually-scheduled Gantt tasks
+                if !portraitTodaysTasks.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Today's Schedule")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(AppTheme.tertiaryText)
+                                .tracking(0.4)
+                            Spacer()
+                            Text("\(portraitTodaysTasks.count) task\(portraitTodaysTasks.count == 1 ? "" : "s")")
+                                .font(.caption2.monospacedDigit())
+                                .foregroundColor(AppTheme.secondaryText)
+                        }
+                        VStack(spacing: 6) {
+                            ForEach(portraitTodaysTasks.prefix(8), id: \.id) { task in
+                                portraitTaskRow(task)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(AppTheme.Spacing.lg)
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 8)
         }
-        .onReceive(timer) { value in now = value }
-        .sheet(isPresented: $showQuickEntryProjectPicker) {
-            QuickEntryProjectPicker(onPick: { project in
-                quickEntryProject = project
-                showQuickEntryProjectPicker = false
-            })
+        .glassScreenBackground(true)
+        .onAppear { triggerAppearAnimation() }
+    }
+
+    // MARK: Portrait — small reusable views
+
+    @ViewBuilder
+    private func glanceCard(title: String, value: String, icon: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(color)
+            Text(value)
+                .font(.system(size: 26, weight: .semibold))
+                .monospacedDigit()
+                .foregroundColor(AppTheme.primaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(AppTheme.secondaryText)
         }
-        .sheet(item: $quickEntryProject) { project in
-            QuickEntrySheet(project: project)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .appPanel(cornerRadius: 12)
+    }
+
+    @ViewBuilder
+    private func captureTile(title: String,
+                             subtitle: String,
+                             icon: String,
+                             color: Color,
+                             disabled: Bool = false,
+                             action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(color.opacity(0.18))
+                    .frame(width: 44, height: 44)
+                    .overlay(
+                        Image(systemName: icon)
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(color)
+                    )
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(AppTheme.primaryText)
+                    .lineLimit(2)
+                Text(subtitle)
+                    .font(.system(size: 11))
+                    .foregroundColor(AppTheme.secondaryText)
+                    .lineLimit(1)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 130, alignment: .leading)
+            .appPanel(cornerRadius: 14)
+            .opacity(disabled ? 0.45 : 1)
         }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+    }
+
+    @ViewBuilder
+    private func portraitTaskRow(_ task: GanttTask) -> some View {
+        HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(task.category.color)
+                .frame(width: 4, height: 36)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(task.name)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(AppTheme.primaryText)
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    let projectName = dataStore.projects.first { $0.id.recordName == task.projectID }?.title ?? ""
+                    if !projectName.isEmpty {
+                        Text(projectName)
+                            .font(.caption)
+                            .foregroundColor(AppTheme.secondaryText)
+                            .lineLimit(1)
+                    }
+                    let assignees = task.assignees
+                    if !assignees.isEmpty {
+                        Text("·").font(.caption).foregroundColor(.secondary)
+                        Text(assignees.joined(separator: ", "))
+                            .font(.caption)
+                            .foregroundColor(AppTheme.secondaryText)
+                            .lineLimit(1)
+                    }
+                }
+            }
+            Spacer()
+            Image(systemName: task.status.icon)
+                .font(.system(size: 14))
+                .foregroundColor(task.statusColor)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .appRow(cornerRadius: 12)
+    }
+
+    // MARK: Portrait — computed data slices
+
+    /// Combined attention count for the portrait glance card.
+    private var portraitAttentionCount: Int {
+        dataStore.overdueTodos.count + overdueGanttTasks.count + overdueRFIs.count
+    }
+
+    /// Local compact-currency formatter (`.notation(.compactName)` would be
+    /// cleaner but only ships on macOS 15+; deployment target is 14).
+    private func compactCurrency(_ value: Decimal) -> String {
+        let d = NSDecimalNumber(decimal: value).doubleValue
+        if d >= 1_000_000 {
+            return String(format: "$%.1fM", d / 1_000_000)
+        } else if d >= 1_000 {
+            return String(format: "$%.0fK", d / 1_000)
+        } else {
+            return value.currencyFormatted
+        }
+    }
+
+    /// Gantt tasks that intersect "today" — `startDate ≤ today < endDate`.
+    /// Sorted by startDate so older-but-still-active tasks lead.
+    private var portraitTodaysTasks: [GanttTask] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: now)
+        let tomorrow = cal.date(byAdding: .day, value: 1, to: today) ?? today
+        return dataStore.ganttTasks
+            .filter { task in
+                let start = cal.startOfDay(for: task.startDate)
+                return start < tomorrow && task.endDate > today
+            }
+            .sorted { $0.startDate < $1.startDate }
     }
 
     // MARK: - Greeting
