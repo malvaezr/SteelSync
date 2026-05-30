@@ -1,5 +1,8 @@
 import SwiftUI
 import CloudKit
+#if os(iOS)
+import ActivityKit
+#endif
 
 @MainActor
 class DataStore: ObservableObject {
@@ -1016,6 +1019,80 @@ class DataStore: ObservableObject {
     var allActiveRentalCount: Int {
         equipmentRentals.values.flatMap { $0 }.filter { $0.isActive }.count
     }
+
+    #if os(iOS)
+    /// Start (or refresh) the lock-screen / Dynamic-Island Live Activity for
+    /// `rental`. If a Live Activity for this rental is already running it's
+    /// updated rather than re-created. iOS 16.2+ only; `await`able from any
+    /// context. See `Models/RentalLiveActivityAttributes.swift` and
+    /// `SteelSyncWidgets/RentalLiveActivityWidget.swift`.
+    @available(iOS 16.2, *)
+    @MainActor
+    func startRentalLiveActivity(_ rental: EquipmentRental, projectName: String) async {
+        let cal = Calendar.current
+        let daysOnRent = cal.dateComponents([.day], from: rental.startDate, to: Date()).day ?? 0
+        let into28 = daysOnRent % 28
+        let nextCutoff = into28 == 0 ? 0 : (28 - into28)
+        let state = RentalActivityAttributes.ContentState(
+            daysOnRent: daysOnRent,
+            nextCutoffDays: nextCutoff,
+            status: "On Rent"
+        )
+
+        // If we already have a Live Activity for this exact rental
+        // (matched by equipment name + start date), update it instead of
+        // requesting a new one.
+        let existing = ActivityKit.Activity<RentalActivityAttributes>.activities.first(where: { a in
+            a.attributes.equipmentName == rental.equipmentName
+                && a.attributes.startDate == rental.startDate
+        })
+        if let activity = existing {
+            await activity.update(using: state)
+            return
+        }
+
+        let attrs = RentalActivityAttributes(
+            equipmentName: rental.equipmentName,
+            projectName: projectName,
+            startDate: rental.startDate
+        )
+        do {
+            _ = try ActivityKit.Activity<RentalActivityAttributes>.request(
+                attributes: attrs,
+                contentState: state,
+                pushType: nil
+            )
+        } catch {
+            // Most common failure: NSSupportsLiveActivities=NO or the user
+            // has Live Activities disabled in iOS Settings → Face ID & Passcode.
+            // Swallow — the Live Activity simply doesn't appear.
+            print("[RentalLiveActivity] start failed: \(error)")
+        }
+    }
+
+    /// End ALL active rental Live Activities — call when the user explicitly
+    /// stops them, or fold per-rental ends into the rental-close path.
+    @available(iOS 16.2, *)
+    @MainActor
+    func endRentalLiveActivities() async {
+        for activity in ActivityKit.Activity<RentalActivityAttributes>.activities {
+            await activity.end(using: activity.contentState, dismissalPolicy: .immediate)
+        }
+    }
+
+    /// End the Live Activity (if any) that matches this specific rental —
+    /// safer than `endRentalLiveActivities()` when the user has more than one
+    /// rental being tracked simultaneously.
+    @available(iOS 16.2, *)
+    @MainActor
+    func endRentalLiveActivity(for rental: EquipmentRental) async {
+        for activity in ActivityKit.Activity<RentalActivityAttributes>.activities
+        where activity.attributes.equipmentName == rental.equipmentName
+            && activity.attributes.startDate == rental.startDate {
+            await activity.end(using: activity.contentState, dismissalPolicy: .immediate)
+        }
+    }
+    #endif
 
     func deleteRental(_ rental: EquipmentRental, from projectID: CKRecord.ID) {
         // If closed, also remove linked cost from local AND cloud

@@ -98,6 +98,7 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
         UILaunchScreen: {}
         CKSharingSupported: true
+        NSSupportsLiveActivities: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jrfv.SteelSync
@@ -129,6 +130,7 @@ targets:
         type: group
         excludes:
           - "SteelSyncWidgets-Mac.entitlements"
+      - path: SteelSync/Models/RentalLiveActivityAttributes.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jrfv.SteelSync.SteelSyncWidgets
@@ -221,6 +223,7 @@ targets:
             CFBundleURLSchemes: [steelsync]
         UILaunchScreen: {}
         CKSharingSupported: true
+        NSSupportsLiveActivities: true
     dependencies:
       - target: SteelSyncWidgets
         embed: true
@@ -233,6 +236,7 @@ targets:
     sources:
       - path: SteelSyncWidgets
         type: group
+      - path: SteelSync/Models/RentalLiveActivityAttributes.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jrfv.SteelSync.Phone.SteelSyncWidgets

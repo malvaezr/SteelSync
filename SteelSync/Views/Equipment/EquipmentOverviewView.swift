@@ -444,6 +444,36 @@ struct EquipmentOverviewView: View {
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
+
+                // Live Activity controls (iOS 16.2+, only while rental is
+                // active). Shows a day-counter + cutoff countdown on the
+                // Lock Screen and in the Dynamic Island.
+                #if os(iOS)
+                if #available(iOS 16.2, *), rental.endDate == nil {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Button {
+                            Task {
+                                await dataStore.startRentalLiveActivity(rental, projectName: projectName)
+                            }
+                        } label: {
+                            Label("Track on Lock Screen", systemImage: "rectangle.on.rectangle.angled")
+                        }
+                        .buttonStyle(.appSecondary)
+                        .controlSize(.small)
+                        Button {
+                            Task {
+                                await dataStore.endRentalLiveActivity(for: rental)
+                            }
+                        } label: {
+                            Label("Stop", systemImage: "stop.circle")
+                        }
+                        .buttonStyle(.appGhost)
+                        .controlSize(.small)
+                        Spacer()
+                    }
+                    .padding(.top, AppTheme.Spacing.xs)
+                }
+                #endif
             }
             .padding(.vertical, AppTheme.Spacing.sm)
         }
