@@ -11,6 +11,9 @@ import SwiftUI
 //   }
 struct ScreenHeader<Actions: View>: View {
     @ObservedObject private var themeManager = ThemeManager.shared
+    /// Subscribes to the singleton DataStore so the offline chip (§6.6)
+    /// reflects sync state without each caller needing to inject anything.
+    @ObservedObject private var dataStore = DataStore.shared
     let title: String
     var subtitle: String? = nil
     var icon: String? = nil
@@ -53,6 +56,7 @@ struct ScreenHeader<Actions: View>: View {
                 }
             }
             .layoutPriority(0)
+            offlineIndicator
             Spacer(minLength: AppTheme.Spacing.sm)
             actions()
                 .layoutPriority(1)
@@ -74,6 +78,35 @@ struct ScreenHeader<Actions: View>: View {
                 .fill(themeManager.glassEnabled ? Glass.hairline : Color.gray.opacity(0.15))
                 .frame(height: themeManager.glassEnabled ? 1 : 0.5)
         }
+    }
+
+    /// Offline / sync-error pill (§6.6). Renders nothing when the app is
+    /// happily syncing or in a transient busy state — only the failure
+    /// states ride next to the title so they're immediately visible.
+    @ViewBuilder
+    private var offlineIndicator: some View {
+        switch dataStore.syncStatus {
+        case .local:
+            statusChip(icon: "wifi.slash", label: "Offline", color: Color.orange)
+        case .error:
+            statusChip(icon: "exclamationmark.icloud.fill", label: "Sync error", color: Color.red)
+        default:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func statusChip(icon: String, label: String, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.caption2.weight(.bold))
+            Text(label)
+                .font(.caption2.weight(.semibold))
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 3)
+        .background(Capsule().fill(color.opacity(0.18)))
+        .foregroundColor(color)
     }
 }
 
