@@ -49,120 +49,40 @@ struct DashboardView: View {
     }
 
     var body: some View {
-        PlatformSplitView {
-            // Left: Project list
-            VStack(spacing: 0) {
-                ScreenHeader(
-                    title: "Active Projects",
-                    subtitle: "\(dataStore.activeProjects.count) active · \(dataStore.upcomingProjects.count) upcoming",
-                    icon: AppIcons.building
-                ) {
-                    Button {
-                        showAddProject = true
-                    } label: {
-                        Label("New Project", systemImage: AppIcons.add)
-                    }
-                    .buttonStyle(.appPrimary)
-                }
-
-                // Metrics row
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: AppTheme.Spacing.sm) {
-                        MetricCard(title: "Active Projects", value: "\(dataStore.activeProjects.count)",
-                                   icon: "hammer.fill", color: AppTheme.ProjectStatus.active)
-                        MetricCard(title: "Total Revenue", value: dataStore.totalRevenue.currencyFormatted,
-                                   icon: AppIcons.money, color: .green)
-                        MetricCard(title: "Total Profit", value: dataStore.totalProfit.currencyFormatted,
-                                   icon: "chart.line.uptrend.xyaxis", color: AppTheme.primaryOrange)
-                        MetricCard(title: "Remaining Balance", value: dataStore.totalRemainingBalance.currencyFormatted,
-                                   icon: AppIcons.money, color: .blue)
-                    }
-                    .padding(AppTheme.Spacing.md)
-                }
-                .frame(height: 120)
-
-                // Filters + sort
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: AppTheme.Spacing.sm) {
-                            ForEach(filters, id: \.self) { filter in
-                                FilterPill(filter, isSelected: selectedFilter == filter,
-                                           count: countFor(filter: filter)) {
-                                    selectedFilter = filter
-                                }
+        Group {
+            #if os(iOS)
+            // Compact iPad (portrait full-screen, Slide Over, narrow Stage
+            // Manager) is too narrow for a side-by-side list+detail — drop
+            // to a list-only view that opens detail in a full-screen cover.
+            // Regular width keeps the existing two-pane HStack.
+            GeometryReader { proxy in
+                if proxy.size.width < 800 {
+                    projectListPane
+                        .fullScreenCover(item: $selectedProject) { project in
+                            NavigationStack {
+                                ProjectDetailView(project: project)
+                                    .navigationTitle(project.title)
+                                    .navigationBarTitleDisplayMode(.inline)
+                                    .toolbar {
+                                        ToolbarItem(placement: .cancellationAction) {
+                                            Button("Done") { selectedProject = nil }
+                                        }
+                                    }
                             }
                         }
-                    }
-                    sortMenu
-                }
-                .padding(.horizontal, AppTheme.Spacing.md)
-                .padding(.bottom, AppTheme.Spacing.sm)
-
-                // Project list
-                let ganttProjectIDs = Set(dataStore.ganttTasks.map(\.projectID))
-                List(selection: $selectedProject) {
-                    ForEach(filteredProjects) { project in
-                        ProjectRow(project: project, clientName: dataStore.clientName(for: project),
-                                   hasGanttTasks: ganttProjectIDs.contains(project.id.recordName))
-                            .tag(project)
-                            .contextMenu {
-                                Button("Edit") { selectedProject = project }
-                                Divider()
-                                if project.computedStatus != "Completed" {
-                                    Button("Mark as Completed") {
-                                        var updated = project
-                                        updated.status = "Completed"
-                                        updated.actualCompletionDate = Date()
-                                        dataStore.updateProject(updated)
-                                    }
-                                }
-                                if project.computedStatus == "Completed" {
-                                    Button("Reopen Project") {
-                                        var updated = project
-                                        updated.status = "Active"
-                                        updated.actualCompletionDate = nil
-                                        dataStore.updateProject(updated)
-                                    }
-                                }
-                                Divider()
-                                Button(navigationState.isPinned(projectID: project.id.recordName)
-                                       ? "Unpin from Sidebar"
-                                       : "Pin to Sidebar") {
-                                    navigationState.togglePin(projectID: project.id.recordName)
-                                }
-                                Divider()
-                                Button("Delete…", role: .destructive) { projectToDelete = project }
-                            }
+                } else {
+                    PlatformSplitView {
+                        projectListPane
+                        projectDetailPane
                     }
                 }
-                .listStyle(.inset)
-                .searchable(text: $searchText, prompt: "Search projects...")
             }
-            #if os(macOS)
-            .frame(minWidth: 250, idealWidth: 500)
+            #else
+            PlatformSplitView {
+                projectListPane
+                projectDetailPane
+            }
             #endif
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    Button(action: { showAddProject = true }) {
-                        Label("New Project", systemImage: "plus")
-                    }
-                }
-            }
-
-            // Right: Project detail
-            if let project = selectedProject {
-                ProjectDetailView(project: project)
-                    #if os(macOS)
-                    .frame(minWidth: 250, idealWidth: 400)
-                    #endif
-            } else {
-                EmptyStateView(icon: "building.2", title: "No Project Selected",
-                               message: "Select a project from the list to view details.",
-                               buttonTitle: "Add Project") { showAddProject = true }
-                #if os(macOS)
-                .frame(minWidth: 250, idealWidth: 400)
-                #endif
-            }
         }
         .inlineForm(isPresented: $showAddProject) {
             AddProjectView()
@@ -183,6 +103,126 @@ struct DashboardView: View {
             )
         }
         .navigationTitle("Projects")
+    }
+
+    // MARK: - Panes (factored so the body can branch on width)
+
+    @ViewBuilder
+    private var projectListPane: some View {
+        VStack(spacing: 0) {
+            ScreenHeader(
+                title: "Active Projects",
+                subtitle: "\(dataStore.activeProjects.count) active · \(dataStore.upcomingProjects.count) upcoming",
+                icon: AppIcons.building
+            ) {
+                Button {
+                    showAddProject = true
+                } label: {
+                    Label("New Project", systemImage: AppIcons.add)
+                }
+                .buttonStyle(.appPrimary)
+            }
+
+            // Metrics row
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    MetricCard(title: "Active Projects", value: "\(dataStore.activeProjects.count)",
+                               icon: "hammer.fill", color: AppTheme.ProjectStatus.active)
+                    MetricCard(title: "Total Revenue", value: dataStore.totalRevenue.currencyFormatted,
+                               icon: AppIcons.money, color: .green)
+                    MetricCard(title: "Total Profit", value: dataStore.totalProfit.currencyFormatted,
+                               icon: "chart.line.uptrend.xyaxis", color: AppTheme.primaryOrange)
+                    MetricCard(title: "Remaining Balance", value: dataStore.totalRemainingBalance.currencyFormatted,
+                               icon: AppIcons.money, color: .blue)
+                }
+                .padding(AppTheme.Spacing.md)
+            }
+            .frame(height: 120)
+
+            // Filters + sort
+            HStack(spacing: AppTheme.Spacing.sm) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        ForEach(filters, id: \.self) { filter in
+                            FilterPill(filter, isSelected: selectedFilter == filter,
+                                       count: countFor(filter: filter)) {
+                                selectedFilter = filter
+                            }
+                        }
+                    }
+                }
+                sortMenu
+            }
+            .padding(.horizontal, AppTheme.Spacing.md)
+            .padding(.bottom, AppTheme.Spacing.sm)
+
+            // Project list
+            let ganttProjectIDs = Set(dataStore.ganttTasks.map(\.projectID))
+            List(selection: $selectedProject) {
+                ForEach(filteredProjects) { project in
+                    ProjectRow(project: project, clientName: dataStore.clientName(for: project),
+                               hasGanttTasks: ganttProjectIDs.contains(project.id.recordName))
+                        .tag(project)
+                        .contextMenu {
+                            Button("Edit") { selectedProject = project }
+                            Divider()
+                            if project.computedStatus != "Completed" {
+                                Button("Mark as Completed") {
+                                    var updated = project
+                                    updated.status = "Completed"
+                                    updated.actualCompletionDate = Date()
+                                    dataStore.updateProject(updated)
+                                }
+                            }
+                            if project.computedStatus == "Completed" {
+                                Button("Reopen Project") {
+                                    var updated = project
+                                    updated.status = "Active"
+                                    updated.actualCompletionDate = nil
+                                    dataStore.updateProject(updated)
+                                }
+                            }
+                            Divider()
+                            Button(navigationState.isPinned(projectID: project.id.recordName)
+                                   ? "Unpin from Sidebar"
+                                   : "Pin to Sidebar") {
+                                navigationState.togglePin(projectID: project.id.recordName)
+                            }
+                            Divider()
+                            Button("Delete…", role: .destructive) { projectToDelete = project }
+                        }
+                }
+            }
+            .listStyle(.inset)
+            .searchable(text: $searchText, prompt: "Search projects...")
+        }
+        #if os(macOS)
+        .frame(minWidth: 250, idealWidth: 500)
+        #endif
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button(action: { showAddProject = true }) {
+                    Label("New Project", systemImage: "plus")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var projectDetailPane: some View {
+        if let project = selectedProject {
+            ProjectDetailView(project: project)
+                #if os(macOS)
+                .frame(minWidth: 250, idealWidth: 400)
+                #endif
+        } else {
+            EmptyStateView(icon: "building.2", title: "No Project Selected",
+                           message: "Select a project from the list to view details.",
+                           buttonTitle: "Add Project") { showAddProject = true }
+            #if os(macOS)
+            .frame(minWidth: 250, idealWidth: 400)
+            #endif
+        }
     }
 
     /// Honors a navigation request from a Pinned project tap. Picks the
