@@ -86,34 +86,60 @@ struct OverheadView: View {
     private var recurringCount: Int { dataStore.overheadRecurringTemplates.count }
 
     var body: some View {
-        PlatformSplitView {
-            listPane
-                #if os(macOS)
-                .frame(minWidth: 320, idealWidth: 520)
-                #endif
-
-            if let expense = selectedExpense,
-               let refreshed = dataStore.overheadExpenses.first(where: { $0.id == expense.id }) {
-                OverheadDetailView(
-                    expense: refreshed,
-                    onEdit: { selectedExpense = refreshed },
-                    onDelete: { expenseToDelete = refreshed }
-                )
-                #if os(macOS)
-                .frame(minWidth: 280, idealWidth: 420)
-                #endif
-            } else {
-                EmptyStateView(
-                    icon: "briefcase",
-                    title: "No Expense Selected",
-                    message: "Pick an entry from the list, or add a new overhead expense.",
-                    buttonTitle: "New Expense",
-                    action: { showAddSheet = true }
-                )
-                #if os(macOS)
-                .frame(minWidth: 280, idealWidth: 420)
-                #endif
+        Group {
+            #if os(iOS)
+            // Compact iPad (portrait full-screen, Slide Over, narrow Stage
+            // Manager) is too narrow for a side-by-side list+detail — drop
+            // to a list-only view that opens detail in a full-screen cover.
+            // Regular width keeps the existing two-pane split.
+            GeometryReader { proxy in
+                if proxy.size.width < 800 {
+                    listPane
+                        .fullScreenCover(item: $selectedExpense) { expense in
+                            NavigationStack {
+                                Group {
+                                    // Re-fetch a fresh copy by id so edits made
+                                    // inside the cover reflect immediately, matching
+                                    // the split-view detail logic.
+                                    if let refreshed = dataStore.overheadExpenses.first(where: { $0.id == expense.id }) {
+                                        OverheadDetailView(
+                                            expense: refreshed,
+                                            onEdit: { selectedExpense = refreshed },
+                                            onDelete: { expenseToDelete = refreshed }
+                                        )
+                                    } else {
+                                        EmptyStateView(
+                                            icon: "briefcase",
+                                            title: "No Expense Selected",
+                                            message: "Pick an entry from the list, or add a new overhead expense.",
+                                            buttonTitle: "New Expense",
+                                            action: { showAddSheet = true }
+                                        )
+                                    }
+                                }
+                                .navigationTitle(expense.expenseDescription.isEmpty ? expense.category.rawValue : expense.expenseDescription)
+                                .navigationBarTitleDisplayMode(.inline)
+                                .toolbar {
+                                    ToolbarItem(placement: .cancellationAction) {
+                                        Button("Done") { selectedExpense = nil }
+                                    }
+                                }
+                            }
+                        }
+                } else {
+                    PlatformSplitView {
+                        listPane
+                        detailPane
+                    }
+                }
             }
+            #else
+            PlatformSplitView {
+                listPane
+                    .frame(minWidth: 320, idealWidth: 520)
+                detailPane
+            }
+            #endif
         }
         .inlineForm(isPresented: $showAddSheet) {
             AddOverheadExpenseView()
@@ -140,6 +166,33 @@ struct OverheadView: View {
             }
         }
         .navigationTitle("Overhead")
+    }
+
+    // MARK: - Detail pane
+
+    @ViewBuilder private var detailPane: some View {
+        if let expense = selectedExpense,
+           let refreshed = dataStore.overheadExpenses.first(where: { $0.id == expense.id }) {
+            OverheadDetailView(
+                expense: refreshed,
+                onEdit: { selectedExpense = refreshed },
+                onDelete: { expenseToDelete = refreshed }
+            )
+            #if os(macOS)
+            .frame(minWidth: 280, idealWidth: 420)
+            #endif
+        } else {
+            EmptyStateView(
+                icon: "briefcase",
+                title: "No Expense Selected",
+                message: "Pick an entry from the list, or add a new overhead expense.",
+                buttonTitle: "New Expense",
+                action: { showAddSheet = true }
+            )
+            #if os(macOS)
+            .frame(minWidth: 280, idealWidth: 420)
+            #endif
+        }
     }
 
     // MARK: - List pane

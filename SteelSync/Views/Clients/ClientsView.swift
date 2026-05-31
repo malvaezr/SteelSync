@@ -12,6 +12,45 @@ struct ClientsView: View {
 
     private let filters = ["All", "GC", "Sub"]
 
+    /// What the detail pane is showing. Derived from the two selection
+    /// states (`selectedClient` / `showUnassigned`) so the compact
+    /// full-screen cover and the regular detail pane render identically.
+    private enum ClientDetail: Identifiable {
+        case client(Client)
+        case unassigned
+        var id: String {
+            switch self {
+            case .client(let c): return "client-\(c.id.recordName)"
+            case .unassigned: return "unassigned"
+            }
+        }
+    }
+
+    /// Current detail selection, computed from the two underlying states.
+    /// Setting it back-fills both states; clearing (nil) clears both.
+    private var detailSelection: Binding<ClientDetail?> {
+        Binding(
+            get: {
+                if showUnassigned { return .unassigned }
+                if let client = selectedClient { return .client(client) }
+                return nil
+            },
+            set: { newValue in
+                switch newValue {
+                case .client(let c):
+                    selectedClient = c
+                    showUnassigned = false
+                case .unassigned:
+                    selectedClient = nil
+                    showUnassigned = true
+                case nil:
+                    selectedClient = nil
+                    showUnassigned = false
+                }
+            }
+        )
+    }
+
     var filteredClients: [Client] {
         var result = dataStore.clients
         switch selectedFilter {
@@ -29,7 +68,68 @@ struct ClientsView: View {
     }
 
     var body: some View {
-        PlatformSplitView {
+        Group {
+            #if os(iOS)
+            // Compact iPad (portrait full-screen, Slide Over, narrow Stage
+            // Manager) is too narrow for a side-by-side list+detail — drop
+            // to a list-only view that opens detail in a full-screen cover.
+            // Regular width keeps the existing two-pane HStack.
+            GeometryReader { proxy in
+                if proxy.size.width < 800 {
+                    clientListPane
+                        .fullScreenCover(item: detailSelection) { detail in
+                            NavigationStack {
+                                clientDetailContent(for: detail)
+                                    .navigationTitle(detailTitle(for: detail))
+                                    .navigationBarTitleDisplayMode(.inline)
+                                    .toolbar {
+                                        ToolbarItem(placement: .cancellationAction) {
+                                            Button("Done") { detailSelection.wrappedValue = nil }
+                                        }
+                                    }
+                            }
+                        }
+                } else {
+                    PlatformSplitView {
+                        clientListPane
+                        clientDetailPane
+                    }
+                }
+            }
+            #else
+            PlatformSplitView {
+                clientListPane
+                clientDetailPane
+            }
+            #endif
+        }
+        .inlineForm(isPresented: $showAddClient) {
+            AddClientView()
+        }
+        .confirmationDialog(
+            "Delete client?",
+            isPresented: Binding(
+                get: { clientToDelete != nil },
+                set: { if !$0 { clientToDelete = nil } }
+            ),
+            presenting: clientToDelete
+        ) { client in
+            Button("Delete", role: .destructive) {
+                dataStore.deleteClient(client)
+                if selectedClient?.id == client.id { selectedClient = nil }
+                clientToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { clientToDelete = nil }
+        } message: { client in
+            Text("\"\(client.name)\" will be removed. Linked projects will keep their references but may show as missing client. This cannot be undone.")
+        }
+        .navigationTitle("Clients")
+    }
+
+    // MARK: - Panes (factored so the body can branch on width)
+
+    @ViewBuilder
+    private var clientListPane: some View {
             // Left: Client list
             VStack(spacing: 0) {
                 ScreenHeader(
@@ -117,48 +217,49 @@ struct ClientsView: View {
                     }
                 }
             }
+    }
 
-            // Right: Client detail (or unassigned invoices)
-            if showUnassigned {
-                UnassignedInvoicesDetailView()
-                    #if os(macOS)
-                    .frame(minWidth: 220, idealWidth: 450)
-                    #endif
-            } else if let client = selectedClient {
-                ClientDetailView(client: client)
-                    #if os(macOS)
-                    .frame(minWidth: 220, idealWidth: 450)
-                    #endif
-            } else {
-                EmptyStateView(icon: "person.2", title: "No Client Selected",
-                               message: "Select a client from the list to view details.",
-                               buttonTitle: "Add Client") { showAddClient = true }
+    @ViewBuilder
+    private var clientDetailPane: some View {
+        // Right: Client detail (or unassigned invoices)
+        if showUnassigned {
+            UnassignedInvoicesDetailView()
                 #if os(macOS)
                 .frame(minWidth: 220, idealWidth: 450)
                 #endif
-            }
+        } else if let client = selectedClient {
+            ClientDetailView(client: client)
+                #if os(macOS)
+                .frame(minWidth: 220, idealWidth: 450)
+                #endif
+        } else {
+            EmptyStateView(icon: "person.2", title: "No Client Selected",
+                           message: "Select a client from the list to view details.",
+                           buttonTitle: "Add Client") { showAddClient = true }
+            #if os(macOS)
+            .frame(minWidth: 220, idealWidth: 450)
+            #endif
         }
-        .inlineForm(isPresented: $showAddClient) {
-            AddClientView()
+    }
+
+    /// Detail body used inside the compact full-screen cover. Mirrors
+    /// `clientDetailPane` minus the empty state (the cover only opens when
+    /// something is selected).
+    @ViewBuilder
+    private func clientDetailContent(for detail: ClientDetail) -> some View {
+        switch detail {
+        case .client(let client):
+            ClientDetailView(client: client)
+        case .unassigned:
+            UnassignedInvoicesDetailView()
         }
-        .confirmationDialog(
-            "Delete client?",
-            isPresented: Binding(
-                get: { clientToDelete != nil },
-                set: { if !$0 { clientToDelete = nil } }
-            ),
-            presenting: clientToDelete
-        ) { client in
-            Button("Delete", role: .destructive) {
-                dataStore.deleteClient(client)
-                if selectedClient?.id == client.id { selectedClient = nil }
-                clientToDelete = nil
-            }
-            Button("Cancel", role: .cancel) { clientToDelete = nil }
-        } message: { client in
-            Text("\"\(client.name)\" will be removed. Linked projects will keep their references but may show as missing client. This cannot be undone.")
+    }
+
+    private func detailTitle(for detail: ClientDetail) -> String {
+        switch detail {
+        case .client(let client): return client.name
+        case .unassigned: return "Not Assigned"
         }
-        .navigationTitle("Clients")
     }
 
     private func countFor(filter: String) -> Int? {

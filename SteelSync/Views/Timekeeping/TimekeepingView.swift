@@ -70,52 +70,91 @@ struct TimekeepingView: View {
     }
 
     // MARK: - Employee Management
+    @ViewBuilder
     private var employeeManagement: some View {
-        PlatformSplitView {
-            VStack(spacing: 0) {
-                // Stats
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    MetricCard(title: "Total Employees", value: "\(dataStore.employees.count)", icon: "person.2.fill", color: .blue)
-                    MetricCard(title: "Active", value: "\(dataStore.activeEmployees.count)", icon: "checkmark.circle.fill", color: .green)
-                    MetricCard(title: "Foremen", value: "\(dataStore.foremen.count)", icon: "person.fill.checkmark", color: AppTheme.primaryOrange)
-                }
-                .padding(AppTheme.Spacing.md)
-
-                List(selection: $selectedEmployee) {
-                    ForEach(filteredEmployees) { employee in
-                        EmployeeRow(employee: employee)
-                            .tag(employee)
-                            .contextMenu {
-                                Button("Edit") { selectedEmployee = employee }
-                                Divider()
-                                Button("Delete…", role: .destructive) { employeeToDelete = employee }
-                            }
+        #if os(iOS)
+        // Compact iPad (portrait full-screen, Slide Over, narrow Stage
+        // Manager) is too narrow for a side-by-side list+detail — drop
+        // to a list-only view that opens detail in a full-screen cover.
+        // Regular width keeps the existing two-pane split.
+        GeometryReader { proxy in
+            if proxy.size.width < 800 {
+                employeeListPane
+                    .fullScreenCover(item: $selectedEmployee) { employee in
+                        NavigationStack {
+                            EmployeeDetailPanel(employee: employee)
+                                .navigationTitle(employee.fullName)
+                                .navigationBarTitleDisplayMode(.inline)
+                                .toolbar {
+                                    ToolbarItem(placement: .cancellationAction) {
+                                        Button("Done") { selectedEmployee = nil }
+                                    }
+                                }
+                        }
                     }
+            } else {
+                PlatformSplitView {
+                    employeeListPane
+                    employeeDetailPane
                 }
-                #if os(macOS)
-                .listStyle(.inset(alternatesRowBackgrounds: true))
-                #else
-                .listStyle(.insetGrouped)
-                #endif
-                .searchable(text: $searchText, prompt: "Search employees...")
+            }
+        }
+        #else
+        PlatformSplitView {
+            employeeListPane
+            employeeDetailPane
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private var employeeListPane: some View {
+        VStack(spacing: 0) {
+            // Stats
+            HStack(spacing: AppTheme.Spacing.sm) {
+                MetricCard(title: "Total Employees", value: "\(dataStore.employees.count)", icon: "person.2.fill", color: .blue)
+                MetricCard(title: "Active", value: "\(dataStore.activeEmployees.count)", icon: "checkmark.circle.fill", color: .green)
+                MetricCard(title: "Foremen", value: "\(dataStore.foremen.count)", icon: "person.fill.checkmark", color: AppTheme.primaryOrange)
+            }
+            .padding(AppTheme.Spacing.md)
+
+            List(selection: $selectedEmployee) {
+                ForEach(filteredEmployees) { employee in
+                    EmployeeRow(employee: employee)
+                        .tag(employee)
+                        .contextMenu {
+                            Button("Edit") { selectedEmployee = employee }
+                            Divider()
+                            Button("Delete…", role: .destructive) { employeeToDelete = employee }
+                        }
+                }
             }
             #if os(macOS)
-            .frame(minWidth: 220, idealWidth: 450)
+            .listStyle(.inset(alternatesRowBackgrounds: true))
+            #else
+            .listStyle(.insetGrouped)
             #endif
+            .searchable(text: $searchText, prompt: "Search employees...")
+        }
+        #if os(macOS)
+        .frame(minWidth: 220, idealWidth: 450)
+        #endif
+    }
 
-            if let employee = selectedEmployee {
-                EmployeeDetailPanel(employee: employee)
-                    #if os(macOS)
-                    .frame(minWidth: 220, idealWidth: 350)
-                    #endif
-            } else {
-                EmptyStateView(icon: "person.crop.circle", title: "No Employee Selected",
-                               message: "Select an employee to view details.",
-                               buttonTitle: "Add Employee") { showAddEmployee = true }
+    @ViewBuilder
+    private var employeeDetailPane: some View {
+        if let employee = selectedEmployee {
+            EmployeeDetailPanel(employee: employee)
                 #if os(macOS)
                 .frame(minWidth: 220, idealWidth: 350)
                 #endif
-            }
+        } else {
+            EmptyStateView(icon: "person.crop.circle", title: "No Employee Selected",
+                           message: "Select an employee to view details.",
+                           buttonTitle: "Add Employee") { showAddEmployee = true }
+            #if os(macOS)
+            .frame(minWidth: 220, idealWidth: 350)
+            #endif
         }
     }
 

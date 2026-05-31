@@ -78,7 +78,68 @@ struct BiddingView: View {
     }
 
     var body: some View {
-        PlatformSplitView {
+        Group {
+            #if os(iOS)
+            // Compact iPad (portrait full-screen, Slide Over, narrow Stage
+            // Manager) is too narrow for a side-by-side list+detail — drop
+            // to a list-only view that opens detail in a full-screen cover.
+            // Regular width keeps the existing two-pane HStack.
+            GeometryReader { proxy in
+                if proxy.size.width < 800 {
+                    bidListPane
+                        .fullScreenCover(item: $selectedBid) { bid in
+                            NavigationStack {
+                                BidDetailView(bidID: bid.id)
+                                    .navigationTitle(bid.projectName)
+                                    .navigationBarTitleDisplayMode(.inline)
+                                    .toolbar {
+                                        ToolbarItem(placement: .cancellationAction) {
+                                            Button("Done") { selectedBid = nil }
+                                        }
+                                    }
+                            }
+                        }
+                } else {
+                    PlatformSplitView {
+                        bidListPane
+                        bidDetailPane
+                    }
+                }
+            }
+            #else
+            PlatformSplitView {
+                bidListPane
+                bidDetailPane
+            }
+            #endif
+        }
+        .inlineForm(isPresented: $showAddBid) {
+            AddBidView()
+        }
+        .sheet(isPresented: $showExportSheet) {
+            ExportBidsSheet()
+        }
+        .sheet(item: $bidToConvert) { bid in
+            ConvertBidToProjectView(bid: bid)
+        }
+        .sheet(item: $bidToDelete) { bid in
+            ConfirmationPinSheet(
+                title: "Delete Bid",
+                detail: "\(bid.projectName)\nfor \(bid.clientName)\n\(bid.bidAmount.currencyFormatted)\n\nThis cannot be undone.",
+                confirmLabel: "Delete",
+                onConfirm: {
+                    dataStore.deleteBid(bid)
+                    if selectedBid?.id == bid.id { selectedBid = nil }
+                }
+            )
+        }
+        .navigationTitle("Bidding")
+    }
+
+    // MARK: - Panes (factored so the body can branch on width)
+
+    @ViewBuilder
+    private var bidListPane: some View {
             VStack(spacing: 0) {
                 ScreenHeader(
                     title: "Bidding Pipeline",
@@ -220,43 +281,23 @@ struct BiddingView: View {
                     }
                 }
             }
+    }
 
-            // Detail pane
-            if let bid = selectedBid {
-                BidDetailView(bidID: bid.id)
-                    #if os(macOS)
-                    .frame(minWidth: 250, idealWidth: 450)
-                    #endif
-            } else {
-                EmptyStateView(icon: "doc.text", title: "No Bid Selected",
-                               message: "Select a bid from the list to view details.",
-                               buttonTitle: "Add Bid") { showAddBid = true }
+    @ViewBuilder
+    private var bidDetailPane: some View {
+        if let bid = selectedBid {
+            BidDetailView(bidID: bid.id)
                 #if os(macOS)
                 .frame(minWidth: 250, idealWidth: 450)
                 #endif
-            }
+        } else {
+            EmptyStateView(icon: "doc.text", title: "No Bid Selected",
+                           message: "Select a bid from the list to view details.",
+                           buttonTitle: "Add Bid") { showAddBid = true }
+            #if os(macOS)
+            .frame(minWidth: 250, idealWidth: 450)
+            #endif
         }
-        .inlineForm(isPresented: $showAddBid) {
-            AddBidView()
-        }
-        .sheet(isPresented: $showExportSheet) {
-            ExportBidsSheet()
-        }
-        .sheet(item: $bidToConvert) { bid in
-            ConvertBidToProjectView(bid: bid)
-        }
-        .sheet(item: $bidToDelete) { bid in
-            ConfirmationPinSheet(
-                title: "Delete Bid",
-                detail: "\(bid.projectName)\nfor \(bid.clientName)\n\(bid.bidAmount.currencyFormatted)\n\nThis cannot be undone.",
-                confirmLabel: "Delete",
-                onConfirm: {
-                    dataStore.deleteBid(bid)
-                    if selectedBid?.id == bid.id { selectedBid = nil }
-                }
-            )
-        }
-        .navigationTitle("Bidding")
     }
 }
 
