@@ -700,6 +700,68 @@ class CloudKitService {
         return allRecords.first(where: { $0.recordType == "cloudkit.share" }) as? CKShare
     }
 
+    // MARK: - Timesheets Zone (foreman web entry)
+    //
+    // A SECOND zone the owner creates and shares out so foremen can enter
+    // timesheets from SteelSyncWeb without ever gaining access to the main
+    // `SteelSyncZone` (bids, financials, etc.). Addressed by EXPLICIT zone +
+    // database parameters — never via `role`/`zoneID`, because the owner stays
+    // an owner of their private DB and this is simply a second zone they own.
+
+    let timesheetsZoneName = "SteelSyncTimesheetsZone"
+
+    /// Owner-side zone ID for the dedicated timesheets zone.
+    var timesheetsOwnerZoneID: CKRecordZone.ID {
+        CKRecordZone.ID(zoneName: timesheetsZoneName, ownerName: CKCurrentUserDefaultName)
+    }
+
+    /// Owner-only: create the dedicated timesheets zone in the private DB.
+    /// Idempotent — a re-save of an existing zone is harmless.
+    func setupTimesheetsZone() async throws {
+        guard role == .owner, let db = privateDB else { return }
+        do {
+            _ = try await db.save(CKRecordZone(zoneID: timesheetsOwnerZoneID))
+        } catch { /* zone may already exist */ }
+    }
+
+    /// Owner-only: find-or-create the zone-wide CKShare on the timesheets zone,
+    /// returning it with a populated `url` to send to a foreman. Ensures the
+    /// zone exists first. Mirrors `ensureZoneShare()` (proven URL-minting via
+    /// `modifyRecords`) but bound to the timesheets zone.
+    ///
+    /// SPIKE NOTE: uses `.readWrite` public permission so the link alone lets a
+    /// foreman join — this de-risks the web↔shared-zone proof-of-concept fast.
+    /// The production path will tighten this to `.none` + explicit per-foreman
+    /// invites once the spike confirms CloudKit JS can read/write the zone.
+    func ensureTimesheetsZoneShare() async throws -> CKShare {
+        guard role == .owner, let db = privateDB else { throw CloudKitError.notConfigured }
+        try await setupTimesheetsZone()
+
+        let desiredPermission: CKShare.ParticipantPermission = .readWrite
+        let shareID = CKRecord.ID(recordName: CKRecordNameZoneWideShare, zoneID: timesheetsOwnerZoneID)
+
+        if let existingRecord = try? await db.record(for: shareID),
+           let existing = existingRecord as? CKShare {
+            guard existing.publicPermission != desiredPermission else { return existing }
+            existing.publicPermission = desiredPermission
+            let (results, _) = try await db.modifyRecords(saving: [existing], deleting: [])
+            if case .success(let saved) = results[existing.recordID], let upgraded = saved as? CKShare {
+                return upgraded
+            }
+            return existing
+        }
+
+        let share = CKShare(recordZoneID: timesheetsOwnerZoneID)
+        share[CKShare.SystemFieldKey.title] = "SteelSync Timesheets" as CKRecordValue
+        share.publicPermission = desiredPermission
+        let (saveResults, _) = try await db.modifyRecords(saving: [share], deleting: [])
+        guard case .success(let saved) = saveResults[share.recordID],
+              let savedShare = saved as? CKShare else {
+            throw CloudKitError.notConfigured
+        }
+        return savedShare
+    }
+
     // MARK: - Types
 
     enum CloudKitError: LocalizedError {

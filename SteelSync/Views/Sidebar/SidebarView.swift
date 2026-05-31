@@ -1,5 +1,10 @@
 import SwiftUI
 import CloudKit
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 struct SidebarView: View {
     @EnvironmentObject var dataStore: DataStore
@@ -9,6 +14,9 @@ struct SidebarView: View {
     @State private var pendingShare: CKShare?
     @State private var shareError: String?
     @State private var isPreparingShare = false
+    /// Spike scaffolding: holds the timesheets-zone share URL after it's copied
+    /// to the clipboard, to surface it in a confirmation alert.
+    @State private var timesheetsShareURL: String?
 
     /// Projects the user has pinned, resolved to live `Project` objects.
     /// Filters out IDs that no longer exist (project deleted) so stale
@@ -97,6 +105,9 @@ struct SidebarView: View {
                 Button("Share Data…") {
                     Task { await prepareShare() }
                 }
+                Button("Share Timesheets Zone…") {
+                    Task { await prepareTimesheetsShare() }
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -114,6 +125,11 @@ struct SidebarView: View {
         } message: {
             Text(shareError ?? "")
         }
+        .alert("Timesheets share link copied", isPresented: Binding(get: { timesheetsShareURL != nil }, set: { if !$0 { timesheetsShareURL = nil } })) {
+            Button("OK", role: .cancel) { timesheetsShareURL = nil }
+        } message: {
+            Text("Copied to your clipboard — send it to a foreman to invite them to the timesheets zone:\n\n\(timesheetsShareURL ?? "")")
+        }
     }
 
     private func prepareShare() async {
@@ -122,6 +138,30 @@ struct SidebarView: View {
         do {
             let share = try await dataStore.cloudKit.ensureZoneShare()
             pendingShare = share
+        } catch {
+            shareError = error.localizedDescription
+        }
+    }
+
+    /// Spike scaffolding: create/return the timesheets-zone share, copy its URL
+    /// to the clipboard, and surface it in an alert so it can be sent to a
+    /// foreman. Replace with the production invite UI once the spike is proven.
+    private func prepareTimesheetsShare() async {
+        isPreparingShare = true
+        defer { isPreparingShare = false }
+        do {
+            let share = try await dataStore.cloudKit.ensureTimesheetsZoneShare()
+            guard let url = share.url else {
+                shareError = "Share created but no URL yet — tap “Share Timesheets Zone…” again in a moment."
+                return
+            }
+            #if os(macOS)
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(url.absoluteString, forType: .string)
+            #else
+            UIPasteboard.general.string = url.absoluteString
+            #endif
+            timesheetsShareURL = url.absoluteString
         } catch {
             shareError = error.localizedDescription
         }
