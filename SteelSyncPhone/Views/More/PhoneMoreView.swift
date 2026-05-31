@@ -12,8 +12,15 @@ struct PhoneMoreView: View {
     @EnvironmentObject var dataStore: DataStore
     @Binding var destination: PhoneContentView.MoreDestination?
 
+    /// Drives the More tab's navigation explicitly. A path-bound NavigationStack
+    /// is required so value-based links resolve reliably even while the tab is
+    /// pre-rendered off-screen by the TabView (an unbound stack logs
+    /// "no matching navigationDestination" and fails to activate the links), and
+    /// so external deep-links can push programmatically.
+    @State private var path: [PhoneContentView.MoreDestination] = []
+
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 Section {
                     NavigationLink(value: PhoneContentView.MoreDestination.invoices) {
@@ -105,14 +112,27 @@ struct PhoneMoreView: View {
                 destinationView(for: dest)
                     .environmentObject(dataStore)
             }
-            // Widget deep-link handler: if a parent sets `destination`, push it
-            // onto the navigation stack once and clear the binding.
-            .onChange(of: destination) { _, newValue in
-                // No-op — NavigationStack uses path, but we use value-based
-                // destinations; the binding is consumed by a future path-based
-                // update. See PhoneContentView for the push mechanism.
-            }
         }
+        // Widget deep-links and Today's attention cards inject a destination via
+        // the `destination` binding; push it onto the path and clear the signal
+        // so the same destination can be requested again later. Handled on both
+        // change and appear because the injection may happen before this tab is
+        // first rendered.
+        .onChange(of: destination) { _, newValue in
+            consumePendingDestination(newValue)
+        }
+        .onAppear {
+            consumePendingDestination(destination)
+        }
+    }
+
+    /// Pushes an externally-injected destination onto the navigation path, then
+    /// clears the binding. Replaces the path (rather than appending) so repeated
+    /// jumps don't stack duplicate screens.
+    private func consumePendingDestination(_ dest: PhoneContentView.MoreDestination?) {
+        guard let dest else { return }
+        if path != [dest] { path = [dest] }
+        destination = nil
     }
 
     // MARK: - Destination routing
