@@ -54,6 +54,25 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         didSet { UserDefaults.standard.set(enablePaymentReceived, forKey: "notif_payment_received") }
     }
 
+    // ── Time-clock reminders (phone foreman workflow) ──
+    /// Daily morning nudge to clock the crew in.
+    @Published var clockInReminderEnabled: Bool {
+        didSet { UserDefaults.standard.set(clockInReminderEnabled, forKey: "notif_clockin_enabled") }
+    }
+    @Published var clockInReminderHour: Int {
+        didSet { UserDefaults.standard.set(clockInReminderHour, forKey: "notif_clockin_hour") }
+    }
+    @Published var clockInReminderMinute: Int {
+        didSet { UserDefaults.standard.set(clockInReminderMinute, forKey: "notif_clockin_minute") }
+    }
+    /// Reminder to clock the crew out, fired N hours after clock-in.
+    @Published var clockOutReminderEnabled: Bool {
+        didSet { UserDefaults.standard.set(clockOutReminderEnabled, forKey: "notif_clockout_enabled") }
+    }
+    @Published var clockOutReminderHours: Int {
+        didSet { UserDefaults.standard.set(clockOutReminderHours, forKey: "notif_clockout_hours") }
+    }
+
     /// True after the user has granted (or denied) notification permission.
     @Published var permissionStatus: UNAuthorizationStatus = .notDetermined
 
@@ -69,6 +88,11 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         self.enableBidFollowUp = d.object(forKey: "notif_bid_followup") as? Bool ?? true
         self.enableMilestoneApproaching = d.object(forKey: "notif_milestone") as? Bool ?? true
         self.enablePaymentReceived = d.object(forKey: "notif_payment_received") as? Bool ?? true
+        self.clockInReminderEnabled = d.object(forKey: "notif_clockin_enabled") as? Bool ?? true
+        self.clockInReminderHour = d.object(forKey: "notif_clockin_hour") as? Int ?? 7
+        self.clockInReminderMinute = d.object(forKey: "notif_clockin_minute") as? Int ?? 0
+        self.clockOutReminderEnabled = d.object(forKey: "notif_clockout_enabled") as? Bool ?? true
+        self.clockOutReminderHours = d.object(forKey: "notif_clockout_hours") as? Int ?? 10
         super.init()
         UNUserNotificationCenter.current().delegate = self
     }
@@ -293,7 +317,8 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         }
 
         // ── Enforce 64-notification cap ──
-        let capped = Array(requests.prefix(60))  // Leave 4 slots for system
+        // Leave headroom for the system + the time-clock reminders re-armed below.
+        let capped = Array(requests.prefix(58))
 
         for request in capped {
             center.add(request) { error in
@@ -304,6 +329,71 @@ final class NotificationService: NSObject, ObservableObject, UNUserNotificationC
         }
 
         print("[Notifications] Scheduled \(capped.count) notifications for \(batchHour):\(String(format: "%02d", batchMinute)) daily batch")
+
+        // removeAllPendingNotificationRequests() above also cleared the
+        // time-clock reminders, which live on their own lifecycle — re-arm them.
+        rescheduleTimeClockReminders(from: store)
+    }
+
+    // MARK: - Time-Clock Reminders
+
+    private static let clockOutReminderID = "steelsync.timeclock.clockout"
+    private static let clockInReminderID = "steelsync.timeclock.clockin.daily"
+
+    /// Arm a one-shot reminder to clock the crew out, fired `clockOutReminderHours`
+    /// after the given clock-in time. Replaces any prior reminder. The OS only
+    /// delivers if notifications are authorized, so this is safe to call early.
+    func scheduleClockOutReminder(projectName: String, clockInTime: Date) {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.clockOutReminderID])
+        #if os(iOS)
+        guard clockOutReminderEnabled else { return }
+        let fireDate = clockInTime.addingTimeInterval(TimeInterval(clockOutReminderHours) * 3600)
+        let interval = fireDate.timeIntervalSinceNow
+        guard interval > 0 else { return }  // already past — don't fire late
+        let content = UNMutableNotificationContent()
+        content.title = "🕐 Crew still clocked in"
+        content.body = "\(projectName) — clocked in \(clockOutReminderHours)h ago. Tap to clock out."
+        content.sound = .default
+        content.userInfo = ["url": "steelsync://timeclock"]
+        content.categoryIdentifier = "CLOCK_OUT_REMINDER"
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
+        center.add(UNNotificationRequest(identifier: Self.clockOutReminderID, content: content, trigger: trigger))
+        #endif
+    }
+
+    func cancelClockOutReminder() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.clockOutReminderID])
+    }
+
+    /// (Re)schedule the daily morning clock-in nudge from current preferences.
+    func scheduleClockInReminder() {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [Self.clockInReminderID])
+        #if os(iOS)
+        guard clockInReminderEnabled else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "⏰ Clock in the crew"
+        content.body = "Start of day — tap to clock your crew in."
+        content.sound = .default
+        content.userInfo = ["url": "steelsync://timeclock"]
+        var comps = DateComponents()
+        comps.hour = clockInReminderHour
+        comps.minute = clockInReminderMinute
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+        center.add(UNNotificationRequest(identifier: Self.clockInReminderID, content: content, trigger: trigger))
+        #endif
+    }
+
+    /// Re-arm both time-clock reminders from current state. Called at the end of
+    /// `scheduleMorningBatch` (which wipes all pending requests) and on launch.
+    func rescheduleTimeClockReminders(from store: DataStore) {
+        if let session = store.activeClockInSession {
+            scheduleClockOutReminder(projectName: session.projectName, clockInTime: session.clockInTime)
+        } else {
+            cancelClockOutReminder()
+        }
+        scheduleClockInReminder()
     }
 
     // MARK: - UNUserNotificationCenterDelegate

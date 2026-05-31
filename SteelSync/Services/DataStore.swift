@@ -1737,6 +1737,8 @@ class DataStore: ObservableObject {
         if #available(iOS 16.2, *) {
             Task { await startCrewClockInLiveActivity(session) }
         }
+        NotificationService.shared.scheduleClockOutReminder(
+            projectName: session.projectName, clockInTime: session.clockInTime)
         #endif
         return session
     }
@@ -1755,6 +1757,25 @@ class DataStore: ObservableObject {
         #endif
     }
 
+    /// Start a break/lunch for the whole crew. No-op if there's no active
+    /// session or a break is already running.
+    func startCrewBreak() {
+        guard var session = activeClockInSession, session.currentBreakStart == nil else { return }
+        session.currentBreakStart = Date()
+        activeClockInSession = session
+        persistActiveClockInSession()
+    }
+
+    /// End the in-progress break, recording the window so its duration is
+    /// subtracted from worked hours at clock-out. No-op if not on a break.
+    func endCrewBreak() {
+        guard var session = activeClockInSession, let start = session.currentBreakStart else { return }
+        session.breaks.append(BreakInterval(start: start, end: Date()))
+        session.currentBreakStart = nil
+        activeClockInSession = session
+        persistActiveClockInSession()
+    }
+
     /// End the shift. Materializes one TimesheetEntry per crew member with
     /// the elapsed-hours decimal dropped onto the right day-of-week column.
     /// Ends the Live Activity if one was running.
@@ -1763,7 +1784,11 @@ class DataStore: ObservableObject {
         let cal = Calendar.current
         let now = Date()
         let elapsed = now.timeIntervalSince(session.clockInTime)
-        let hours = Decimal(elapsed / 3600.0)
+        // Subtract any break/lunch windows (including one still open at clock-out)
+        // so the materialized hours reflect worked time, not wall-clock time.
+        let breakSeconds = session.totalBreakSeconds(asOf: now)
+        let workedSeconds = max(0, elapsed - breakSeconds)
+        let hours = Decimal(workedSeconds / 3600.0)
         let weekStart = TimesheetEntry.weekStart(for: session.clockInTime)
         let dayOfWeek = cal.component(.weekday, from: session.clockInTime)
 
@@ -1789,7 +1814,8 @@ class DataStore: ObservableObject {
             case 1: entry.sundayHours = hours
             default: entry.mondayHours = hours
             }
-            entry.notes = "Clocked \(session.clockInTime.formatted(date: .omitted, time: .shortened)) – \(now.formatted(date: .omitted, time: .shortened)) by \(session.foremanName)"
+            let breakNote = breakSeconds >= 60 ? " (−\(Int((breakSeconds / 60).rounded())) min break)" : ""
+            entry.notes = "Clocked \(session.clockInTime.formatted(date: .omitted, time: .shortened)) – \(now.formatted(date: .omitted, time: .shortened)) by \(session.foremanName)\(breakNote)"
             addTimesheetEntry(entry)
         }
 
@@ -1803,6 +1829,7 @@ class DataStore: ObservableObject {
         if #available(iOS 16.2, *) {
             Task { await endCrewClockInLiveActivity() }
         }
+        NotificationService.shared.cancelClockOutReminder()
         #endif
     }
 

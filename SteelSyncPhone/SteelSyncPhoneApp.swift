@@ -14,6 +14,7 @@ struct SteelSyncPhoneApp: App {
                     WidgetDataPublisher.publish(from: dataStore)
                     NotificationService.shared.requestPermission()
                     NotificationService.shared.scheduleMorningBatch(from: dataStore)
+                    NotificationService.shared.rescheduleTimeClockReminders(from: dataStore)
                 }
                 .onChange(of: dataStore.projects.count) { _, _ in
                     WidgetDataPublisher.publish(from: dataStore)

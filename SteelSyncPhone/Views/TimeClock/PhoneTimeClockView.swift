@@ -16,6 +16,7 @@ struct PhoneTimeClockView: View {
     @State private var pickedProjectID: String?
     @State private var pickedCrewIDs: Set<String> = []
     @State private var editingEntry: TimesheetEntry?
+    @ObservedObject private var notifications = NotificationService.shared
 
     private var deviceForeman: Employee? {
         guard !deviceForemanID.isEmpty else { return nil }
@@ -48,6 +49,7 @@ struct PhoneTimeClockView: View {
                     } else if let session = dataStore.activeClockInSession {
                         activeShiftBanner(session)
                         activeCrewList(session)
+                        breakButton(session)
                         clockOutButton
                     } else {
                         projectPicker
@@ -56,6 +58,9 @@ struct PhoneTimeClockView: View {
                     }
                     todaySection
                     weekSummary
+                    if deviceForeman != nil {
+                        remindersSection
+                    }
                 }
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.bottom, AppTheme.Spacing.lg)
@@ -158,10 +163,44 @@ struct PhoneTimeClockView: View {
                     .foregroundColor(AppTheme.primaryOrange)
                     .multilineTextAlignment(.trailing)
             }
+            breakStatusLine(session)
         }
         .padding(AppTheme.Spacing.md)
-        .background(Color.green.opacity(0.12))
+        .background((session.isOnBreak ? Color.orange : Color.green).opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.md))
+    }
+
+    /// Shows live break duration while paused, or the day's accumulated break
+    /// time once breaks have been taken. Renders nothing otherwise.
+    @ViewBuilder
+    private func breakStatusLine(_ session: ClockInSession) -> some View {
+        if session.isOnBreak, let start = session.currentBreakStart {
+            HStack {
+                Image(systemName: "pause.circle.fill").foregroundColor(.orange)
+                Text("On break")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(.orange)
+                Spacer()
+                Text(start, style: .timer)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.orange)
+            }
+        } else if !session.breaks.isEmpty {
+            HStack {
+                Image(systemName: "cup.and.saucer.fill").foregroundColor(.secondary)
+                Text("Breaks today")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Text("\(completedBreakMinutes(session)) min")
+                    .font(.caption.monospacedDigit())
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    private func completedBreakMinutes(_ session: ClockInSession) -> Int {
+        Int((session.breaks.reduce(0.0) { $0 + $1.seconds } / 60).rounded())
     }
 
     private func activeCrewList(_ session: ClockInSession) -> some View {
@@ -202,6 +241,49 @@ struct PhoneTimeClockView: View {
     private func rateFor(_ e: Employee) -> String {
         let v = NSDecimalNumber(decimal: e.defaultHourlyRate).doubleValue
         return String(format: "$%.2f/hr", v)
+    }
+
+    @ViewBuilder
+    private func breakButton(_ session: ClockInSession) -> some View {
+        if session.isOnBreak {
+            Button {
+                dataStore.endCrewBreak()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "play.fill")
+                    Text("End Break")
+                        .font(.title3.weight(.semibold))
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.orange)
+                .foregroundColor(.white)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.lg))
+            }
+        } else {
+            Button {
+                dataStore.startCrewBreak()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "pause.fill")
+                    Text("Start Break")
+                        .font(.title3.weight(.semibold))
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: AppTheme.Radius.lg)
+                        .fill(AppTheme.secondaryBackground)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.Radius.lg)
+                        .stroke(AppTheme.primaryOrange.opacity(0.4), lineWidth: 1)
+                )
+                .foregroundColor(AppTheme.primaryOrange)
+            }
+        }
     }
 
     private var clockOutButton: some View {
@@ -408,6 +490,74 @@ struct PhoneTimeClockView: View {
         .padding(AppTheme.Spacing.md)
         .background(AppTheme.secondaryBackground)
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.md))
+    }
+
+    // MARK: - Reminders
+
+    private var remindersSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            HStack {
+                Image(systemName: "bell.badge.fill")
+                    .foregroundColor(AppTheme.primaryOrange)
+                Text("Reminders")
+                    .font(AppTheme.Typography.headline)
+                Spacer()
+            }
+
+            Toggle("Remind me to clock in", isOn: $notifications.clockInReminderEnabled)
+                .tint(AppTheme.primaryOrange)
+                .onChange(of: notifications.clockInReminderEnabled) { _, _ in
+                    notifications.scheduleClockInReminder()
+                }
+            if notifications.clockInReminderEnabled {
+                DatePicker("Time", selection: clockInTimeBinding, displayedComponents: .hourAndMinute)
+                    .font(.subheadline)
+            }
+
+            Divider()
+
+            Toggle("Remind me to clock out", isOn: $notifications.clockOutReminderEnabled)
+                .tint(AppTheme.primaryOrange)
+                .onChange(of: notifications.clockOutReminderEnabled) { _, _ in
+                    notifications.rescheduleTimeClockReminders(from: dataStore)
+                }
+            if notifications.clockOutReminderEnabled {
+                Stepper("After \(notifications.clockOutReminderHours) hours",
+                        value: $notifications.clockOutReminderHours, in: 4...16)
+                    .font(.subheadline)
+                    .onChange(of: notifications.clockOutReminderHours) { _, _ in
+                        notifications.rescheduleTimeClockReminders(from: dataStore)
+                    }
+            }
+
+            if notifications.permissionStatus == .denied {
+                Text("Notifications are off in Settings — reminders won't appear until you turn them on.")
+                    .font(.caption2)
+                    .foregroundColor(.orange)
+            }
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.secondaryBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.md))
+    }
+
+    /// Bridges the clock-in reminder hour/minute prefs to a `Date` for the
+    /// time picker; reschedules the daily reminder on change.
+    private var clockInTimeBinding: Binding<Date> {
+        Binding(
+            get: {
+                var c = DateComponents()
+                c.hour = notifications.clockInReminderHour
+                c.minute = notifications.clockInReminderMinute
+                return Calendar.current.date(from: c) ?? Date()
+            },
+            set: { newDate in
+                let c = Calendar.current.dateComponents([.hour, .minute], from: newDate)
+                notifications.clockInReminderHour = c.hour ?? 7
+                notifications.clockInReminderMinute = c.minute ?? 0
+                notifications.scheduleClockInReminder()
+            }
+        )
     }
 }
 
