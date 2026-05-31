@@ -762,6 +762,50 @@ class CloudKitService {
         return savedShare
     }
 
+    /// Owner-only: publish a MINIMAL roster (employees + projects) into the
+    /// timesheets zone so foremen — who can reach ONLY that zone — get crew and
+    /// project pickers. Deliberately projects only the fields the web pickers
+    /// need: name/type/rate for `SS_Employee`, and `title` for `SS_Project` —
+    /// NOT project `contractAmount`/financials or employee PII (email/phone).
+    /// Keyed by the same record names as the originals so foreman-written
+    /// `employeeRef`/`projectRef` line up with the owner's real records.
+    func publishRosterToTimesheetsZone(employees: [Employee], projects: [Project]) async {
+        guard role == .owner, let db = privateDB else { return }
+        try? await setupTimesheetsZone()
+
+        var records: [CKRecord] = []
+        for e in employees {
+            let r = CKRecord(recordType: "SS_Employee",
+                             recordID: CKRecord.ID(recordName: e.id.uuidString, zoneID: timesheetsOwnerZoneID))
+            r["uuid"] = e.id.uuidString as CKRecordValue
+            r["firstName"] = e.firstName as CKRecordValue
+            r["lastName"] = e.lastName as CKRecordValue
+            r["employeeType"] = e.employeeType.rawValue as CKRecordValue
+            CKField.setDecimal(r, "defaultHourlyRate", e.defaultHourlyRate)
+            records.append(r)
+        }
+        for p in projects {
+            let r = CKRecord(recordType: "SS_Project",
+                             recordID: CKRecord.ID(recordName: p.id.recordName, zoneID: timesheetsOwnerZoneID))
+            r["title"] = p.title as CKRecordValue
+            records.append(r)
+        }
+
+        // Overwrite existing projections (.allKeys) and tolerate partial failure.
+        let chunkSize = 200
+        var i = 0
+        while i < records.count {
+            let chunk = Array(records[i..<min(i + chunkSize, records.count)])
+            do {
+                _ = try await db.modifyRecords(saving: chunk, deleting: [], savePolicy: .allKeys, atomically: false)
+            } catch {
+                print("[CloudKit] roster projection batch failed: \(error.localizedDescription)")
+            }
+            i += chunkSize
+        }
+        print("[CloudKit] published roster projection: \(employees.count) employees, \(projects.count) projects → \(timesheetsZoneName)")
+    }
+
     // MARK: - Types
 
     enum CloudKitError: LocalizedError {
