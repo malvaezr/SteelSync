@@ -134,6 +134,7 @@ class DataStore: ObservableObject {
         syncItemsDone = 0; syncItemsTotal = 0; syncBytesDone = 0; syncBytesTotal = 0
         syncStatus = .syncing
         try? await cloudKit.setupZone()
+        try? await cloudKit.setupTimesheetsZone()
 
         // Drain queued deletes (offline deletes, failed cloud deletes) so the
         // cloud reflects local removals without a blanket orphan sweep.
@@ -149,6 +150,10 @@ class DataStore: ObservableObject {
                 self.syncBytesTotal = p.bytesTotal
             }
         }
+
+        // Timesheets that belong to the dedicated (foreman-shared) zone are
+        // uploaded separately so they route to that zone, not the main one.
+        await cloudKit.uploadTimesheets(from: self)
 
         if success {
             syncStatus = .synced

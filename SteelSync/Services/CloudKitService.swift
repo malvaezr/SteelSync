@@ -378,7 +378,22 @@ class CloudKitService {
             store.calendarEvents = (byType[CalendarEvent.ckRecordType] ?? []).compactMap { CalendarEvent.from($0) }
             store.ganttTasks = (byType[GanttTask.ckRecordType] ?? []).compactMap { GanttTask.from($0) }
             store.auditLog = (byType[AuditEntry.ckRecordType] ?? []).compactMap { AuditEntry.from($0) }
-            store.timesheetEntries = (byType[TimesheetEntry.ckRecordType] ?? []).compactMap { TimesheetEntry.from($0) }
+            // Timesheets: union the role-zone entries (legacy/PM) with the
+            // dedicated shared timesheets zone (foreman-entered), de-duped by id
+            // (the timesheets-zone copy wins on conflict).
+            var timesheets = (byType[TimesheetEntry.ckRecordType] ?? []).compactMap { TimesheetEntry.from($0) }
+            if role == .owner {
+                let foremanEntries = ((try? await fetchTimesheetsZoneRecords()) ?? [])
+                    .filter { $0.recordType == TimesheetEntry.ckRecordType }
+                    .compactMap { TimesheetEntry.from($0) }
+                if !foremanEntries.isEmpty {
+                    var byID: [UUID: TimesheetEntry] = [:]
+                    for t in timesheets { byID[t.id] = t }
+                    for t in foremanEntries { byID[t.id] = t }
+                    timesheets = Array(byID.values)
+                }
+            }
+            store.timesheetEntries = timesheets
             store.crewPresets = (byType[CrewPreset.ckRecordType] ?? []).compactMap { CrewPreset.from($0) }
             store.overheadExpenses = (byType[OverheadExpense.ckRecordType] ?? []).compactMap { OverheadExpense.from($0) }
 
@@ -487,7 +502,12 @@ class CloudKitService {
 
         // Audit entries (last 100)
         for a in store.auditLog.prefix(100) { allRecords.append(a.toCKRecord(in: zoneID)) }
-        for ts in store.timesheetEntries { allRecords.append(ts.toCKRecord(in: zoneID)) }
+        // Timesheets in the dedicated timesheets zone (foreman-entered, or PM
+        // edits to them) are uploaded by uploadTimesheets(); only push the
+        // legacy/new entries to the main zone here so we don't duplicate them.
+        for ts in store.timesheetEntries where ts.recordID?.zoneID != timesheetsOwnerZoneID {
+            allRecords.append(ts.toCKRecord(in: zoneID))
+        }
         for cp in store.crewPresets { allRecords.append(cp.toCKRecord(in: zoneID)) }
         for (projectID, items) in store.rfis {
             let ref = CKRecord.Reference(recordID: CKRecord.ID(recordName: projectID.recordName, zoneID: zoneID), action: .none)
@@ -804,6 +824,58 @@ class CloudKitService {
             i += chunkSize
         }
         print("[CloudKit] published roster projection: \(employees.count) employees, \(projects.count) projects → \(timesheetsZoneName)")
+    }
+
+    /// Owner-only: fetch all records from the dedicated timesheets zone (incl.
+    /// foreman-entered SS_TimesheetEntry). Returns [] if the zone doesn't exist
+    /// yet (no foreman set up) — a normal, non-error state.
+    func fetchTimesheetsZoneRecords() async throws -> [CKRecord] {
+        guard role == .owner, let db = privateDB else { return [] }
+        let zone = timesheetsOwnerZoneID
+        do {
+            let changes = try await db.recordZoneChanges(inZoneWith: zone, since: nil)
+            var records: [CKRecord] = []
+            for (_, result) in changes.modificationResultsByID {
+                if case .success(let mod) = result { records.append(mod.record) }
+            }
+            if records.isEmpty {
+                records = (try? await fetchAllRecordsViaOperation(db: db, zoneID: zone)) ?? []
+            }
+            return records
+        } catch {
+            // Zone-not-found etc. — treat as empty (the zone may not exist yet).
+            print("[CloudKit] timesheets-zone fetch: \(error.localizedDescription)")
+            return []
+        }
+    }
+
+    /// Owner-only: upload the timesheet entries that live in the dedicated
+    /// timesheets zone (foreman-entered, plus PM edits to them) back to that
+    /// zone, reconciling against existing records to preserve their system
+    /// fields (the zone is shared). Entries belonging to the main zone are
+    /// handled by `uploadAllToCloud`.
+    func uploadTimesheets(from store: DataStore) async {
+        guard role == .owner, privateDB != nil else { return }
+        let zone = timesheetsOwnerZoneID
+        let zoneEntries = store.timesheetEntries.filter { $0.recordID?.zoneID == zone }
+        guard !zoneEntries.isEmpty else { return }
+
+        var existingByName: [String: CKRecord] = [:]
+        if let fetched = try? await fetchTimesheetsZoneRecords() {
+            for rec in fetched where rec.recordType == TimesheetEntry.ckRecordType {
+                existingByName[rec.recordID.recordName] = rec
+            }
+        }
+        let records: [CKRecord] = zoneEntries.map { entry in
+            let fresh = entry.toCKRecord(in: zone)
+            guard let existing = existingByName[fresh.recordID.recordName] else { return fresh }
+            for key in fresh.allKeys() { existing[key] = fresh[key] }
+            return existing
+        }
+        // saveBatch targets activeDatabase (privateDB for the owner); each
+        // record's recordID carries the timesheets zone, so it lands there.
+        let failed = await saveBatch(records, label: "Timesheets→\(timesheetsZoneName)")
+        print("[CloudKit] uploadTimesheets: \(records.count - failed)/\(records.count) saved to \(timesheetsZoneName)")
     }
 
     // MARK: - Types
