@@ -194,9 +194,21 @@ enum TaskStatus: String, Codable, CaseIterable, Identifiable {
 // MARK: - Date Work Day Extensions
 extension Date {
     func addingWorkdays(_ days: Int, includeSaturdays: Bool = false) -> Date {
-        var result = self
+        guard days > 0 else { return self }
+        // Clamp absurd inputs (corrupt data) so the week math can't overflow.
+        // 1,000,000 workdays ≈ 3,800 years — far beyond any real task.
+        let days = min(days, 1_000_000)
+        // O(1) instead of day-by-day: any 7 consecutive calendar days contain
+        // exactly `perWeek` working days, so jump whole weeks first, then walk
+        // the small remainder. This keeps the result identical to the old loop
+        // while preventing a corrupt/huge `durationDays` from pegging the main
+        // thread (endDate is read on every Gantt / Today / sidebar render).
+        let perWeek = includeSaturdays ? 6 : 5
+        let fullWeeks = days / perWeek
+        let remainder = days % perWeek
+        var result = Calendar.current.date(byAdding: .day, value: fullWeeks * 7, to: self) ?? self
         var added = 0
-        while added < days {
+        while added < remainder {
             result = Calendar.current.date(byAdding: .day, value: 1, to: result) ?? result
             let weekday = Calendar.current.component(.weekday, from: result)
             let isSunday = weekday == 1
