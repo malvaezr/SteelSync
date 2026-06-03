@@ -17,6 +17,9 @@ struct SidebarView: View {
     /// Spike scaffolding: holds the timesheets-zone share URL after it's copied
     /// to the clipboard, to surface it in a confirmation alert.
     @State private var timesheetsShareURL: String?
+    /// Data-health: surface schedule tasks with corrupt durations once per launch.
+    @State private var showDataHealth = false
+    @State private var dataHealthChecked = false
 
     /// Projects the user has pinned, resolved to live `Project` objects.
     /// Filters out IDs that no longer exist (project deleted) so stale
@@ -130,6 +133,27 @@ struct SidebarView: View {
         } message: {
             Text("Copied to your clipboard — send it to a foreman to invite them to the timesheets zone:\n\n\(timesheetsShareURL ?? "")")
         }
+        .onAppear {
+            guard !dataHealthChecked else { return }
+            dataHealthChecked = true
+            if !dataStore.anomalousGanttTasks.isEmpty { showDataHealth = true }
+        }
+        .alert("Schedule data needs attention", isPresented: $showDataHealth) {
+            Button("Delete corrupt task\(dataStore.anomalousGanttTasks.count == 1 ? "" : "s")", role: .destructive) {
+                dataStore.deleteAnomalousGanttTasks()
+            }
+            Button("Not Now", role: .cancel) {}
+        } message: {
+            Text(dataHealthMessage)
+        }
+    }
+
+    private var dataHealthMessage: String {
+        let tasks = dataStore.anomalousGanttTasks
+        let lines = tasks.prefix(10).map { "• " + dataStore.anomalyDescription($0) }.joined(separator: "\n")
+        let more = tasks.count > 10 ? "\n…and \(tasks.count - 10) more." : ""
+        let s = tasks.count == 1 ? "" : "s"
+        return "\(tasks.count) schedule task\(s) have an invalid duration (likely corrupt data — this is what caused the slowdown). Open the Schedule for the listed project(s) and correct or delete the task:\n\n\(lines)\(more)"
     }
 
     private func prepareShare() async {

@@ -1688,6 +1688,34 @@ class DataStore: ObservableObject {
         persistData()
     }
 
+    // MARK: - Data Health
+
+    /// Gantt tasks whose stored duration is implausible (corrupt data). The
+    /// end-date math is hang-proof now, but such a task still renders as a
+    /// nonsensical bar with an end date centuries out — flag them so they can
+    /// be found and corrected. 2000 workdays ≈ 8 years; anything beyond (or a
+    /// negative duration) is not a real task.
+    var anomalousGanttTasks: [GanttTask] {
+        ganttTasks.filter { $0.durationDays > 2000 || $0.durationDays < 0 }
+    }
+
+    /// One-line description of an anomalous task (project · name · duration) for
+    /// the data-health warning, so the offending task is easy to locate.
+    func anomalyDescription(_ task: GanttTask) -> String {
+        let project = projects.first { $0.id.recordName == task.projectID }?.title ?? "Unknown project"
+        let name = task.name.isEmpty ? "(untitled task)" : task.name
+        return "\(project) — “\(name)”: \(task.durationDays) days"
+    }
+
+    /// Delete the anomalous (corrupt-duration) Gantt tasks. These are usually
+    /// orphaned records — their project was deleted — so they can't be reached
+    /// through normal navigation. Routes through `deleteGanttTask` so the cloud
+    /// copy is removed too.
+    func deleteAnomalousGanttTasks() {
+        for task in anomalousGanttTasks { deleteGanttTask(task) }
+        persistData()
+    }
+
     // MARK: - Crew clock-in session
     //
     // One active session per device — foreman clocks N crew members in,
