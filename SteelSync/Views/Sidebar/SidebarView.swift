@@ -10,7 +10,6 @@ struct SidebarView: View {
     @EnvironmentObject var dataStore: DataStore
     @EnvironmentObject var navigationState: NavigationState
     @EnvironmentObject var themeManager: ThemeManager
-    @State private var showSyncOptions = false
     @State private var pendingShare: CKShare?
     @State private var shareError: String?
     @State private var isPreparingShare = false
@@ -97,25 +96,8 @@ struct SidebarView: View {
             }
         }
         .navigationTitle("SteelSync")
-        .confirmationDialog("Sync Options", isPresented: $showSyncOptions) {
-            Button("Push Local → Cloud") {
-                Task { await dataStore.pushToCloud() }
-            }
-            Button("Pull Cloud → Local") {
-                Task { await dataStore.pullFromCloud() }
-            }
-            if !dataStore.cloudKit.isParticipant {
-                Button("Share Data…") {
-                    Task { await prepareShare() }
-                }
-                Button("Share Timesheets Zone…") {
-                    Task { await prepareTimesheetsShare() }
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(syncDialogMessage)
-        }
+        // Sync options live in the Menu on the sync button (see syncButton) —
+        // a macOS confirmationDialog silently dropped the 5th button.
         .sheet(isPresented: Binding(get: { pendingShare != nil }, set: { if !$0 { pendingShare = nil } })) {
             if let share = pendingShare, let container = dataStore.cloudKit.ckContainer {
                 CloudShareSheet(share: share, container: container) {
@@ -297,9 +279,13 @@ struct SidebarView: View {
                 .foregroundColor(AppTheme.primaryOrange)
             }
 
-            Button {
-                if !dataStore.isSyncing {
-                    showSyncOptions = true
+            Menu {
+                Button("Push Local → Cloud") { Task { await dataStore.pushToCloud() } }
+                Button("Pull Cloud → Local") { Task { await dataStore.pullFromCloud() } }
+                if !dataStore.cloudKit.isParticipant {
+                    Divider()
+                    Button("Share Data…") { Task { await prepareShare() } }
+                    Button("Share Timesheets Zone…") { Task { await prepareTimesheetsShare() } }
                 }
             } label: {
                 HStack(spacing: 4) {
@@ -323,7 +309,8 @@ struct SidebarView: View {
                     }
                 }
             }
-            .buttonStyle(.plain)
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
             .disabled(dataStore.isSyncing)
             .help(syncTooltip)
 
