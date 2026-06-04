@@ -90,8 +90,9 @@ struct CrewManagementView: View {
                 ) { showAddRow = true }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                // Scrollable timesheet grid
-                ScrollView(.horizontal, showsIndicators: true) {
+                // Scrollable timesheet grid — fills the remaining height,
+                // top-left aligned, and scrolls on both axes as rows grow.
+                ScrollView([.horizontal, .vertical], showsIndicators: true) {
                     VStack(spacing: 0) {
                         headerRow
                         Divider()
@@ -103,10 +104,12 @@ struct CrewManagementView: View {
 
                         totalsRow
                     }
-                    .frame(minWidth: 900)
+                    .frame(minWidth: 900, alignment: .topLeading)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
         .inlineForm(isPresented: $showAddRow) {
             AddTimesheetRowSheet(weekStart: weekStart)
         }
