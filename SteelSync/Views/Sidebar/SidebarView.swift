@@ -160,7 +160,8 @@ struct SidebarView: View {
             // Publish the minimal crew/project roster into the timesheets zone so
             // invited foremen get pickers (no financials are exposed).
             await dataStore.cloudKit.publishRosterToTimesheetsZone(
-                employees: dataStore.activeEmployees, projects: dataStore.activeProjects)
+                employees: dataStore.activeEmployees, projects: dataStore.activeProjects,
+                crewPresets: dataStore.crewPresets, ganttTasks: dataStore.ganttTasks)
             guard let url = share.url else {
                 shareError = "Share created but no URL yet — tap “Share Timesheets Zone…” again in a moment."
                 return

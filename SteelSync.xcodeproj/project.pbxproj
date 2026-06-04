@@ -216,12 +216,14 @@
 		7AA05B3C12B72E6E07B7533D /* WidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2493EBC395F13A8EE6F94B4A /* WidgetBridge.swift */; };
 		7AF1AE7531D1084D5BA4BD76 /* PDFShareButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADCA49EBF740AF2392D2B80 /* PDFShareButton.swift */; };
 		7C05D84B058747137119A243 /* AddProjectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52278865AEFCBD823BDEC6C1 /* AddProjectView.swift */; };
+		7C59BC986D48E4BBB4A702DA /* ProjectSettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6353E4A2CA150015CCDAA90 /* ProjectSettingsService.swift */; };
 		7E238E37CC7D3319412C9905 /* CapturePhotoScanSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31085ECE23D6795B1346FCD1 /* CapturePhotoScanSheet.swift */; };
 		7F4E112517C650F3BB9DC264 /* CalendarMainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD77C25FBFE22464C5E0183 /* CalendarMainView.swift */; };
 		7F4EDB713C0760F7A014AFDD /* SubcontractorAIAPDFViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E7F411A108A2A42E227A28 /* SubcontractorAIAPDFViews.swift */; };
 		7F59BE74AD28699773796B2D /* PayAppXLSXRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FA461C7034DAC74FC8B0FBB /* PayAppXLSXRenderer.swift */; };
 		80502C7C9B069BB083671525 /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D1E8322F91B9CB44B59AC7 /* SharedComponents.swift */; };
 		8113BFBBE57099641331865F /* CloudKitConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E9683DA4F3B1ABA7AE3A72 /* CloudKitConvertible.swift */; };
+		812016AE595A231CEBB5463B /* ProjectSettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6353E4A2CA150015CCDAA90 /* ProjectSettingsService.swift */; };
 		83808EBAA9290FEEAED39F96 /* ProjectFormSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C688ECAD2EB3B55FE5B19133 /* ProjectFormSheets.swift */; };
 		84F149D84ABD65F831E3EF23 /* OverheadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A8E550E7DDAFD4619DE39D6 /* OverheadView.swift */; };
 		8525133AD9B01D31CE61A2C8 /* DataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 382FFF1355B696458FB6E3D8 /* DataStore.swift */; };
@@ -354,6 +356,7 @@
 		DC810E1FF5DA9D32DF1FBD45 /* CrewPresetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4033807B779BA39C7F61A1 /* CrewPresetsView.swift */; };
 		DCFEBB660E29510457E925F5 /* AssistantService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6802A78CD49EA90FA355F1A6 /* AssistantService.swift */; };
 		DF0B50EDD3B4D12436C6F708 /* iPadCompactRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880EA42553D852F0AEB90DCB /* iPadCompactRoot.swift */; };
+		DFABD0A8329E97A9F3AB9B86 /* ProjectSettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6353E4A2CA150015CCDAA90 /* ProjectSettingsService.swift */; };
 		E0A481D9DC317EB12D930397 /* RentalLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CECF2AD25ABAEE261DB9A1F9 /* RentalLiveActivityAttributes.swift */; };
 		E21CA5F133C0EB2E107215A1 /* SteelSyncApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21EE9F075420DFE63E74A2C1 /* SteelSyncApp.swift */; };
 		E422B6E9D28CD5EB3AC3BFCF /* RowReorderDropDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED56B7484A529A5F7C23A349 /* RowReorderDropDelegate.swift */; };
@@ -594,6 +597,7 @@
 		A2C2ADF3F7937DBF838CB48B /* OverheadExpense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverheadExpense.swift; sourceTree = "<group>"; };
 		A34DE6E6E2BB8C72C6687F79 /* PinService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinService.swift; sourceTree = "<group>"; };
 		A4FFFCC03C9E0ECCD289C86B /* ResourceType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceType.swift; sourceTree = "<group>"; };
+		A6353E4A2CA150015CCDAA90 /* ProjectSettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSettingsService.swift; sourceTree = "<group>"; };
 		A8D56045443EE049CDCFAF6A /* PersistenceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceService.swift; sourceTree = "<group>"; };
 		A9D1E8322F91B9CB44B59AC7 /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
 		AA4033807B779BA39C7F61A1 /* CrewPresetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewPresetsView.swift; sourceTree = "<group>"; };
@@ -1081,6 +1085,7 @@
 				812971A7EA828E9BF47A7BB6 /* PDFExportService.swift */,
 				A8D56045443EE049CDCFAF6A /* PersistenceService.swift */,
 				A34DE6E6E2BB8C72C6687F79 /* PinService.swift */,
+				A6353E4A2CA150015CCDAA90 /* ProjectSettingsService.swift */,
 				77B10D2CBB3202FC8A534723 /* SnapshotService.swift */,
 				C4E7F411A108A2A42E227A28 /* SubcontractorAIAPDFViews.swift */,
 				2493EBC395F13A8EE6F94B4A /* WidgetBridge.swift */,
@@ -1539,6 +1544,7 @@
 				B4642A8116F634DF7C794A13 /* Project.swift in Sources */,
 				EE7CEED940F142256293F284 /* ProjectDetailView.swift in Sources */,
 				83808EBAA9290FEEAED39F96 /* ProjectFormSheets.swift in Sources */,
+				7C59BC986D48E4BBB4A702DA /* ProjectSettingsService.swift in Sources */,
 				3EAC78D04FFD5C380F56AE23 /* RFI.swift in Sources */,
 				687C77138525833388FED55D /* RFILogView.swift in Sources */,
 				C2B447F331B4D22D9A59F1A3 /* RentalLiveActivityAttributes.swift in Sources */,
@@ -1653,6 +1659,7 @@
 				69C15DD2CA248EF58DD60377 /* Project.swift in Sources */,
 				CD6021C7C23EA67B3D101B5C /* ProjectDetailView.swift in Sources */,
 				902AFEDEE46533DC42E16094 /* ProjectFormSheets.swift in Sources */,
+				DFABD0A8329E97A9F3AB9B86 /* ProjectSettingsService.swift in Sources */,
 				430D09B7A4C044B843A66A8F /* QueryIntent.swift in Sources */,
 				B98E9895A6395B127A81CF9B /* QueryParser.swift in Sources */,
 				EC754C8F0FF998D3137DB3BC /* RFI.swift in Sources */,
@@ -1815,6 +1822,7 @@
 				877B1F3B91A32759B8A11F73 /* Project.swift in Sources */,
 				533EEAE25497EE869A3A8F2A /* ProjectDetailView.swift in Sources */,
 				BBEF86FE257923169587B133 /* ProjectFormSheets.swift in Sources */,
+				812016AE595A231CEBB5463B /* ProjectSettingsService.swift in Sources */,
 				E9985F8B648BA6F76E39905D /* QueryIntent.swift in Sources */,
 				130AE1D68EBAAEC93B33AF9B /* QueryParser.swift in Sources */,
 				4BE21E0936CA8D3C35C3EFCC /* RFI.swift in Sources */,

@@ -12,10 +12,13 @@ struct CrewPreset: Identifiable, Codable, Hashable {
     var name: String
     var members: [CrewPresetMember]
     var createdDate: Date
+    /// `Employee.id.uuidString` of the foreman who owns this preset. The web
+    /// scopes a foreman's clock-in crew to the presets they own. nil = unowned.
+    var foremanRef: String?
     var recordID: CKRecord.ID?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, members, createdDate
+        case id, name, members, createdDate, foremanRef
     }
 
     init(
@@ -23,12 +26,14 @@ struct CrewPreset: Identifiable, Codable, Hashable {
         name: String,
         members: [CrewPresetMember] = [],
         createdDate: Date = Date(),
+        foremanRef: String? = nil,
         recordID: CKRecord.ID? = nil
     ) {
         self.id = id
         self.name = name
         self.members = members
         self.createdDate = createdDate
+        self.foremanRef = foremanRef
         self.recordID = recordID
     }
 

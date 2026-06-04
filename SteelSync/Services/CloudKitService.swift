@@ -730,6 +730,12 @@ class CloudKitService {
 
     let timesheetsZoneName = "SteelSyncTimesheetsZone"
 
+    /// Sentinel recordName for the owner-written seed that creates the
+    /// `SS_ForemanClaim` record type in the Development schema (web foremen are
+    /// zone participants and cannot extend the schema themselves). Filtered out
+    /// of `fetchForemanClaims()`.
+    let foremanClaimSeedName = "_schema_seed"
+
     /// Owner-side zone ID for the dedicated timesheets zone.
     var timesheetsOwnerZoneID: CKRecordZone.ID {
         CKRecordZone.ID(zoneName: timesheetsZoneName, ownerName: CKCurrentUserDefaultName)
@@ -789,7 +795,12 @@ class CloudKitService {
     /// NOT project `contractAmount`/financials or employee PII (email/phone).
     /// Keyed by the same record names as the originals so foreman-written
     /// `employeeRef`/`projectRef` line up with the owner's real records.
-    func publishRosterToTimesheetsZone(employees: [Employee], projects: [Project]) async {
+    func publishRosterToTimesheetsZone(
+        employees: [Employee],
+        projects: [Project],
+        crewPresets: [CrewPreset] = [],
+        ganttTasks: [GanttTask] = []
+    ) async {
         guard role == .owner, let db = privateDB else { return }
         try? await setupTimesheetsZone()
 
@@ -802,14 +813,48 @@ class CloudKitService {
             r["lastName"] = e.lastName as CKRecordValue
             r["employeeType"] = e.employeeType.rawValue as CKRecordValue
             CKField.setDecimal(r, "defaultHourlyRate", e.defaultHourlyRate)
+            // Foreman identification: the Apple ID the PM linked to this employee.
+            if let linked = e.cloudUserRecordName { r["cloudUserRecordName"] = linked as CKRecordValue }
             records.append(r)
         }
         for p in projects {
             let r = CKRecord(recordType: "SS_Project",
                              recordID: CKRecord.ID(recordName: p.id.recordName, zoneID: timesheetsOwnerZoneID))
             r["title"] = p.title as CKRecordValue
+            // So the web honors the same per-project lunch override as native.
+            if let a = p.autoDeductLunch { CKField.setBool(r, "autoDeductLunch", a) }
             records.append(r)
         }
+        // Foreman-owned crew presets → the web scopes a foreman's crew to them.
+        for preset in crewPresets where preset.foremanRef != nil {
+            records.append(preset.toCKRecord(in: timesheetsOwnerZoneID))
+        }
+        // Only tasks that carry reinforcement crew, minimal fields (no notes), so
+        // the web can add the day's extra help to a foreman's crew picker.
+        for t in ganttTasks where !t.reinforcementCrew.isEmpty {
+            let r = CKRecord(recordType: "SS_GanttTask",
+                             recordID: CKRecord.ID(recordName: t.id.uuidString, zoneID: timesheetsOwnerZoneID))
+            r["uuid"] = t.id.uuidString as CKRecordValue
+            r["projectID"] = t.projectID as CKRecordValue
+            r["name"] = t.name as CKRecordValue
+            r["assignedTo"] = t.assignedTo as CKRecordValue
+            r["startDate"] = t.startDate as CKRecordValue
+            r["durationDays"] = t.durationDays as CKRecordValue
+            CKField.setBool(r, "includesSaturdays", t.includesSaturdays)
+            r["reinforcementCrewJSON"] = CKField.encodeJSON(t.reinforcementCrew) as CKRecordValue
+            records.append(r)
+        }
+
+        // Seed the SS_ForemanClaim record type so foreman web sign-ins — which run
+        // as zone participants and CANNOT extend the CloudKit schema — can write
+        // their claim. One owner-written record creates the type in the
+        // Development schema; fetchForemanClaims() filters this sentinel out.
+        let seed = CKRecord(recordType: "SS_ForemanClaim",
+                            recordID: CKRecord.ID(recordName: foremanClaimSeedName, zoneID: timesheetsOwnerZoneID))
+        seed["userRecordName"] = foremanClaimSeedName as CKRecordValue
+        seed["displayName"] = "(schema seed — ignore)" as CKRecordValue
+        seed["claimedDate"] = Date() as CKRecordValue
+        records.append(seed)
 
         // Overwrite existing projections (.allKeys) and tolerate partial failure.
         let chunkSize = 200
@@ -823,7 +868,9 @@ class CloudKitService {
             }
             i += chunkSize
         }
-        print("[CloudKit] published roster projection: \(employees.count) employees, \(projects.count) projects → \(timesheetsZoneName)")
+        let presetCount = crewPresets.filter { $0.foremanRef != nil }.count
+        let taskCount = ganttTasks.filter { !$0.reinforcementCrew.isEmpty }.count
+        print("[CloudKit] published roster projection: \(employees.count) employees, \(projects.count) projects, \(presetCount) foreman presets, \(taskCount) reinforcement tasks → \(timesheetsZoneName)")
     }
 
     /// Owner-only: fetch all records from the dedicated timesheets zone (incl.
@@ -876,6 +923,31 @@ class CloudKitService {
         // record's recordID carries the timesheets zone, so it lands there.
         let failed = await saveBatch(records, label: "Timesheets→\(timesheetsZoneName)")
         print("[CloudKit] uploadTimesheets: \(records.count - failed)/\(records.count) saved to \(timesheetsZoneName)")
+    }
+
+    /// A web foreman's self-identification record, written into the timesheets
+    /// zone when they sign into the portal and aren't yet linked to an Employee.
+    /// The PM links one of these to a foreman Employee in the employee editor.
+    struct ForemanClaim: Identifiable {
+        let id: String          // the foreman's CloudKit userRecordName
+        let displayName: String // a name the foreman typed when claiming
+        let claimedDate: Date?
+    }
+
+    /// Owner-only: pending foreman web sign-ins (`SS_ForemanClaim`) from the
+    /// timesheets zone, newest first, so the PM can link each to an Employee.
+    func fetchForemanClaims() async -> [ForemanClaim] {
+        let records = (try? await fetchTimesheetsZoneRecords()) ?? []
+        let claims = records
+            .filter { $0.recordType == "SS_ForemanClaim" && $0.recordID.recordName != foremanClaimSeedName }
+            .map { rec in
+                ForemanClaim(
+                    id: (rec["userRecordName"] as? String) ?? rec.recordID.recordName,
+                    displayName: (rec["displayName"] as? String) ?? "Unknown sign-in",
+                    claimedDate: rec["claimedDate"] as? Date
+                )
+            }
+        return claims.sorted { ($0.claimedDate ?? .distantPast) > ($1.claimedDate ?? .distantPast) }
     }
 
     // MARK: - Types

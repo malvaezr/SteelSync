@@ -49,7 +49,8 @@ struct PhoneTimeClockView: View {
                     } else if let session = dataStore.activeClockInSession {
                         activeShiftBanner(session)
                         activeCrewList(session)
-                        breakButton(session)
+                        addLateArrivalControl(session)
+                        lunchCard(session)
                         clockOutButton
                     } else {
                         projectPicker
@@ -163,44 +164,10 @@ struct PhoneTimeClockView: View {
                     .foregroundColor(AppTheme.primaryOrange)
                     .multilineTextAlignment(.trailing)
             }
-            breakStatusLine(session)
         }
         .padding(AppTheme.Spacing.md)
-        .background((session.isOnBreak ? Color.orange : Color.green).opacity(0.12))
+        .background(Color.green.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.md))
-    }
-
-    /// Shows live break duration while paused, or the day's accumulated break
-    /// time once breaks have been taken. Renders nothing otherwise.
-    @ViewBuilder
-    private func breakStatusLine(_ session: ClockInSession) -> some View {
-        if session.isOnBreak, let start = session.currentBreakStart {
-            HStack {
-                Image(systemName: "pause.circle.fill").foregroundColor(.orange)
-                Text("On break")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(.orange)
-                Spacer()
-                Text(start, style: .timer)
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundColor(.orange)
-            }
-        } else if !session.breaks.isEmpty {
-            HStack {
-                Image(systemName: "cup.and.saucer.fill").foregroundColor(.secondary)
-                Text("Breaks today")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Spacer()
-                Text("\(completedBreakMinutes(session)) min")
-                    .font(.caption.monospacedDigit())
-                    .foregroundColor(.secondary)
-            }
-        }
-    }
-
-    private func completedBreakMinutes(_ session: ClockInSession) -> Int {
-        Int((session.breaks.reduce(0.0) { $0 + $1.seconds } / 60).rounded())
     }
 
     private func activeCrewList(_ session: ClockInSession) -> some View {
@@ -210,23 +177,120 @@ struct PhoneTimeClockView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundColor(.secondary)
                 Spacer()
-                Text("\(session.crewMemberIDs.count)")
+                Text("\(session.stillOnClockIDs.count) of \(session.crewMemberIDs.count)")
                     .font(.caption.monospacedDigit())
                     .foregroundColor(.secondary)
             }
             ForEach(activeCrew(session), id: \.id) { e in
-                HStack {
-                    Image(systemName: e.isForeman ? "person.fill.checkmark" : "person.fill")
-                        .foregroundColor(.green)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(e.fullName).font(.callout)
-                        Text("\(e.employeeType.rawValue) · \(rateFor(e))")
+                crewMemberRow(e, session: session)
+            }
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.secondaryBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.md))
+    }
+
+    /// One crew row with that member's own live timer (or frozen worked time if
+    /// they clocked out early) and a per-member Clock Out / Resume control.
+    @ViewBuilder
+    private func crewMemberRow(_ e: Employee, session: ClockInSession) -> some View {
+        let id = e.id.uuidString
+        let onClock = session.isStillOnClock(id)
+        let start = session.startTime(for: id)
+        HStack(spacing: 10) {
+            Image(systemName: e.isForeman ? "person.fill.checkmark" : "person.fill")
+                .foregroundColor(onClock ? .green : .secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(e.fullName).font(.callout)
+                HStack(spacing: 6) {
+                    if onClock {
+                        Image(systemName: "clock").font(.caption2).foregroundColor(.secondary)
+                        Text(start, style: .timer)
+                            .font(.caption2.monospacedDigit())
+                            .foregroundColor(.secondary)
+                    } else if let end = session.memberClockOutTimes[id] {
+                        Image(systemName: "checkmark.circle").font(.caption2).foregroundColor(.secondary)
+                        Text("Out \(end, style: .time) · \(durationText(end.timeIntervalSince(start)))")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
-                    Spacer()
                 }
             }
+            Spacer()
+            if onClock {
+                Button { dataStore.clockOutMemberEarly(id) } label: {
+                    Text("Clock Out")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(Capsule().fill(Color.red.opacity(0.12)))
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button { dataStore.resumeCrewMember(id) } label: {
+                    Text("Resume")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(Capsule().fill(AppTheme.primaryOrange.opacity(0.14)))
+                        .foregroundColor(AppTheme.primaryOrange)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 3)
+    }
+
+    private func durationText(_ seconds: TimeInterval) -> String {
+        let total = Int(max(0, seconds))
+        return "\(total / 3600)h \((total % 3600) / 60)m"
+    }
+
+    /// Late-arrival picker: anyone active and not already on the shift can be
+    /// clocked in mid-shift (their clock-in is now, not the shift open).
+    @ViewBuilder
+    private func addLateArrivalControl(_ session: ClockInSession) -> some View {
+        let present = Set(session.crewMemberIDs)
+        let available = dataStore.activeEmployees.filter { !present.contains($0.id.uuidString) }
+        if !available.isEmpty {
+            Menu {
+                ForEach(available, id: \.id) { e in
+                    Button {
+                        dataStore.addCrewMemberMidShift(e)
+                    } label: {
+                        Label(e.fullName, systemImage: "person.fill.badge.plus")
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "person.fill.badge.plus")
+                    Text("Add Late Arrival")
+                        .font(.callout.weight(.semibold))
+                    Spacer()
+                }
+                .padding()
+                .background(RoundedRectangle(cornerRadius: AppTheme.Radius.lg).fill(AppTheme.secondaryBackground))
+                .overlay(RoundedRectangle(cornerRadius: AppTheme.Radius.lg).stroke(AppTheme.primaryOrange.opacity(0.4), lineWidth: 1))
+                .foregroundColor(AppTheme.primaryOrange)
+            }
+        }
+    }
+
+    /// Per-shift lunch control: a "skip today" override plus a one-line summary
+    /// of the auto-deduction policy.
+    private func lunchCard(_ session: ClockInSession) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Toggle(isOn: Binding(
+                get: { session.skipLunchDeduction },
+                set: { dataStore.setSkipLunch($0) }
+            )) {
+                Label("Skip lunch deduction today", systemImage: "fork.knife")
+            }
+            .tint(AppTheme.primaryOrange)
+            Text(session.skipLunchDeduction
+                 ? "No lunch will be deducted on this shift."
+                 : "A \(session.lunchMinutes)-min lunch auto-deducts per person on days of 6 h or more.")
+                .font(.caption2)
+                .foregroundColor(.secondary)
         }
         .padding(AppTheme.Spacing.md)
         .background(AppTheme.secondaryBackground)
@@ -241,49 +305,6 @@ struct PhoneTimeClockView: View {
     private func rateFor(_ e: Employee) -> String {
         let v = NSDecimalNumber(decimal: e.defaultHourlyRate).doubleValue
         return String(format: "$%.2f/hr", v)
-    }
-
-    @ViewBuilder
-    private func breakButton(_ session: ClockInSession) -> some View {
-        if session.isOnBreak {
-            Button {
-                dataStore.endCrewBreak()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "play.fill")
-                    Text("End Break")
-                        .font(.title3.weight(.semibold))
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.orange)
-                .foregroundColor(.white)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.lg))
-            }
-        } else {
-            Button {
-                dataStore.startCrewBreak()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "pause.fill")
-                    Text("Start Break")
-                        .font(.title3.weight(.semibold))
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: AppTheme.Radius.lg)
-                        .fill(AppTheme.secondaryBackground)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppTheme.Radius.lg)
-                        .stroke(AppTheme.primaryOrange.opacity(0.4), lineWidth: 1)
-                )
-                .foregroundColor(AppTheme.primaryOrange)
-            }
-        }
     }
 
     private var clockOutButton: some View {

@@ -12,7 +12,7 @@ struct GanttTask: Identifiable, Codable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, projectID, name, category, status, startDate
         case durationDays, assignedTo, notes, sortOrder, progress, includesSaturdays
-        case predecessorIDs, isPinned, manpower
+        case predecessorIDs, isPinned, manpower, reinforcementCrew
     }
 
     var durationDays: Int
@@ -27,6 +27,10 @@ struct GanttTask: Identifiable, Codable, Hashable {
     var isPinned: Bool
     /// Optional headcount assigned to this task. `nil` when unspecified.
     var manpower: Int?
+    /// `Employee.id.uuidString` of specific people added to this task as
+    /// reinforcement / extra help. They surface in the assigned foreman's
+    /// clock-in crew picker on the day(s) this task spans (for that project).
+    var reinforcementCrew: [String]
 
     init(
         id: UUID = UUID(), projectID: String, name: String,
@@ -37,7 +41,8 @@ struct GanttTask: Identifiable, Codable, Hashable {
         includesSaturdays: Bool = false,
         predecessorIDs: [UUID] = [],
         isPinned: Bool = false,
-        manpower: Int? = nil
+        manpower: Int? = nil,
+        reinforcementCrew: [String] = []
     ) {
         self.id = id; self.projectID = projectID; self.name = name
         self.category = category; self.status = status
@@ -48,6 +53,7 @@ struct GanttTask: Identifiable, Codable, Hashable {
         self.predecessorIDs = predecessorIDs
         self.isPinned = isPinned
         self.manpower = manpower
+        self.reinforcementCrew = reinforcementCrew
     }
 
     /// Custom decoder so older persisted tasks (before predecessorIDs / isPinned existed)
@@ -69,6 +75,7 @@ struct GanttTask: Identifiable, Codable, Hashable {
         self.predecessorIDs = try c.decodeIfPresent([UUID].self, forKey: .predecessorIDs) ?? []
         self.isPinned = try c.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
         self.manpower = try c.decodeIfPresent(Int.self, forKey: .manpower)
+        self.reinforcementCrew = try c.decodeIfPresent([String].self, forKey: .reinforcementCrew) ?? []
     }
 
     /// Returns true if this task is overdue — end date has passed and it's not completed.

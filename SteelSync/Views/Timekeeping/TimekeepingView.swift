@@ -379,6 +379,10 @@ struct EditEmployeeView: View {
     @State private var hourlyRate: String
     @State private var status: EmployeeStatus
     @State private var notes: String
+    @State private var linkedRecordName: String?
+    @State private var claims: [CloudKitService.ForemanClaim] = []
+    @State private var loadingClaims = false
+    @State private var manualRecordName = ""
 
     init(employee: Employee) {
         self.employee = employee
@@ -390,6 +394,7 @@ struct EditEmployeeView: View {
         _hourlyRate = State(initialValue: "\(employee.defaultHourlyRate)")
         _status = State(initialValue: employee.status)
         _notes = State(initialValue: employee.notes)
+        _linkedRecordName = State(initialValue: employee.cloudUserRecordName)
     }
 
     var body: some View {
@@ -406,6 +411,9 @@ struct EditEmployeeView: View {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
                     editEmployeePersonalSection
                     editEmployeeEmploymentSection
+                    if employeeType == .foreman {
+                        editEmployeeForemanAccessSection
+                    }
                     editEmployeeNotesSection
                 }
                 .padding(AppTheme.Spacing.lg)
@@ -415,6 +423,9 @@ struct EditEmployeeView: View {
         #if os(macOS)
         .frame(width: 520, height: 600)
         #endif
+        .task {
+            if employeeType == .foreman { await loadClaims() }
+        }
     }
 
     @ViewBuilder private var editEmployeePersonalSection: some View {
@@ -482,6 +493,106 @@ struct EditEmployeeView: View {
         }
     }
 
+    /// Maps a foreman's web sign-in (their CloudKit user record) to this
+    /// Employee. The portal then shows only this foreman's crew. Pending
+    /// sign-ins are pulled from the shared timesheets zone.
+    @ViewBuilder private var editEmployeeForemanAccessSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            SectionTitle(text: "Foreman Web Access")
+            LabeledField(label: "Linked sign-in") {
+                Menu {
+                    Button {
+                        linkedRecordName = nil
+                    } label: {
+                        if linkedRecordName == nil {
+                            Label("Not linked", systemImage: "checkmark")
+                        } else {
+                            Text("Unlink")
+                        }
+                    }
+                    if claims.isEmpty {
+                        Text("No pending sign-ins. Tap Refresh after the foreman signs into the web portal.")
+                    } else {
+                        Section("Pending web sign-ins") {
+                            ForEach(claims) { claim in
+                                Button {
+                                    linkedRecordName = claim.id
+                                } label: {
+                                    if linkedRecordName == claim.id {
+                                        Label(claim.displayName, systemImage: "checkmark")
+                                    } else {
+                                        Text(claim.displayName)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Text(linkedLabel)
+                            .foregroundColor(linkedRecordName == nil ? AppTheme.secondaryText : AppTheme.primaryText)
+                            .lineLimit(1)
+                        Spacer()
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption2)
+                            .foregroundColor(AppTheme.secondaryText)
+                    }
+                    .appControlSurface()
+                }
+                .buttonStyle(.plain)
+            }
+            HStack {
+                Button {
+                    Task { await loadClaims() }
+                } label: {
+                    Label(loadingClaims ? "Refreshing…" : "Refresh sign-ins", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.appSecondary)
+                .disabled(loadingClaims)
+                Spacer()
+            }
+
+            // Bulletproof fallback: paste the foreman's sign-in ID directly. The
+            // web portal shows it in the top bar ("Signed in as _xxxx…"), so this
+            // works even before the pending-sign-in claim mechanism is set up.
+            LabeledField(label: "Or paste sign-in ID") {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    TextField("_b5eafd…", text: $manualRecordName)
+                        .textFieldStyle(.appField)
+                        #if !os(macOS)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        #endif
+                    Button("Link") {
+                        let trimmed = manualRecordName.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !trimmed.isEmpty {
+                            linkedRecordName = trimmed
+                            manualRecordName = ""
+                        }
+                    }
+                    .buttonStyle(.appSecondary)
+                    .disabled(manualRecordName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+
+            Text("Easiest: on the web portal, the foreman's ID shows next to “Signed in as …” at the top — paste it above and tap Link. (Once they sign in, they’ll also appear under Refresh sign-ins.) Either way, the link saves with the next Push to the shared timesheets zone.")
+                .font(.caption)
+                .foregroundColor(AppTheme.secondaryText)
+        }
+    }
+
+    private var linkedLabel: String {
+        guard let rec = linkedRecordName else { return "Not linked" }
+        if let match = claims.first(where: { $0.id == rec }) { return match.displayName }
+        return "Linked (\(rec.prefix(10))…)"
+    }
+
+    private func loadClaims() async {
+        loadingClaims = true
+        claims = await dataStore.cloudKit.fetchForemanClaims()
+        loadingClaims = false
+    }
+
     private func save() {
         var updated = employee
         updated.firstName = firstName; updated.lastName = lastName
@@ -489,6 +600,7 @@ struct EditEmployeeView: View {
         updated.employeeType = employeeType
         updated.defaultHourlyRate = Decimal(string: hourlyRate) ?? 0
         updated.status = status; updated.notes = notes
+        updated.cloudUserRecordName = employeeType == .foreman ? linkedRecordName : updated.cloudUserRecordName
         updated.updatedDate = Date()
         dataStore.updateEmployee(updated)
         dismiss()

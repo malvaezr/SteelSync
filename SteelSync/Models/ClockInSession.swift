@@ -1,15 +1,5 @@
 import Foundation
 
-/// A single break/lunch window taken during a crew shift. Subtracted from the
-/// raw clocked-in duration when the shift is closed so the materialized
-/// TimesheetEntries reflect worked (paid) hours, not wall-clock time.
-struct BreakInterval: Codable, Equatable {
-    var start: Date
-    var end: Date
-
-    var seconds: TimeInterval { max(0, end.timeIntervalSince(start)) }
-}
-
 /// An in-progress crew clock-in session — the foreman, the project, and the
 /// crew members who are currently on the clock together. Persisted to
 /// UserDefaults so the session survives app relaunches; cleared when the
@@ -18,15 +8,23 @@ struct BreakInterval: Codable, Equatable {
 /// One active session per phone — the foreman either has their crew on the
 /// clock or doesn't. Multiple concurrent sessions aren't supported by design
 /// (a single device = a single foreman managing a single crew at a time).
+///
+/// Each crew member carries their OWN clock-in time (for late arrivals) and an
+/// optional clock-out time (for early departures), so a single shift can hold
+/// people who worked different windows. Worked hours are computed per member at
+/// clock-out, then a 30-minute lunch is auto-deducted (see DataStore.endCrewClockIn).
 struct ClockInSession: Codable, Equatable {
     /// `Employee.id.uuidString` for the foreman who started the session
     /// (the device's user). The roster picker uses this to identify them.
     var foremanID: String
     /// `Project.id.recordName` for the active project.
     var projectID: String
-    /// `Employee.id.uuidString` for every crew member currently clocked in
-    /// (typically includes the foreman themselves if they're working too).
+    /// `Employee.id.uuidString` for every crew member on this shift (including
+    /// any who clocked out early — they stay listed so they still materialize
+    /// a TimesheetEntry; their frozen end time lives in `memberClockOutTimes`).
     var crewMemberIDs: [String]
+    /// The shift's opening time (the foreman's clock-in). Used for the banner
+    /// timer and as the default per-member start for anyone present at the open.
     var clockInTime: Date
 
     /// Display name cache so the Live Activity / banner don't have to look
@@ -35,11 +33,21 @@ struct ClockInSession: Codable, Equatable {
     /// Foreman's display name cache for the same reason.
     var foremanName: String
 
-    /// Completed break windows taken during this shift.
-    var breaks: [BreakInterval]
-    /// Start of an in-progress break, if the crew is currently paused.
-    /// `nil` means the crew is actively working.
-    var currentBreakStart: Date?
+    /// Per-member clock-in times (`Employee.id.uuidString` → Date). Members
+    /// present at the shift open map to `clockInTime`; late arrivals carry their
+    /// own later time.
+    var memberClockInTimes: [String: Date]
+    /// Per-member early clock-out times. Absent = still on the clock (their end
+    /// time is resolved to the final clock-out moment).
+    var memberClockOutTimes: [String: Date]
+
+    /// Minutes of unpaid lunch to auto-deduct at clock-out (default 30). The
+    /// deduction only applies when the member's worked span is long enough and
+    /// the project/app settings allow it — see DataStore.endCrewClockIn.
+    var lunchMinutes: Int
+    /// Per-shift override: when `true`, skip the lunch deduction for everyone on
+    /// this shift regardless of project/app defaults ("don't deduct today").
+    var skipLunchDeduction: Bool
 
     init(
         foremanID: String,
@@ -48,8 +56,10 @@ struct ClockInSession: Codable, Equatable {
         clockInTime: Date,
         projectName: String,
         foremanName: String,
-        breaks: [BreakInterval] = [],
-        currentBreakStart: Date? = nil
+        memberClockInTimes: [String: Date] = [:],
+        memberClockOutTimes: [String: Date] = [:],
+        lunchMinutes: Int = 30,
+        skipLunchDeduction: Bool = false
     ) {
         self.foremanID = foremanID
         self.projectID = projectID
@@ -57,27 +67,41 @@ struct ClockInSession: Codable, Equatable {
         self.clockInTime = clockInTime
         self.projectName = projectName
         self.foremanName = foremanName
-        self.breaks = breaks
-        self.currentBreakStart = currentBreakStart
+        self.memberClockInTimes = memberClockInTimes
+        self.memberClockOutTimes = memberClockOutTimes
+        self.lunchMinutes = lunchMinutes
+        self.skipLunchDeduction = skipLunchDeduction
     }
 
-    /// `true` while the crew is on a break.
-    var isOnBreak: Bool { currentBreakStart != nil }
+    // MARK: - Per-member helpers
 
-    /// Total break time taken so far, including any in-progress break measured
-    /// up to `asOf` (defaults to now).
-    func totalBreakSeconds(asOf reference: Date = Date()) -> TimeInterval {
-        var total = breaks.reduce(0.0) { $0 + $1.seconds }
-        if let open = currentBreakStart {
-            total += max(0, reference.timeIntervalSince(open))
-        }
-        return total
+    /// A member's start time — their own clock-in, or the shift open if they
+    /// were present from the start (or pre-dates the per-member tracking).
+    func startTime(for memberID: String) -> Date {
+        memberClockInTimes[memberID] ?? clockInTime
+    }
+
+    /// A member's end time — their early clock-out if they have one, else the
+    /// passed `fallback` (the final clock-out moment).
+    func endTime(for memberID: String, fallback: Date) -> Date {
+        memberClockOutTimes[memberID] ?? fallback
+    }
+
+    /// `true` while a member is still on the clock (no early-out recorded).
+    func isStillOnClock(_ memberID: String) -> Bool {
+        memberClockOutTimes[memberID] == nil
+    }
+
+    /// Members who haven't clocked out early — still actively on the clock.
+    var stillOnClockIDs: [String] {
+        crewMemberIDs.filter { isStillOnClock($0) }
     }
 }
 
 extension ClockInSession {
-    /// Custom decoder so sessions persisted before break-tracking shipped still
-    /// load — the two break fields are tolerated as absent. Placed in an
+    /// Custom decoder so sessions persisted by older builds still load: the
+    /// per-member and lunch fields are tolerated as absent (and any legacy
+    /// `breaks`/`currentBreakStart` keys are simply ignored). Placed in an
     /// extension to keep the synthesized memberwise initializer available.
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -87,7 +111,9 @@ extension ClockInSession {
         clockInTime = try c.decode(Date.self, forKey: .clockInTime)
         projectName = try c.decode(String.self, forKey: .projectName)
         foremanName = try c.decode(String.self, forKey: .foremanName)
-        breaks = try c.decodeIfPresent([BreakInterval].self, forKey: .breaks) ?? []
-        currentBreakStart = try c.decodeIfPresent(Date.self, forKey: .currentBreakStart)
+        memberClockInTimes = try c.decodeIfPresent([String: Date].self, forKey: .memberClockInTimes) ?? [:]
+        memberClockOutTimes = try c.decodeIfPresent([String: Date].self, forKey: .memberClockOutTimes) ?? [:]
+        lunchMinutes = try c.decodeIfPresent(Int.self, forKey: .lunchMinutes) ?? 30
+        skipLunchDeduction = try c.decodeIfPresent(Bool.self, forKey: .skipLunchDeduction) ?? false
     }
 }

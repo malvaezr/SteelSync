@@ -23,6 +23,7 @@ extension Project: CloudKitConvertible {
         if let s = completionSummary { r["completionSummary"] = s as CKRecordValue }
         if let s = originalBidID { r["originalBidID"] = s as CKRecordValue }
         if let p = progressOverride { r["progressOverride"] = p as CKRecordValue }
+        if let a = autoDeductLunch { CKField.setBool(r, "autoDeductLunch", a) }
         return r
     }
 
@@ -45,7 +46,8 @@ extension Project: CloudKitConvertible {
             balanceSummary: balance,
             completionSummary: CKField.optString(record, "completionSummary"),
             originalBidID: CKField.optString(record, "originalBidID"),
-            progressOverride: CKField.optDouble(record, "progressOverride")
+            progressOverride: CKField.optDouble(record, "progressOverride"),
+            autoDeductLunch: (record["autoDeductLunch"] as? Int).map { $0 != 0 }
         )
     }
 }
@@ -192,6 +194,7 @@ extension Employee: CloudKitConvertible {
         CKField.setDecimal(r, "defaultHourlyRate", defaultHourlyRate)
         r["status"] = status.rawValue as CKRecordValue; r["notes"] = notes as CKRecordValue
         r["createdDate"] = createdDate as CKRecordValue; r["updatedDate"] = updatedDate as CKRecordValue
+        if let cloudUserRecordName { r["cloudUserRecordName"] = cloudUserRecordName as CKRecordValue }
         return r
     }
 
@@ -204,7 +207,8 @@ extension Employee: CloudKitConvertible {
             defaultHourlyRate: CKField.decimal(record, "defaultHourlyRate"),
             status: EmployeeStatus(rawValue: CKField.string(record, "status")) ?? .active,
             notes: CKField.string(record, "notes"),
-            createdDate: CKField.date(record, "createdDate"), updatedDate: CKField.date(record, "updatedDate")
+            createdDate: CKField.date(record, "createdDate"), updatedDate: CKField.date(record, "updatedDate"),
+            cloudUserRecordName: record["cloudUserRecordName"] as? String
         )
     }
 }
@@ -298,6 +302,7 @@ extension CrewPreset: CloudKitConvertible {
         r["name"] = name as CKRecordValue
         r["createdDate"] = createdDate as CKRecordValue
         r["membersJSON"] = CKField.encodeJSON(members) as CKRecordValue
+        if let foremanRef { r["foremanRef"] = foremanRef as CKRecordValue }
         return r
     }
 
@@ -306,7 +311,8 @@ extension CrewPreset: CloudKitConvertible {
             id: CKField.uuid(record, "uuid"),
             name: CKField.string(record, "name"),
             members: CKField.decodeJSON(record, "membersJSON", as: [CrewPresetMember].self) ?? [],
-            createdDate: CKField.date(record, "createdDate")
+            createdDate: CKField.date(record, "createdDate"),
+            foremanRef: record["foremanRef"] as? String
         )
     }
 }
@@ -595,6 +601,7 @@ extension GanttTask: CloudKitConvertible {
         r["notes"] = notes as CKRecordValue; r["sortOrder"] = sortOrder as CKRecordValue
         r["progress"] = progress as CKRecordValue; CKField.setBool(r, "includesSaturdays", includesSaturdays)
         if let manpower { r["manpower"] = manpower as CKRecordValue }
+        r["reinforcementCrewJSON"] = CKField.encodeJSON(reinforcementCrew) as CKRecordValue
         return r
     }
 
@@ -608,7 +615,8 @@ extension GanttTask: CloudKitConvertible {
             assignedTo: CKField.string(record, "assignedTo"), notes: CKField.string(record, "notes"),
             sortOrder: CKField.int(record, "sortOrder"), progress: CKField.double(record, "progress"),
             includesSaturdays: CKField.bool(record, "includesSaturdays"),
-            manpower: record["manpower"] as? Int
+            manpower: record["manpower"] as? Int,
+            reinforcementCrew: CKField.decodeJSON(record, "reinforcementCrewJSON", as: [String].self) ?? []
         )
     }
 }

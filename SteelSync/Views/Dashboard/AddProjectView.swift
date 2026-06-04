@@ -82,6 +82,7 @@ struct EditProjectView: View {
     @State private var hasEndDate: Bool
     @State private var selectedGCID: CKRecord.ID?
     @State private var selectedSubID: CKRecord.ID?
+    @State private var autoDeductLunch: Bool?
 
     private let statuses = ["Active", "Upcoming", "Completed", "On Hold"]
 
@@ -100,6 +101,7 @@ struct EditProjectView: View {
         _hasEndDate = State(initialValue: project.endDate != nil)
         _selectedGCID = State(initialValue: project.gcClientRef?.recordID ?? (project.clientRef?.recordID))
         _selectedSubID = State(initialValue: project.subClientRef?.recordID)
+        _autoDeductLunch = State(initialValue: project.autoDeductLunch)
     }
 
     var body: some View {
@@ -121,6 +123,7 @@ struct EditProjectView: View {
             ProjectDatesSection(
                 startDate: $startDate, endDate: $endDate, hasEndDate: $hasEndDate
             )
+            ProjectLunchSection(autoDeductLunch: $autoDeductLunch)
             ProjectNotesSection(notes: $notes)
         }
         #if os(macOS)
@@ -145,6 +148,7 @@ struct EditProjectView: View {
         updated.endDate = hasEndDate ? endDate : nil
         updated.status = status
         updated.notes = notes
+        updated.autoDeductLunch = autoDeductLunch
         dataStore.updateProject(updated)
         closeForm()
     }
@@ -252,6 +256,30 @@ private struct ProjectNotesSection: View {
     var body: some View {
         EntrySection("Notes", systemImage: "note.text") {
             NotesField(text: $notes, minHeight: 90)
+        }
+    }
+}
+
+/// Per-project override for the auto lunch deduction. `nil` inherits the
+/// app-wide default in Settings; `true`/`false` force it on/off for this project.
+private struct ProjectLunchSection: View {
+    @Binding var autoDeductLunch: Bool?
+
+    var body: some View {
+        EntrySection("Time Clock", systemImage: "fork.knife") {
+            LabeledField(label: "Auto-Deduct Lunch") {
+                Picker("", selection: $autoDeductLunch) {
+                    Text("Use app default").tag(nil as Bool?)
+                    Text("Always deduct").tag(true as Bool?)
+                    Text("Never deduct").tag(false as Bool?)
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .appControlSurface()
+            }
+            Text("Controls whether a 30-min lunch is auto-deducted at clock-out (on 6 h+ days) for this project. A foreman can still skip it for a single shift.")
+                .font(.caption)
+                .foregroundColor(AppTheme.secondaryText)
         }
     }
 }

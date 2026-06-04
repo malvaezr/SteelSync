@@ -155,6 +155,14 @@ class DataStore: ObservableObject {
         // uploaded separately so they route to that zone, not the main one.
         await cloudKit.uploadTimesheets(from: self)
 
+        // Keep the foreman-shared roster projection current on every Push (not
+        // only on "Share Timesheets Zone…"), so employee↔Apple-ID links, foreman
+        // presets, and reinforcement tasks propagate to the web portal. Owner-
+        // guarded inside; a no-op for participants.
+        await cloudKit.publishRosterToTimesheetsZone(
+            employees: activeEmployees, projects: activeProjects,
+            crewPresets: crewPresets, ganttTasks: ganttTasks)
+
         if success {
             syncStatus = .synced
             lastSyncDate = Date()
@@ -1753,13 +1761,19 @@ class DataStore: ObservableObject {
     /// Live Activity bound to it.
     @discardableResult
     func startCrewClockIn(foreman: Employee, project: Project, crew: [Employee]) -> ClockInSession {
+        let now = Date()
+        let crewIDs = crew.map { $0.id.uuidString }
         let session = ClockInSession(
             foremanID: foreman.id.uuidString,
             projectID: project.id.recordName,
-            crewMemberIDs: crew.map { $0.id.uuidString },
-            clockInTime: Date(),
+            crewMemberIDs: crewIDs,
+            clockInTime: now,
             projectName: project.title,
-            foremanName: foreman.fullName
+            foremanName: foreman.fullName,
+            // Everyone present at the open starts at the shift open; late
+            // arrivals get their own later time via addCrewMemberMidShift.
+            memberClockInTimes: Dictionary(uniqueKeysWithValues: crewIDs.map { ($0, now) }),
+            lunchMinutes: ProjectSettingsService.shared.defaultLunchMinutes
         )
         activeClockInSession = session
         persistActiveClockInSession()
@@ -1790,23 +1804,55 @@ class DataStore: ObservableObject {
         #endif
     }
 
-    /// Start a break/lunch for the whole crew. No-op if there's no active
-    /// session or a break is already running.
-    func startCrewBreak() {
-        guard var session = activeClockInSession, session.currentBreakStart == nil else { return }
-        session.currentBreakStart = Date()
+    /// Add a late-arriving crew member to the active shift. Their clock-in time
+    /// is `time` (defaults to now), not the shift open, so they're only paid
+    /// from when they actually arrived.
+    func addCrewMemberMidShift(_ employee: Employee, at time: Date = Date()) {
+        guard var session = activeClockInSession else { return }
+        let id = employee.id.uuidString
+        guard !session.crewMemberIDs.contains(id) else { return }
+        session.crewMemberIDs.append(id)
+        session.memberClockInTimes[id] = time
+        session.memberClockOutTimes[id] = nil
+        activeClockInSession = session
+        persistActiveClockInSession()
+        pushLiveActivityCrewCount(session.stillOnClockIDs.count)
+    }
+
+    /// Clock a single crew member out early (left before the rest of the crew).
+    /// They stay listed on the session so they still materialize a
+    /// TimesheetEntry; only their end time is frozen here.
+    func clockOutMemberEarly(_ memberID: String, at time: Date = Date()) {
+        guard var session = activeClockInSession, session.crewMemberIDs.contains(memberID) else { return }
+        session.memberClockOutTimes[memberID] = time
+        activeClockInSession = session
+        persistActiveClockInSession()
+        pushLiveActivityCrewCount(session.stillOnClockIDs.count)
+    }
+
+    /// Undo an early clock-out — put a member back on the clock.
+    func resumeCrewMember(_ memberID: String) {
+        guard var session = activeClockInSession else { return }
+        session.memberClockOutTimes[memberID] = nil
+        activeClockInSession = session
+        persistActiveClockInSession()
+        pushLiveActivityCrewCount(session.stillOnClockIDs.count)
+    }
+
+    /// Per-shift override for the auto lunch deduction ("don't deduct today").
+    func setSkipLunch(_ skip: Bool) {
+        guard var session = activeClockInSession else { return }
+        session.skipLunchDeduction = skip
         activeClockInSession = session
         persistActiveClockInSession()
     }
 
-    /// End the in-progress break, recording the window so its duration is
-    /// subtracted from worked hours at clock-out. No-op if not on a break.
-    func endCrewBreak() {
-        guard var session = activeClockInSession, let start = session.currentBreakStart else { return }
-        session.breaks.append(BreakInterval(start: start, end: Date()))
-        session.currentBreakStart = nil
-        activeClockInSession = session
-        persistActiveClockInSession()
+    private func pushLiveActivityCrewCount(_ count: Int) {
+        #if os(iOS)
+        if #available(iOS 16.2, *) {
+            Task { await updateCrewClockInLiveActivity(crewCount: count) }
+        }
+        #endif
     }
 
     /// End the shift. Materializes one TimesheetEntry per crew member with
@@ -1816,17 +1862,35 @@ class DataStore: ObservableObject {
         guard let session = activeClockInSession else { return }
         let cal = Calendar.current
         let now = Date()
-        let elapsed = now.timeIntervalSince(session.clockInTime)
-        // Subtract any break/lunch windows (including one still open at clock-out)
-        // so the materialized hours reflect worked time, not wall-clock time.
-        let breakSeconds = session.totalBreakSeconds(asOf: now)
-        let workedSeconds = max(0, elapsed - breakSeconds)
-        let hours = Decimal(workedSeconds / 3600.0)
-        let weekStart = TimesheetEntry.weekStart(for: session.clockInTime)
-        let dayOfWeek = cal.component(.weekday, from: session.clockInTime)
+
+        // Resolve the lunch policy once for the shift: per-shift skip turns it
+        // off, else the per-project override, else the app default.
+        let project = projects.first { $0.id.recordName == session.projectID }
+        let deductLunch = ProjectSettingsService.shared.shouldDeductLunch(
+            projectAutoDeduct: project?.autoDeductLunch,
+            skipThisShift: session.skipLunchDeduction
+        )
+        let lunchSeconds = Double(session.lunchMinutes) * 60.0
 
         for crewID in session.crewMemberIDs {
             guard let employee = employees.first(where: { $0.id.uuidString == crewID }) else { continue }
+            // Each member is computed from their OWN start (late arrival) and end
+            // (early departure → frozen time, else the final clock-out).
+            let memberStart = session.startTime(for: crewID)
+            let memberEnd = session.endTime(for: crewID, fallback: now)
+            let elapsed = max(0, memberEnd.timeIntervalSince(memberStart))
+            let grossHours = elapsed / 3600.0
+            // Auto-deduct the lunch only on days worked >= 6 hours.
+            let lunchApplies = deductLunch && grossHours >= 6.0
+            let workedSeconds = lunchApplies ? max(0, elapsed - lunchSeconds) : elapsed
+            // Round to 2 decimals the same way the web does (toFixed(2)) so the
+            // two platforms never store different hours for the same shift.
+            let hours = Decimal((workedSeconds / 3600.0 * 100).rounded() / 100)
+            // Day-of-week column derived from the member's OWN start, so someone
+            // added after midnight lands on the right day.
+            let weekStart = TimesheetEntry.weekStart(for: memberStart)
+            let dayOfWeek = cal.component(.weekday, from: memberStart)
+
             var entry = TimesheetEntry(
                 employeeName: employee.fullName,
                 employeeType: employee.employeeType.rawValue,
@@ -1847,8 +1911,9 @@ class DataStore: ObservableObject {
             case 1: entry.sundayHours = hours
             default: entry.mondayHours = hours
             }
-            let breakNote = breakSeconds >= 60 ? " (−\(Int((breakSeconds / 60).rounded())) min break)" : ""
-            entry.notes = "Clocked \(session.clockInTime.formatted(date: .omitted, time: .shortened)) – \(now.formatted(date: .omitted, time: .shortened)) by \(session.foremanName)\(breakNote)"
+            entry.notes = clockNote(start: memberStart, end: memberEnd, grossHours: grossHours,
+                                    lunchApplied: lunchApplies, lunchMinutes: session.lunchMinutes,
+                                    foreman: session.foremanName)
             addTimesheetEntry(entry)
         }
 
@@ -1864,6 +1929,25 @@ class DataStore: ObservableObject {
         }
         NotificationService.shared.cancelClockOutReminder()
         #endif
+    }
+
+    /// Per-member clock note showing the EXACT in/out times and the lunch math,
+    /// so the deduction can be verified at a glance (e.g.
+    /// "Clocked 7:00 AM–3:30 PM · 8.50h −30m lunch by Mike").
+    private func clockNote(start: Date, end: Date, grossHours: Double,
+                           lunchApplied: Bool, lunchMinutes: Int, foreman: String) -> String {
+        let inT = start.formatted(date: .omitted, time: .shortened)
+        let outT = end.formatted(date: .omitted, time: .shortened)
+        let gross = String(format: "%.2f", grossHours)
+        let lunch: String
+        if lunchApplied {
+            lunch = " · \(gross)h −\(lunchMinutes)m lunch"
+        } else if grossHours < 6.0 {
+            lunch = " · \(gross)h (no lunch <6h)"
+        } else {
+            lunch = " · \(gross)h (no lunch)"
+        }
+        return "Clocked \(inT)–\(outT)\(lunch) by \(foreman)"
     }
 
     #if os(iOS)

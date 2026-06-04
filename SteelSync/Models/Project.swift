@@ -19,6 +19,11 @@ struct Project: Identifiable, Hashable {
     var completionSummary: String?
     var originalBidID: String?
     var progressOverride: Double?
+    /// Per-project lunch auto-deduct override. `nil` = inherit the app default
+    /// (`ProjectSettingsService.autoDeductLunchDefault`); `false` = never deduct
+    /// lunch on this project; `true` = always deduct. Rides CloudKit so the web
+    /// portal and other devices honor the same choice.
+    var autoDeductLunch: Bool?
 
     init(
         id: CKRecord.ID = CKRecord.ID(recordName: UUID().uuidString),
@@ -37,7 +42,8 @@ struct Project: Identifiable, Hashable {
         balanceSummary: ProjectBalanceSummary = ProjectBalanceSummary(),
         completionSummary: String? = nil,
         originalBidID: String? = nil,
-        progressOverride: Double? = nil
+        progressOverride: Double? = nil,
+        autoDeductLunch: Bool? = nil
     ) {
         self.id = id
         self.clientRef = clientRef
@@ -56,6 +62,7 @@ struct Project: Identifiable, Hashable {
         self.completionSummary = completionSummary
         self.originalBidID = originalBidID
         self.progressOverride = progressOverride
+        self.autoDeductLunch = autoDeductLunch
     }
 
     var totalRevenue: Decimal { balanceSummary.contractAmount + balanceSummary.changeOrderTotal }

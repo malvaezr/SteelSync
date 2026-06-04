@@ -25,6 +25,7 @@ struct GanttTaskEditSheet: View {
     @State private var isPinned = false
     @State private var hasManpower = false
     @State private var manpower = 1
+    @State private var reinforcementCrew: [String] = []   // Employee.id.uuidString of extra help
 
     init(projects: [Project], selectedProjectID: String? = nil, editingTask: GanttTask? = nil,
          onSave: @escaping (GanttTask) -> Void, onDelete: (() -> Void)? = nil) {
@@ -175,6 +176,13 @@ struct GanttTaskEditSheet: View {
                 }
             }
 
+            EntrySection("Reinforcement Crew", systemImage: "person.fill.badge.plus") {
+                reinforcementPicker
+                Text("Extra help added to the assigned foreman's web crew picker on the day(s) this task runs, for this project only.")
+                    .font(.caption)
+                    .foregroundColor(AppTheme.secondaryText)
+            }
+
             EntrySection("Additional", systemImage: "note.text") {
                 LabeledField(label: "Assigned To") {
                     assignedToPicker
@@ -211,6 +219,7 @@ struct GanttTaskEditSheet: View {
                 progress = task.progress; includesSaturdays = task.includesSaturdays
                 predecessorIDs = Set(task.predecessorIDs)
                 isPinned = task.isPinned
+                reinforcementCrew = task.reinforcementCrew
                 if let m = task.manpower { hasManpower = true; manpower = m }
             } else if let pid = selectedProjectID {
                 projectID = pid
@@ -333,6 +342,68 @@ struct GanttTaskEditSheet: View {
         assignedTo = current.joined(separator: "; ")
     }
 
+    /// Multi-select Menu over the roster for the day's "extra help". Stored as
+    /// `Employee.id.uuidString` in `reinforcementCrew` so the web roster
+    /// projection can resolve each one to a name for the foreman's crew picker.
+    @ViewBuilder
+    private var reinforcementPicker: some View {
+        let active = dataStore.activeEmployees
+        let selectedSet = Set(reinforcementCrew)
+        let names = reinforcementCrew.compactMap { id in
+            active.first { $0.id.uuidString == id }?.fullName
+        }
+        Menu {
+            Button {
+                reinforcementCrew = []
+            } label: {
+                if reinforcementCrew.isEmpty {
+                    Label("None", systemImage: "checkmark")
+                } else {
+                    Text("Clear All")
+                }
+            }
+            ForEach(active) { emp in
+                Button {
+                    toggleReinforcement(emp.id.uuidString)
+                } label: {
+                    if selectedSet.contains(emp.id.uuidString) {
+                        Label("\(emp.fullName) — \(emp.employeeType.rawValue)", systemImage: "checkmark")
+                    } else {
+                        Text("\(emp.fullName) — \(emp.employeeType.rawValue)")
+                    }
+                }
+            }
+            if active.isEmpty {
+                Text("Add crew in Operations → Crew & Timesheets")
+            }
+        } label: {
+            HStack(alignment: .center) {
+                Text(names.isEmpty ? "None" : names.joined(separator: ", "))
+                    .foregroundColor(names.isEmpty ? AppTheme.secondaryText : AppTheme.primaryText)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2)
+                    .foregroundColor(AppTheme.secondaryText)
+            }
+            .appControlSurface()
+        }
+        .buttonStyle(.plain)
+        #if os(iOS)
+        .menuActionDismissBehavior(.disabled)
+        #endif
+    }
+
+    /// Toggle an employee UUID in or out of the reinforcement list.
+    private func toggleReinforcement(_ id: String) {
+        if let idx = reinforcementCrew.firstIndex(of: id) {
+            reinforcementCrew.remove(at: idx)
+        } else {
+            reinforcementCrew.append(id)
+        }
+    }
+
     private func save() {
         if var task = editingTask {
             task.name = name; task.projectID = projectID
@@ -343,9 +414,10 @@ struct GanttTaskEditSheet: View {
             task.predecessorIDs = Array(predecessorIDs)
             task.isPinned = isPinned
             task.manpower = hasManpower ? manpower : nil
+            task.reinforcementCrew = reinforcementCrew
             onSave(task)
         } else {
-            let task = GanttTask(
+            var task = GanttTask(
                 projectID: projectID, name: name, category: category,
                 status: status, startDate: startDate, durationDays: durationDays,
                 assignedTo: assignedTo, notes: notes,
@@ -354,6 +426,7 @@ struct GanttTaskEditSheet: View {
                 isPinned: isPinned,
                 manpower: hasManpower ? manpower : nil
             )
+            task.reinforcementCrew = reinforcementCrew
             onSave(task)
         }
         closeForm()

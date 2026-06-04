@@ -14,24 +14,30 @@ struct Employee: Identifiable, Codable, Hashable {
     var notes: String
     var createdDate: Date
     var updatedDate: Date
+    /// CloudKit user record name of the Apple ID the PM has linked to this
+    /// employee, so SteelSyncWeb auto-detects which foreman signed in.
+    var cloudUserRecordName: String?
     var recordID: CKRecord.ID?
 
     enum CodingKeys: String, CodingKey {
         case id, employeeID, firstName, lastName, email, phone
         case employeeType, defaultHourlyRate, status, notes, createdDate, updatedDate
+        case cloudUserRecordName
     }
 
     init(
         id: UUID = UUID(), employeeID: String, firstName: String, lastName: String,
         email: String = "", phone: String = "", employeeType: EmployeeType,
         defaultHourlyRate: Decimal, status: EmployeeStatus = .active, notes: String = "",
-        createdDate: Date = Date(), updatedDate: Date = Date(), recordID: CKRecord.ID? = nil
+        createdDate: Date = Date(), updatedDate: Date = Date(),
+        cloudUserRecordName: String? = nil, recordID: CKRecord.ID? = nil
     ) {
         self.id = id; self.employeeID = employeeID; self.firstName = firstName
         self.lastName = lastName; self.email = email; self.phone = phone
         self.employeeType = employeeType; self.defaultHourlyRate = defaultHourlyRate
         self.status = status; self.notes = notes; self.createdDate = createdDate
-        self.updatedDate = updatedDate; self.recordID = recordID
+        self.updatedDate = updatedDate; self.cloudUserRecordName = cloudUserRecordName
+        self.recordID = recordID
     }
 
     var fullName: String { "\(firstName) \(lastName)" }

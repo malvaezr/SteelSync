@@ -293,6 +293,21 @@ struct EditCrewPresetSheet: View {
                     .foregroundColor(AppTheme.secondaryText)
             }
 
+            EntrySection("Foreman", systemImage: AppIcons.person) {
+                LabeledField(label: "Owned by") {
+                    Picker("", selection: $preset.foremanRef) {
+                        Text("Unassigned").tag(nil as String?)
+                        ForEach(dataStore.activeEmployees.filter { $0.isForeman }) { f in
+                            Text(f.fullName).tag(f.id.uuidString as String?)
+                        }
+                    }
+                    .labelsHidden().pickerStyle(.menu).appControlSurface()
+                }
+                Text("Tag this crew with its foreman so the foreman's web sign-in shows only their crew.")
+                    .font(.caption)
+                    .foregroundColor(AppTheme.secondaryText)
+            }
+
             if !isNew {
                 EntrySection("Role Template", systemImage: "doc.on.doc") {
                     Button {

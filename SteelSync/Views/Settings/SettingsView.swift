@@ -10,6 +10,7 @@ struct SettingsView: View {
     @ObservedObject private var llmService = LLMService.shared
     @StateObject private var memoryMonitor = MemoryMonitor.shared
     @ObservedObject private var notificationService = NotificationService.shared
+    @ObservedObject private var projectSettings = ProjectSettingsService.shared
     @State private var showModelFilePicker = false
     @State private var snapshots: [SnapshotDescriptor] = []
     @State private var snapshotLabel: String = ""
@@ -182,6 +183,26 @@ struct SettingsView: View {
                             .buttonStyle(.appSecondary)
                             .controlSize(.small)
                             .padding(.top, 4)
+                        }
+                    }
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                }
+
+                // Payroll / Time Clock Section
+                GroupBox {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                        Text("Time Clock & Payroll")
+                            .font(AppTheme.Typography.headline)
+
+                        Text("When the crew clocks out, an unpaid lunch is automatically deducted on days of 6 hours or more. A foreman can skip it for a single shift, and a project can override this default.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        Toggle("Auto-Deduct Lunch", isOn: $projectSettings.autoDeductLunchDefault)
+
+                        if projectSettings.autoDeductLunchDefault {
+                            Stepper("Lunch: \(projectSettings.defaultLunchMinutes) min",
+                                    value: $projectSettings.defaultLunchMinutes, in: 5...120, step: 5)
                         }
                     }
                     .padding(.vertical, AppTheme.Spacing.sm)
