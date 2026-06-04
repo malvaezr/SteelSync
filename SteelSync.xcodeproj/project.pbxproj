@@ -130,6 +130,8 @@
 		4728108E4DAD3A8D3746931A /* BidPipelineWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 474B8F17059E432765BE0F9B /* BidPipelineWidget.swift */; };
 		47A3BCC30DB143489492775C /* EquipmentRentalWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45D2272485898530C7D7A8A8 /* EquipmentRentalWidget.swift */; };
 		47E14B1CFD99F553CF6B44C9 /* TodoOverviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B11124CBC093401AD48942 /* TodoOverviewWidget.swift */; };
+		48F228BA94E4F1433B45C871 /* ClockInWidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 240D8AD68C9A340FA2A6018E /* ClockInWidgetData.swift */; };
+		49235E163C7521F4DEDFDD75 /* ClockInWidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 240D8AD68C9A340FA2A6018E /* ClockInWidgetData.swift */; };
 		492E407DF77C73C59CF88D76 /* PersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8D56045443EE049CDCFAF6A /* PersistenceService.swift */; };
 		4953C7A4168E722F0B0D12BF /* ClockInSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C36A6664126CB3EE410F0DB /* ClockInSession.swift */; };
 		4A910D9550C9B1C5C76E5AE3 /* OverheadFormSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4570F329FB46D0640F9943B8 /* OverheadFormSheets.swift */; };
@@ -242,6 +244,7 @@
 		8BF42D2C95FBFFA5C8BA9915 /* AuditEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDBB35CC1116B739A37685FC /* AuditEntry.swift */; };
 		8C1673D00FC8CA0BEB043986 /* PDFShareButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADCA49EBF740AF2392D2B80 /* PDFShareButton.swift */; };
 		8C390FB2D6544368454832E4 /* PhoneTasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5457B4910B697E9E929D192B /* PhoneTasksView.swift */; };
+		8CCCD02A2567824085F21EC9 /* ClockInWidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 240D8AD68C9A340FA2A6018E /* ClockInWidgetData.swift */; };
 		8D9C9FFD5559FE77642C5305 /* BidPipelineWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 474B8F17059E432765BE0F9B /* BidPipelineWidget.swift */; };
 		8E1FB7DF35B0346F173902F1 /* GlobalSearchSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE2EBEB487618192E7B94A1C /* GlobalSearchSheet.swift */; };
 		8F53C661A087D62137C4A8B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A34FD2CA99294B4131EAC97 /* Assets.xcassets */; };
@@ -275,11 +278,13 @@
 		A499B40C156A3EE3E06CA71B /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28562AE650F8CE57BFC51B94 /* NotificationService.swift */; };
 		A4EE959C674B3420C1DE0429 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4653DF72B79DC7583A950CC8 /* TodayView.swift */; };
 		A5471316AE232E4FC7392A84 /* GlobalSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23069DD6BB4B28FFACD931EF /* GlobalSearchService.swift */; };
+		A599831542F430DEAE7EE1F5 /* CrewClockedInWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E99729772E78DE8DF54DBFE /* CrewClockedInWidget.swift */; };
 		A59AF71B14DC14B6B6B53A1A /* ReportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFF1D8406912DF24AF71B5B7 /* ReportsView.swift */; };
 		A7BA6453EA8056CA9D9BA418 /* FileDropModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F937DB7367744CB2FD75497 /* FileDropModifier.swift */; };
 		A7D40DCEFA942B92797320EC /* RFILogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2FF42E0379902EEE230296 /* RFILogView.swift */; };
 		A88DA653DA112C12BE1F6F6E /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA8123C4AA8DDD28AF866B85 /* SidebarView.swift */; };
 		A915493DDBDDAD53A75BF84B /* AuditEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDBB35CC1116B739A37685FC /* AuditEntry.swift */; };
+		A9511B3DE67C86FCFB110EAA /* CrewClockedInWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E99729772E78DE8DF54DBFE /* CrewClockedInWidget.swift */; };
 		A9A2F3D8113A7FFB9B4F50C9 /* RentalLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDBFD97496336096778CAF6D /* RentalLiveActivityWidget.swift */; };
 		AA6537063617E0A37800B62C /* BidsListPDFRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7557ADCAFCA178DD01114A24 /* BidsListPDFRenderer.swift */; };
 		AB608F55E502AE5BD4D62EDA /* AssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFF376341208D9A91DACDCAB /* AssistantView.swift */; };
@@ -351,6 +356,7 @@
 		D8F511B8F66ADD51AC260AF8 /* RentalLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDBFD97496336096778CAF6D /* RentalLiveActivityWidget.swift */; };
 		D98F0C23FF04114BC7833EE7 /* SummaryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81F5EB7AB8F268B9A9112F38 /* SummaryWidget.swift */; };
 		DA28B4839261F3D8C9CBA0AF /* EquipmentRentalWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45D2272485898530C7D7A8A8 /* EquipmentRentalWidget.swift */; };
+		DA592130D57D257040D4AD1B /* PhoneClockedInCrewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 062078CA254F94D21DC848D1 /* PhoneClockedInCrewView.swift */; };
 		DB3ED0B4A3E3305088D9A11F /* GanttExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A892989AA1EB9BDD692EFB8 /* GanttExportSheet.swift */; };
 		DBFE0450772DB65FEF40FC52 /* BidFormViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A91D93A2FD30748D38C7512 /* BidFormViews.swift */; };
 		DC810E1FF5DA9D32DF1FBD45 /* CrewPresetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4033807B779BA39C7F61A1 /* CrewPresetsView.swift */; };
@@ -358,6 +364,7 @@
 		DF0B50EDD3B4D12436C6F708 /* iPadCompactRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880EA42553D852F0AEB90DCB /* iPadCompactRoot.swift */; };
 		DFABD0A8329E97A9F3AB9B86 /* ProjectSettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6353E4A2CA150015CCDAA90 /* ProjectSettingsService.swift */; };
 		E0A481D9DC317EB12D930397 /* RentalLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CECF2AD25ABAEE261DB9A1F9 /* RentalLiveActivityAttributes.swift */; };
+		E154C387C937FA8F2FADEC7D /* CrewClockedInWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E99729772E78DE8DF54DBFE /* CrewClockedInWidget.swift */; };
 		E21CA5F133C0EB2E107215A1 /* SteelSyncApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21EE9F075420DFE63E74A2C1 /* SteelSyncApp.swift */; };
 		E422B6E9D28CD5EB3AC3BFCF /* RowReorderDropDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED56B7484A529A5F7C23A349 /* RowReorderDropDelegate.swift */; };
 		E53F6BD3B7E65FB0E91C0FE3 /* GanttTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DF9906F7D629C310853F8C1 /* GanttTask.swift */; };
@@ -496,6 +503,7 @@
 		036C6DBBFDF9C6CB0FDDF114 /* EntryForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryForm.swift; sourceTree = "<group>"; };
 		05696EA88AFDF328A1548B80 /* PhoneEquipmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneEquipmentView.swift; sourceTree = "<group>"; };
 		05F33D378A68D315E61C16E5 /* SteelSyncPhone.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SteelSyncPhone.entitlements; sourceTree = "<group>"; };
+		062078CA254F94D21DC848D1 /* PhoneClockedInCrewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneClockedInCrewView.swift; sourceTree = "<group>"; };
 		062E9F90EF9A227D6B3A84BA /* QueryParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryParser.swift; sourceTree = "<group>"; };
 		06759E4AAC18A9D898DF7896 /* EquipmentRequestSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentRequestSheets.swift; sourceTree = "<group>"; };
 		09F1E7862A298462D13FE606 /* SteelSync.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SteelSync.entitlements; sourceTree = "<group>"; };
@@ -520,6 +528,7 @@
 		2380E2E3DB04FD3BFBBC87CB /* AppNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNavigation.swift; sourceTree = "<group>"; };
 		23E414F6FDD05FC4316E2ED3 /* PencilCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PencilCanvasView.swift; sourceTree = "<group>"; };
 		23F45CE67DC5A5F39DB10635 /* PlanningPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanningPad.swift; sourceTree = "<group>"; };
+		240D8AD68C9A340FA2A6018E /* ClockInWidgetData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClockInWidgetData.swift; sourceTree = "<group>"; };
 		2493EBC395F13A8EE6F94B4A /* WidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetBridge.swift; sourceTree = "<group>"; };
 		26CEF8300A84E73A0EF9DF08 /* TimeEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeEntry.swift; sourceTree = "<group>"; };
 		28562AE650F8CE57BFC51B94 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
@@ -584,6 +593,7 @@
 		8B4736E176810AB66924CAB0 /* AssistantMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantMessage.swift; sourceTree = "<group>"; };
 		8BFD8E6173E599D60E1E9C2C /* PhoneComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneComponents.swift; sourceTree = "<group>"; };
 		8E268B6D3996E866432356D2 /* QueryIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryIntent.swift; sourceTree = "<group>"; };
+		8E99729772E78DE8DF54DBFE /* CrewClockedInWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrewClockedInWidget.swift; sourceTree = "<group>"; };
 		8F988730EAC002233173ACC1 /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
 		9295F43337F5AB4398EC520E /* WeeklyAssignment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyAssignment.swift; sourceTree = "<group>"; };
 		92C10C75857F4F50E8DB20F0 /* Employee.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Employee.swift; sourceTree = "<group>"; };
@@ -733,6 +743,7 @@
 			isa = PBXGroup;
 			children = (
 				619461FEB1495A302A8C826A /* EditTimesheetEntrySheet.swift */,
+				062078CA254F94D21DC848D1 /* PhoneClockedInCrewView.swift */,
 				4E0BB6DE275F74BF3B42CF8B /* PhoneTimeClockView.swift */,
 			);
 			path = TimeClock;
@@ -1072,6 +1083,7 @@
 			isa = PBXGroup;
 			children = (
 				7557ADCAFCA178DD01114A24 /* BidsListPDFRenderer.swift */,
+				240D8AD68C9A340FA2A6018E /* ClockInWidgetData.swift */,
 				0CB1A29BC6181124FA4E4DDD /* CloudKitService.swift */,
 				382FFF1355B696458FB6E3D8 /* DataStore.swift */,
 				1457AB1F27C9C7902279360C /* FileStorageService.swift */,
@@ -1144,6 +1156,7 @@
 			isa = PBXGroup;
 			children = (
 				474B8F17059E432765BE0F9B /* BidPipelineWidget.swift */,
+				8E99729772E78DE8DF54DBFE /* CrewClockedInWidget.swift */,
 				448E4F9267CFA0DF2612E541 /* CrewClockInLiveActivityWidget.swift */,
 				45D2272485898530C7D7A8A8 /* EquipmentRentalWidget.swift */,
 				88023D740383E25C188E6DEF /* ForemanBonusWidget.swift */,
@@ -1467,6 +1480,7 @@
 				C20F0E325E68739D5A4AACC2 /* Client.swift in Sources */,
 				59282EE7A28041BC3C039D02 /* ClientsView.swift in Sources */,
 				4953C7A4168E722F0B0D12BF /* ClockInSession.swift in Sources */,
+				48F228BA94E4F1433B45C871 /* ClockInWidgetData.swift in Sources */,
 				D77CC958FF236DEACCF940D5 /* CloudKitConvertible.swift in Sources */,
 				BEE82A3C92B052516500FED1 /* CloudKitService.swift in Sources */,
 				E97A9E2E1BC4EB1D1895ACB7 /* CloudShareSheet.swift in Sources */,
@@ -1520,6 +1534,7 @@
 				5A413BD329187EC755B54335 /* PencilMarkupSheet.swift in Sources */,
 				2CDB78805AA1608E3ABEB762 /* PersistenceService.swift in Sources */,
 				035F0339E5DF4CA533977826 /* PhoneBonusesView.swift in Sources */,
+				DA592130D57D257040D4AD1B /* PhoneClockedInCrewView.swift in Sources */,
 				86CF2A367C6FF058E5D17713 /* PhoneComponents.swift in Sources */,
 				2405A886CAD979A06CB39759 /* PhoneContentView.swift in Sources */,
 				BE43AF9B67165AA48890E2A2 /* PhoneDashboardView.swift in Sources */,
@@ -1598,6 +1613,7 @@
 				792D0D68A1F891F87E615614 /* Client.swift in Sources */,
 				342C95135BDA5FBCE2DDA7C3 /* ClientsView.swift in Sources */,
 				26ACCFCF73B2118B3FA1EC11 /* ClockInSession.swift in Sources */,
+				8CCCD02A2567824085F21EC9 /* ClockInWidgetData.swift in Sources */,
 				8113BFBBE57099641331865F /* CloudKitConvertible.swift in Sources */,
 				9FC623C31AF5EB84DC3A36B6 /* CloudKitService.swift in Sources */,
 				1CC2524CB343C4032D5E138E /* CloudShareSheet.swift in Sources */,
@@ -1698,6 +1714,7 @@
 				4728108E4DAD3A8D3746931A /* BidPipelineWidget.swift in Sources */,
 				5BED8071C1566B47FFEE3370 /* CrewClockInActivityAttributes.swift in Sources */,
 				FF0F6D376230165F255C2A2F /* CrewClockInLiveActivityWidget.swift in Sources */,
+				E154C387C937FA8F2FADEC7D /* CrewClockedInWidget.swift in Sources */,
 				DA28B4839261F3D8C9CBA0AF /* EquipmentRentalWidget.swift in Sources */,
 				EFF4345F54D4CCEB90235A90 /* ForemanBonusWidget.swift in Sources */,
 				4E5AA43963F0AFBFF77112F6 /* GanttPreviewWidget.swift in Sources */,
@@ -1721,6 +1738,7 @@
 				46D33D4276F9904235511044 /* BidPipelineWidget.swift in Sources */,
 				016A20703D4B395586F9F602 /* CrewClockInActivityAttributes.swift in Sources */,
 				C8B98BBD7BDD23C27BA0E7F7 /* CrewClockInLiveActivityWidget.swift in Sources */,
+				A9511B3DE67C86FCFB110EAA /* CrewClockedInWidget.swift in Sources */,
 				47A3BCC30DB143489492775C /* EquipmentRentalWidget.swift in Sources */,
 				C73FD42932BF3E818CEDADE8 /* ForemanBonusWidget.swift in Sources */,
 				F8A42C52AA5F7DE4F9598464 /* GanttPreviewWidget.swift in Sources */,
@@ -1761,6 +1779,7 @@
 				0E19588BE0507477FC892030 /* Client.swift in Sources */,
 				D4ED81BE69288DFD06F93449 /* ClientsView.swift in Sources */,
 				ECD558D247ABC045B769A192 /* ClockInSession.swift in Sources */,
+				49235E163C7521F4DEDFDD75 /* ClockInWidgetData.swift in Sources */,
 				F96CF958111ACFDB7E2ABF7E /* CloudKitConvertible.swift in Sources */,
 				C5B9F442E5F553DA1CC0F6C7 /* CloudKitService.swift in Sources */,
 				428062384025A7D71C1B5DD3 /* CloudShareSheet.swift in Sources */,
@@ -1860,6 +1879,7 @@
 			files = (
 				8D9C9FFD5559FE77642C5305 /* BidPipelineWidget.swift in Sources */,
 				A299BC357420702C1A1DA53E /* CrewClockInLiveActivityWidget.swift in Sources */,
+				A599831542F430DEAE7EE1F5 /* CrewClockedInWidget.swift in Sources */,
 				17315AEE7436E93D20D99432 /* EquipmentRentalWidget.swift in Sources */,
 				71B6036AA64863D1D56066C5 /* ForemanBonusWidget.swift in Sources */,
 				FB74651821D3D790652E95B4 /* GanttPreviewWidget.swift in Sources */,

@@ -151,6 +151,10 @@ struct WidgetBridge {
             defaults.set("", forKey: "nextMilestoneProject")
         }
 
+        // Crew clocked-in snapshot — same shared writer the phone uses, so the
+        // keys match. On Mac/iPad the session is nil, so this writes empties.
+        ClockInWidgetData.write(to: defaults, session: store.activeClockInSession, employees: store.employees)
+
         #if canImport(WidgetKit)
         WidgetCenter.shared.reloadAllTimelines()
         #endif

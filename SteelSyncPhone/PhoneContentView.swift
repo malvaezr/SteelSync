@@ -14,7 +14,7 @@ struct PhoneContentView: View {
     }
 
     enum MoreDestination: Hashable {
-        case invoices, rfis, timeClock, equipment, reports, employees, overhead
+        case invoices, rfis, timeClock, equipment, reports, employees, overhead, clockedInCrew
     }
 
     var body: some View {
@@ -50,6 +50,11 @@ struct PhoneContentView: View {
         .onOpenURL { url in
             handleDeepLink(url)
         }
+        // Keep the Crew-On-the-Clock widget current the moment a shift changes
+        // (clock-in/out, late arrival, early departure).
+        .onChange(of: dataStore.activeClockInSession) { _, _ in
+            WidgetDataPublisher.publish(from: dataStore)
+        }
     }
 
     /// Handles widget deep-links of the form steelsync://<section>?filter=<value>
@@ -78,6 +83,9 @@ struct PhoneContentView: View {
             selectedTab = .more
         case "timeclock":
             morePath = .timeClock
+            selectedTab = .more
+        case "clockedin":
+            morePath = .clockedInCrew
             selectedTab = .more
         default:
             break

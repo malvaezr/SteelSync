@@ -137,6 +137,10 @@ struct WidgetDataPublisher {
             defaults.set("", forKey: "nextMilestoneProject")
         }
 
+        // Crew clocked-in snapshot — drives the CrewClockedInWidget. Shared
+        // writer with WidgetBridge so the keys never drift.
+        ClockInWidgetData.write(to: defaults, session: store.activeClockInSession, employees: store.employees)
+
         // Timestamp marker so WidgetDataStore knows real data has been written
         defaults.set(Date().timeIntervalSince1970, forKey: "updatedAt")
 

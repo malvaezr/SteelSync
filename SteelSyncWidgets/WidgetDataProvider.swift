@@ -31,6 +31,14 @@ struct WidgetData: Codable {
     var openRFIs: Int
     var overdueRFIs: Int
     var todayAttentionCount: Int
+    // Crew clocked-in (live time clock) — drives CrewClockedInWidget.
+    // Keys written by ClockInWidgetData (app/phone) — keep strings in sync.
+    var clockedInCount: Int = 0
+    var clockedInProject: String = ""
+    var clockedInForeman: String = ""
+    var clockedInSince: Date? = nil
+    var clockedInNames: [String] = []
+    var clockedInMemberSince: [Date] = []
 
     static let empty = WidgetData(
         activeProjects: 0,
@@ -164,6 +172,14 @@ struct WidgetDataStore {
         let nextBidTimestamp = defaults.double(forKey: "nextBidDue")
         if nextBidTimestamp > 0 { nextBidDue = Date(timeIntervalSince1970: nextBidTimestamp) }
 
+        // Crew clocked-in snapshot (keys written by ClockInWidgetData).
+        var clockedSince: Date? = nil
+        let cs = defaults.double(forKey: "clockedInSince")
+        if cs > 0 { clockedSince = Date(timeIntervalSince1970: cs) }
+        let clockedNames = defaults.stringArray(forKey: "clockedInNames") ?? []
+        let clockedMemberSince = (defaults.array(forKey: "clockedInMemberSince") as? [Double] ?? [])
+            .map { Date(timeIntervalSince1970: $0) }
+
         return WidgetData(
             activeProjects: defaults.integer(forKey: "activeProjects"),
             totalRevenue: defaults.double(forKey: "totalRevenue"),
@@ -188,7 +204,13 @@ struct WidgetDataStore {
             agingOver90: defaults.double(forKey: "agingOver90"),
             openRFIs: defaults.integer(forKey: "openRFIs"),
             overdueRFIs: defaults.integer(forKey: "overdueRFIs"),
-            todayAttentionCount: defaults.integer(forKey: "todayAttentionCount")
+            todayAttentionCount: defaults.integer(forKey: "todayAttentionCount"),
+            clockedInCount: defaults.integer(forKey: "clockedInCount"),
+            clockedInProject: defaults.string(forKey: "clockedInProject") ?? "",
+            clockedInForeman: defaults.string(forKey: "clockedInForeman") ?? "",
+            clockedInSince: clockedSince,
+            clockedInNames: clockedNames,
+            clockedInMemberSince: clockedMemberSince
         )
     }
 }

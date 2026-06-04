@@ -63,6 +63,11 @@ struct PhoneMoreView: View {
                             .foregroundColor(AppTheme.primaryText)
                     }
 
+                    NavigationLink(value: PhoneContentView.MoreDestination.clockedInCrew) {
+                        Label("On the Clock", systemImage: "person.3.fill")
+                            .foregroundColor(AppTheme.primaryText)
+                    }
+
                     NavigationLink(value: PhoneContentView.MoreDestination.equipment) {
                         Label("Equipment", systemImage: "shippingbox.fill")
                             .foregroundColor(AppTheme.primaryText)
@@ -146,6 +151,8 @@ struct PhoneMoreView: View {
             PhoneRFILogView()
         case .timeClock:
             PhoneTimeClockView()
+        case .clockedInCrew:
+            PhoneClockedInCrewView()
         case .equipment:
             PhoneEquipmentView()
         case .reports:
