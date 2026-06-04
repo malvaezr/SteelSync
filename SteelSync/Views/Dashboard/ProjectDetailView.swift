@@ -65,6 +65,7 @@ struct ProjectDetailView: View {
     @State private var showAddRental = false
     @State private var rentalToClose: EquipmentRental? = nil
     @State private var requestContext: RentalRequestContext? = nil  // log delivery/pickup/note request
+    @State private var showBatchDelivery = false                    // project-level delivery request
     @State private var rentalForInvoice: EquipmentRental? = nil     // reconcile supplier invoice
     @State private var rentalToDelete: EquipmentRental? = nil        // PIN-gated delete
     @State private var showEditProgress = false
@@ -131,6 +132,9 @@ struct ProjectDetailView: View {
         }
         .inlineForm(item: $requestContext) { ctx in
             RentalRequestSheet(rental: ctx.rental, projectID: project.id, kind: ctx.kind)
+        }
+        .inlineForm(isPresented: $showBatchDelivery) {
+            BatchDeliveryRequestSheet(rentals: dataStore.rentals(for: project.id), projectID: project.id)
         }
         .sheet(item: $rentalForInvoice) { rental in
             ReconcileInvoiceSheet(rental: rental, projectID: project.id)
@@ -1222,6 +1226,17 @@ struct ProjectDetailView: View {
             let active = dataStore.activeRentals(for: project.id)
             let closed = dataStore.closedRentals(for: project.id)
 
+            if !allRentals.isEmpty {
+                HStack {
+                    Spacer()
+                    Button { showBatchDelivery = true } label: {
+                        Label("Request Delivery…", systemImage: "shippingbox.and.arrow.backward.fill")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.appSecondary)
+                }
+            }
+
             if allRentals.isEmpty {
                 EmptyStateView(icon: "crane.fill", title: "No Equipment Rentals",
                                message: "Track rented equipment, auto-calculate costs from EDTX rate sheets.",
@@ -1250,6 +1265,12 @@ struct ProjectDetailView: View {
                                             Text("Since \(rental.startDate.shortDate) (\(rental.daysSinceStart) days)")
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
+                                            if rental.lifecycle == .requested, let dr = rental.firstDeliveryRequest {
+                                                Label("Requested for delivery \(dr.requestedDate?.shortDate ?? "?") — logged \(dr.loggedAt.shortDate)",
+                                                      systemImage: "shippingbox.and.arrow.backward.fill")
+                                                    .font(.caption2)
+                                                    .foregroundColor(.blue)
+                                            }
                                             if let pr = rental.latestPickupRequest {
                                                 Label("Pickup requested for \(pr.requestedDate?.shortDate ?? "?") — logged \(pr.loggedAt.shortDate)",
                                                       systemImage: "arrow.up.bin.fill")

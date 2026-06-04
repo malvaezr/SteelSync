@@ -984,6 +984,13 @@ class DataStore: ObservableObject {
               let idx = list.firstIndex(where: { $0.id == rental.id }) else { return }
         var updated = list[idx]
         updated.events.append(event)
+        // Confirming a delivery stamps the actual drop-off date as the rental's
+        // on-rent start date — but ONLY for a still-scheduled (future-start)
+        // rental, so confirming on one that's already on rent can't move the
+        // billing anchor forward and erase accrued days.
+        if event.kind == .deliveryConfirmed, let dropOff = event.requestedDate, updated.isScheduled {
+            updated.startDate = dropOff
+        }
         list[idx] = updated
         equipmentRentals[projectID] = list
         let forDate = event.requestedDate.map { " for \($0.shortDate)" } ?? ""

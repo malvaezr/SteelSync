@@ -131,14 +131,37 @@ struct RentalRequestSheet: View {
     @State private var notes = ""
 
     private var isPickup: Bool { kind == .pickupRequested }
-    private var title: String { isPickup ? "Request Pickup (Cut Off)" : "Request Delivery" }
-    private var dateLabel: String { isPickup ? "Requested Pickup Date" : "Requested Delivery Date" }
+    private var title: String {
+        switch kind {
+        case .deliveryRequested: return "Request Delivery"
+        case .deliveryConfirmed: return "Confirm Drop-Off"
+        case .pickupRequested: return "Request Pickup (Cut Off)"
+        case .pickupConfirmed: return "Confirm Pickup"
+        case .note: return "Add Note"
+        }
+    }
+    private var dateLabel: String {
+        switch kind {
+        case .deliveryRequested: return "Requested Delivery Date"
+        case .deliveryConfirmed: return "Drop-Off Date"
+        case .pickupRequested: return "Requested Pickup Date"
+        case .pickupConfirmed: return "Pickup Date"
+        case .note: return "Date"
+        }
+    }
+    private var saveTitle: String {
+        switch kind {
+        case .deliveryConfirmed, .pickupConfirmed: return "Confirm"
+        case .note: return "Add Note"
+        default: return "Log Request"
+        }
+    }
 
     var body: some View {
         EntryFormScaffold(
             title: title,
             icon: kind.icon,
-            saveTitle: "Log Request",
+            saveTitle: saveTitle,
             onCancel: closeForm,
             onSave: save
         ) {
@@ -186,15 +209,17 @@ struct RentalRequestSheet: View {
             }
         }
         .onAppear {
-            if isPickup {
-                // Default a pickup request to today; default contact to whoever
-                // we last dealt with on this rental.
+            // Things happening "now" (pickup ask, drop-off / pickup confirm)
+            // default to today; a planned delivery request defaults to the
+            // rental's planned start.
+            switch kind {
+            case .pickupRequested, .deliveryConfirmed, .pickupConfirmed:
                 requestedDate = Date()
-                if let last = rental.events.last(where: { !$0.contactName.isEmpty }) {
-                    contactName = last.contactName
-                }
-            } else {
+            default:
                 requestedDate = rental.startDate
+            }
+            if let last = rental.events.last(where: { !$0.contactName.isEmpty }) {
+                contactName = last.contactName
             }
         }
     }
@@ -396,6 +421,128 @@ struct ReconcileInvoiceSheet: View {
             notes: notes,
             in: projectID
         )
+        closeForm()
+    }
+}
+
+// MARK: - Batch delivery request (project-level)
+
+/// Request several pieces of equipment to be delivered to a project on the same
+/// date — the documented "here's what I need on site Monday" request. Logs a
+/// timestamped `deliveryRequested` event on each selected unit (so each carries
+/// the same paper trail the per-item Request Delivery produces).
+struct BatchDeliveryRequestSheet: View {
+    let rentals: [EquipmentRental]
+    let projectID: CKRecord.ID
+    @EnvironmentObject var dataStore: DataStore
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.inlineDismiss) private var inlineDismiss
+
+    @State private var selected: Set<UUID> = []
+    @State private var deliveryDate = Date()
+    @State private var method: RentalContactMethod = .text
+    @State private var contactName = ""
+    @State private var loggedBy = ""
+    @State private var notes = ""
+
+    var body: some View {
+        EntryFormScaffold(
+            title: "Request Equipment Delivery",
+            icon: AppIcons.equipment,
+            saveTitle: selected.isEmpty ? "Select Units" : "Log \(selected.count) Request\(selected.count == 1 ? "" : "s")",
+            saveDisabled: selected.isEmpty,
+            onCancel: closeForm,
+            onSave: save
+        ) {
+            EntrySection("Deliver On", systemImage: AppIcons.calendar) {
+                LabeledField(label: "Requested Delivery Date") {
+                    DatePicker("", selection: $deliveryDate, displayedComponents: .date)
+                        .labelsHidden().appControlSurface()
+                }
+            }
+
+            EntrySection("Equipment (\(selected.count) of \(rentals.count))", systemImage: AppIcons.equipment) {
+                if rentals.isEmpty {
+                    Text("No equipment on this project yet. Add rentals first, then request their delivery here.")
+                        .font(.caption).foregroundColor(AppTheme.secondaryText)
+                } else {
+                    HStack {
+                        Button(selected.count == rentals.count ? "Clear All" : "Select All") {
+                            selected = selected.count == rentals.count ? [] : Set(rentals.map { $0.id })
+                        }
+                        .font(.caption).buttonStyle(.appSecondary)
+                        Spacer()
+                    }
+                    ForEach(rentals) { r in
+                        Button {
+                            if selected.contains(r.id) { selected.remove(r.id) } else { selected.insert(r.id) }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: selected.contains(r.id) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundColor(selected.contains(r.id) ? AppTheme.primaryOrange : .secondary)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(r.equipmentName).font(.callout).foregroundColor(.primary)
+                                    if !r.unitInfo.isEmpty {
+                                        Text(r.unitInfo).font(.caption2).foregroundColor(.secondary)
+                                    }
+                                }
+                                Spacer()
+                                RentalLifecycleBadge(lifecycle: r.lifecycle)
+                            }
+                            .padding(.vertical, 3).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            EntrySection("Request Details", systemImage: "shippingbox.and.arrow.backward.fill") {
+                HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+                    LabeledField(label: "How Requested") {
+                        Picker("", selection: $method) {
+                            ForEach(RentalContactMethod.allCases) { m in
+                                Label(m.rawValue, systemImage: m.icon).tag(m)
+                            }
+                        }
+                        .labelsHidden().pickerStyle(.menu).appControlSurface()
+                    }
+                    LabeledField(label: "Supplier Contact") {
+                        TextField("Agent name", text: $contactName).textFieldStyle(.appField)
+                    }
+                }
+                LabeledField(label: "Requested By (you)") {
+                    TextField("Your name", text: $loggedBy).textFieldStyle(.appField)
+                }
+                LabeledField(label: "Notes") {
+                    NotesField(text: $notes, minHeight: 50)
+                }
+                Text("Logs a timestamped delivery request on each selected unit for \(deliveryDate.shortDate) — your documented record for this project's delivery.")
+                    .font(.caption2).foregroundColor(AppTheme.tertiaryText)
+            }
+        }
+        #if os(macOS)
+        .frame(width: 560, height: 700)
+        #endif
+        .onAppear {
+            // Pre-select units that haven't been requested/delivered yet.
+            selected = Set(rentals.filter { $0.firstDeliveryRequest == nil }.map { $0.id })
+        }
+    }
+
+    private func closeForm() { (inlineDismiss ?? { dismiss() })() }
+
+    private func save() {
+        for r in rentals where selected.contains(r.id) {
+            let event = RentalRequestEvent(
+                kind: .deliveryRequested,
+                requestedDate: deliveryDate,
+                method: method,
+                contactName: contactName,
+                loggedBy: loggedBy,
+                notes: notes
+            )
+            dataStore.logRentalRequest(event, on: r, in: projectID)
+        }
         closeForm()
     }
 }
